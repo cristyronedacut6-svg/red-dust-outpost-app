@@ -1,0 +1,11 @@
+{
+  "appId": "com.reddust.outpost",
+  "appName": "Red Dust Outpost",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#0d0a12"
+  }
+}

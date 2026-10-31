@@ -1,0 +1,19 @@
+{
+  "name": "red-dust-outpost",
+  "version": "2.0.0",
+  "description": "Space outpost survival game for Android and the web, with a Supabase backend.",
+  "private": true,
+  "scripts": {
+    "android:create": "cap add android && node scripts/android-setup.mjs",
+    "android:icons": "capacitor-assets generate --android --iconBackgroundColor #0d0a12 --splashBackgroundColor #0d0a12",
+    "android:apk": "cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}
