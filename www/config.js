@@ -12,6 +12,6 @@
   Leave both empty and the game still works fully offline.
 */
 window.RDO_CONFIG = {
-  supabaseUrl: '',
-  supabaseKey: ''
+  supabaseUrl: 'https://movmitecndxnzxuhopnu.supabase.co',
+  supabaseKey: 'sb_publishable_lj5ZS44g5ICVQIs5VQAAPA_ltYyVgGc'
 };
