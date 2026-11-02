@@ -17,6 +17,16 @@ if (!m.includes('android.permission.VIBRATE')) m = m.replace(/<\/manifest>\s*$/,
 writeFileSync(mf, m);
 console.log('✓ Landscape and vibration set in AndroidManifest.xml');
 
+// 1b. Version number goes up with every GitHub build, so phones see each APK as an update
+const run = parseInt(process.env.GITHUB_RUN_NUMBER || '0', 10);
+const bg = join(root, '..', '..', 'build.gradle');
+if (run > 0 && existsSync(bg)) {
+  let g = readFileSync(bg, 'utf8');
+  g = g.replace(/versionCode\s+\d+/, `versionCode ${run}`).replace(/versionName\s+"[^"]*"/, `versionName "1.${run}"`);
+  writeFileSync(bg, g);
+  console.log(`✓ Version 1.${run} (code ${run})`);
+}
+
 // 2. MainActivity: fullscreen game mode and keep the screen on
 function find(dir, name) {
   for (const f of readdirSync(dir)) {

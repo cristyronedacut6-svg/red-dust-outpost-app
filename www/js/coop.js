@@ -13,7 +13,7 @@
   const QUIET = new Set(['ui', 'open', 'close', 'sel', 'type', 'next', 'no', 'step']);
   const CO = window.COOP = {
     on: false, role: null, code: '', ch: null, peer: null, me: null,
-    rxT: 0, inT: 0, txT: 0, n: 0, aid: 1, sq: [], ft: [], bSig: '', rSig: '', lost: false, world: 0, dif: 1
+    rxT: 0, inT: 0, txT: 0, n: 0, aid: 1, sq: [], ft: [], bSig: '', rSig: '', lost: false, world: 0, dif: 1, roles: 0, fxq: []
   };
   const esc = s => (window.NET ? NET.esc(s) : String(s));
   const meInfo = () => ({ name: window.NET ? NET.name : 'Commander', suit: typeof SUIT !== 'undefined' ? SUIT : 'classic' });
@@ -73,11 +73,14 @@
       <div class="roomcode">${CO.code.split('').map(c => `<span>${c}</span>`).join('')}</div>
       <p class="sub" style="text-align:center">Tell your friend to tap 🤝 Co-op, then Join, and type this code.</p>
       <div class="box"><h3>CREW</h3><p style="margin:0">👩‍🚀 ${esc(NET.name)} (you)<br>${p ? '🧑‍🚀 ' + esc(p.name) + ' <span class="nb">joined!</span>' : '<span class="sub">' + (status || '⏳ Waiting for your partner to join…') + '</span>'}</p></div>
-      <div class="box"><h3>WORLD</h3><div class="worlds">${LV.map((l, i) => `<button class="wd${i === CO.world ? ' on' : ''}" data-w="${i}" ${i > mx ? 'disabled' : ''}><span class="pl" style="${plCss(i)}"></span>${i > mx ? '🔒 ' : ''}${l.n}</button>`).join('')}</div>
+      <div class="box"><h3>WORLD</h3><div class="worlds">${LV.slice(0, typeof secOpen === 'function' && secOpen() ? 7 : 6).map((l, i) => `<button class="wd${i === CO.world ? ' on' : ''}" data-w="${i}" ${i > mx && i < 6 ? 'disabled' : ''}><span class="pl" style="${plCss(i)}"></span>${i > mx && i < 6 ? '🔒 ' : ''}${l.n}</button>`).join('')}</div>
         <div class="seg" role="group" aria-label="Difficulty">${[['Easy', .75], ['Normal', 1], ['Hard', 1.3]].map(d => `<button data-d="${d[1]}" class="${CO.dif == d[1] ? 'on' : ''}">${d[0]}</button>`).join('')}</div></div>
+      <div class="box"><h3>ROLES</h3><div class="seg" role="group" aria-label="Roles">${['Both do everything', 'You build, partner fights', 'You fight, partner builds'].map((t, i) => `<button data-r="${i}" class="${CO.roles === i ? 'on' : ''}">${t}</button>`).join('')}</div>
+        <p class="sub" style="margin:6px 0 0;font-size:13px">The Builder gets the top view and 20% cheaper buildings. The Soldier gets the first-person view and 30% stronger shots.</p></div>
       <div class="acts"><button class="big" id="cStart" ${p ? '' : 'disabled'}>▶ Start mission</button><button class="btn" id="cLeave">Leave</button></div>`);
     ov.querySelectorAll('.wd').forEach(b => b.onclick = () => { CO.world = +b.dataset.w; hostLobby(status); });
-    ov.querySelectorAll('.seg button').forEach(b => b.onclick = () => { CO.dif = +b.dataset.d; hostLobby(status); });
+    ov.querySelectorAll('.seg button[data-d]').forEach(b => b.onclick = () => { CO.dif = +b.dataset.d; hostLobby(status); });
+    ov.querySelectorAll('.seg button[data-r]').forEach(b => b.onclick = () => { CO.roles = +b.dataset.r; hostLobby(status); });
     q('#cLeave').onclick = () => leave();
     q('#cStart').onclick = () => { if (!CO.peer) return; P = newP(CO.world); DF = CO.dif; start(); };
   }
@@ -119,7 +122,7 @@
       if (ev === 'hello') {
         CO.peer = { name: String(d.name || 'Commander').slice(0, 16), suit: d.suit };
         send('welcome', meInfo());
-        if (MODE === 'game' && S && S.run) { send('start', { P: P0, DF }); send('s', snapshot(true)); }
+        if (MODE === 'game' && S && S.run) { send('start', { P: P0, DF, roles: CO.roles }); send('s', snapshot(true)); }
         else if (q('#cStart')) hostLobby();
         snd('boot');
       } else if (ev === 'in' && S && S.run) {
@@ -134,7 +137,8 @@
     } else {
       CO.rxT = now;
       if (ev === 'welcome') { CO.peer = { name: String(d.name || 'Host').slice(0, 16), suit: d.suit }; clearInterval(CO.hiT); snd('boot'); guestLobby(); }
-      else if (ev === 'start') { P = d.P; DF = d.DF; CO.lost = false; start(); }
+      else if (ev === 'story') { if (typeof coopStory === 'function') coopStory(d.c); }
+      else if (ev === 'start') { if (typeof CUT !== 'undefined' && CUT) { CUT = null; q('#cut').hidden = true; q('#cut').classList.remove('glitch'); if (window.CUT3D) CUT3D.hide(); if (typeof horDrone === 'function') horDrone(false); } P = d.P; DF = d.DF; CO.roles = d.roles || 0; CO.lost = false; start(); }
       else if (ev === 's' && S && S.net === 'guest') apply(d);
       else if (ev === 'wb' && S && S.net === 'guest') wb(d.t, d.sub, d.low);
       else if (ev === 'end') guestEnd(d);
@@ -181,14 +185,14 @@
       winT: r1(S.winT), bint: r1(S.bint), land: r1(S.land), solMod: S.solMod,
       p: [r1(S.p.x), r1(S.p.y), S.face.x < 0 ? -1 : 1, S.drive ? 1 : 0, r1(S.walk || 0), S.wp],
       al: S.al.map(a => [a.id || (a.id = CO.aid++), a.ty, r1(a.x), r1(a.y), Math.ceil(a.hp), a.mh,
-        (a.stun > 0 ? 1 : 0) | (a.hid ? 2 : 0) | (a.rg ? 4 : 0) | (a.ty === 'golem' && a.cd < .8 ? 8 : 0) | (a.fl > 0 ? 16 : 0),
-        a.st || '', r1(a.rise || 0), a.ty === 'egg' ? r1(a.hatch) : a.ty === 'tent' ? r1(a.sl || 0) : r1(a.tm || 0)]),
+        (a.stun > 0 ? 1 : 0) | (a.hid ? 2 : 0) | (a.rg ? 4 : 0) | (a.ty === 'golem' && a.cd < .8 ? 8 : 0) | (a.fl > 0 ? 16 : 0) | (a.elite ? 32 : 0) | (a.pull > 0 ? 64 : 0) | (a.fuse != null ? 128 : 0),
+        a.st || '', r1(a.rise || 0), a.ty === 'egg' ? r1(a.hatch) : a.ty === 'tent' ? r1(a.sl || 0) : r1(a.tm || 0), (a.ufo ? 1 : 0) | (a.gate ? 2 : 0) | (a.mini ? 4 : 0) | (a.echo ? 8 : 0), a.r]),
       bul: S.bul.slice(-70).map(b => [r1(b.x), r1(b.y), Math.round(b.vx), Math.round(b.vy), b.col, b.pi ? 1 : 0, r1(b.l)]),
       eb: S.eb.slice(-70).map(e => [r1(e.x), r1(e.y), Math.round(e.vx), Math.round(e.vy), e.c || '', e.c2 || '']),
-      hz: S.hz.map(h => ({ k: h.k, x: r1(h.x), y: r1(h.y), r: h.r, t: h.t, t0: h.t0, x2: h.x2, y2: h.y2, fx: h.fx, life: h.life, max: h.max, v: h.v })),
+      hz: S.hz.filter(h => h.k !== 'delay').map(h => ({ k: h.k, x: r1(h.x), y: r1(h.y), r: h.r, t: h.t, t0: h.t0, x2: h.x2, y2: h.y2, fx: h.fx, life: h.life, max: h.max, v: h.v, a: h.a, arc: h.arc, r1: h.r1, r2: h.r2, len: h.len, w: h.w, dur: h.dur, fl: h.fl, c: h.c })),
       pods: S.pods.map(p => [p.k, r1(p.x), r1(p.y), Math.round(p.h)]),
       strikes: S.strikes.map(p => [r1(p.x), r1(p.y), Math.round(p.t * 100) / 100]),
-      allies: S.allies.map(b => [r1(b.x), r1(b.y), b.face, r1(b.walk), r1(b.life)]),
+      allies: S.allies.map(b => [r1(b.x), r1(b.y), b.face, r1(b.walk), r1(b.life), b.freed ? 1 : 0]),
       portals: S.portals.map(p => [r1(p.x), r1(p.y), r1(p.t)]),
       npc: S.npc.map(n => [r1(n.x), r1(n.y), n.f, r1(n.walk), n.scared ? 1 : 0]),
       rv: S.rv ? [r1(S.rv.x), r1(S.rv.y), S.rv.f] : null,
@@ -196,7 +200,13 @@
       pf: S.pois.map(p => p.found ? 1 : 0),
       sd: S.secs.map(p => [p.done ? 1 : 0, p.st || 0, p.seen ? 1 : 0]),
       ban: S.ban && S.ban.k !== 'tut' ? { k: S.ban.k, txt: S.ban.txt, t: r1(S.ban.t), lab: S.ban.lab } : null,
-      log: S.msgT > 0 ? S.logs[0] : '', sq: CO.sq.splice(0, 10), ft: CO.ft.splice(0, 12), cbo: S.cbo
+      cin: S.cin ? [S.cin.k, r1(S.cin.x), r1(S.cin.y), r1(S.cin.t), S.cin.dur, S.cin.title, S.cin.sub, S.cin.ic, S.cin.col, S.cin.zoom, S.cin.pit, S.cin.orb] : null, smo: r1(S.smo || 0), kfoc: S.kfoc || null,
+      ex: (S.exp || []).map(e => [e.st, r1(e.p), e.pts ? e.pts.map(q => q.done ? 1 : 0).join('') : '']),
+      mo: r1(S.morale || 0), mis: (S.mis || []).map(m => [m.done ? 1 : 0, m.c || 0, m.on ? 1 : 0, m.okN ? 1 : 0, m.bad ? 1 : 0]),
+      log: S.msgT > 0 ? S.logs[0] : '', fx: CO.fxq.splice(0, 12),
+      v23: { h: S.hero ? [r1(S.hero.x), r1(S.hero.y), S.hero.f, r1(S.hero.walk || 0), Math.round(S.hero.hp), S.hero.mh, typeof HERO !== 'undefined' && HERO ? HERO.nm : 'Hero', typeof HERO !== 'undefined' && HERO ? HERO.lv : 1] : null,
+        d: S.dog ? [r1(S.dog.x), r1(S.dog.y), S.dog.f, r1(S.dog.walk || 0), r1(S.dog.dig || 0), r1(S.dog.bk || 0)] : null, g: S.gd ? [S.gd.ty, r1(S.gd.x), r1(S.gd.y), S.gd.f] : null,
+        s: S.sto ? [S.sto.k, r1(S.sto.x), r1(S.sto.y), S.sto.sc ? 1 : 0, S.sto.fade ? 1 : 0] : null, fl: r1(S.flk || 0), w: S.swall ? [S.swall.k, r1(S.swall.t), S.swall.d] : null, fin: S.fin ? 1 : 0 }, sq: CO.sq.splice(0, 10), ft: CO.ft.splice(0, 12), cbo: S.cbo
     };
     const bSig = S.b.length + ':' + S.b.reduce((a, b) => a + b.lv * 7 + Math.round(b.hp) + (b.off ? 1 : 0), 0);
     if (full || bSig !== CO.bSig || CO.n % 10 === 0) { CO.bSig = bSig; o.b = S.b.map(b => [b.t, b.x, b.y, b.lv, Math.round(b.hp), b.m, b.off ? 1 : 0, Math.round((b.a || 0) * 100) / 100]); }
@@ -206,6 +216,7 @@
       o.full = 1; o.lv = S.lv; o.lp = S.lp; o.crewL = S.crewL; o.devils = S.devils;
       o.pois = S.pois.map(p => ({ i: p.i, x: p.x, y: p.y, found: p.found }));
       o.secs = S.secs.map(p => ({ k: p.k, x: p.x, y: p.y }));
+      o.exps = (S.exp || []).map(e => ({ i: e.i, x: e.x, y: e.y, pts: e.pts ? e.pts.map(q => ({ x: q.x, y: q.y })) : null }));
     }
     return o;
   }
@@ -223,6 +234,8 @@
       S.devils = o.devils || [];
       S.land = 0; S.landed = 1; S.out = 1;
       S.p.x = clamp(o.lp.x + 26, 6, WW - 6); S.p.y = clamp(o.lp.y + 14, 8, WH - 6);
+      S.mis = MISS[o.lv].map(m => ({ ...m }));
+      S.exp = (o.exps || []).map(d => ({ ...EXPD[o.lv][d.i], i: d.i, x: d.x, y: d.y, st: 0, p: 0, pts: d.pts ? d.pts.map(q => ({ ...q, done: 0 })) : undefined }));
       reveal(S.p.x, S.p.y, 200); CO.got = true;
     }
     if (!CO.got) return;
@@ -239,9 +252,10 @@
       if (a) old.delete(d[0]);
       else { const A = AT[d[1]] || { r: 6 }; a = { id: d[0], ty: d[1], x: d[2], y: d[3], r: A.r, an: Math.random() * 6, boss: !!BOSS[d[1]], sc: 1 }; }
       a.gx = d[2]; a.gy = d[3]; a.hp = d[4]; a.mh = d[5];
-      a.stun = d[6] & 1 ? 1 : 0; a.hid = d[6] & 2 ? 1 : 0; a.rg = d[6] & 4 ? 1 : 0; a.cd = d[6] & 8 ? .5 : 2; a.fl = d[6] & 16 ? .08 : 0;
+      a.stun = d[6] & 1 ? 1 : 0; a.hid = d[6] & 2 ? 1 : 0; a.rg = d[6] & 4 ? 1 : 0; a.cd = d[6] & 8 ? .5 : 2; a.fl = d[6] & 16 ? .08 : 0; a.pull = d[6] & 64 ? 1 : 0; a.fuse = d[6] & 128 ? 1 : null; if (d[6] & 32 && !a.elite) { a.elite = 1; a.r = Math.round((AT[a.ty] || { r: 6 }).r * 1.6); }
       a.arm = a.ty === 'golem' ? 1 : 0; a.st = d[7]; a.rise = d[8];
       if (a.ty === 'egg') a.hatch = d[9]; else if (a.ty === 'tent') a.sl = d[9]; else a.tm = d[9];
+      if (d[10] != null) { a.ufo = d[10] & 1 ? 1 : 0; a.gate = d[10] & 2 ? 1 : 0; a.mini = d[10] & 4 ? 1 : 0; a.echo = d[10] & 8 ? 1 : 0; if (d[11]) a.r = d[11]; }
       return a;
     });
     old.forEach(a => { boom(a.x, a.y, a.boss ? 50 : 12); boom(a.x, a.y, a.boss ? 18 : 4, '#7cff6b'); splat(a.x, a.y, a.r || 5); S.shk = Math.max(S.shk, a.boss ? 12 : 2); });
@@ -250,7 +264,11 @@
     S.hz = o.hz;
     S.pods = o.pods.map(p => ({ k: p[0], x: p[1], y: p[2], h: p[3] }));
     S.strikes = o.strikes.map(p => ({ x: p[0], y: p[1], t: p[2], hit: p[2] >= 1.4 }));
-    S.allies = o.allies.map(b => ({ x: b[0], y: b[1], face: b[2], walk: b[3], life: b[4] }));
+    S.allies = o.allies.map(b => ({ x: b[0], y: b[1], face: b[2], walk: b[3], life: b[4], freed: b[5] }));
+    if (o.v23) { const v = o.v23; S.hero = v.h ? { x: v.h[0], y: v.h[1], f: v.h[2], walk: v.h[3], hp: v.h[4], mh: v.h[5] } : null; S.hnm = v.h ? { nm: v.h[6], lv: v.h[7] } : null;
+      S.dog = v.d ? { x: v.d[0], y: v.d[1], f: v.d[2], walk: v.d[3], dig: v.d[4], bk: v.d[5] } : null; S.gd = v.g ? { ty: v.g[0], x: v.g[1], y: v.g[2], f: v.g[3] } : null;
+      S.sto = v.s ? { k: v.s[0], x: v.s[1], y: v.s[2], sc: v.s[3], fade: v.s[4], t: 0 } : null; S.flk = v.fl || 0; S.swall = v.w ? { k: v.w[0], t: v.w[1], d: v.w[2] } : null; S.fin = v.fin || 0; }
+    (o.fx || []).forEach(f => { try { if (f.h) horSfx(f.h); if (f.k) glKick(f.k); if (f.sp) speakCreepy(f.sp, f.hm, f.q); } catch (e) {} });
     S.portals = o.portals.map(p => ({ x: p[0], y: p[1], t: p[2] }));
     o.npc.forEach((d, i) => { const n = S.npc[i]; if (!n) return; n.gx = d[0]; n.gy = d[1]; n.f = d[2]; n.walk = d[3]; n.scared = d[4]; });
     if (o.rv) S.rv = { x: o.rv[0], y: o.rv[1], f: o.rv[2] };
@@ -262,15 +280,23 @@
     o.sq.forEach(k => snd(k));
     o.ft.forEach(f => S.ft.push({ x: f[0], y: f[1], t: f[2], c: f[3] || '#ffe066', l: 1 }));
     S.cbo = o.cbo;
-    if (o.b) { S.b = o.b.map(d => ({ t: d[0], x: d[1], y: d[2], w: d[0] === 'core' ? 32 : 16, lv: d[3], hp: d[4], m: d[5], off: !!d[6], a: d[7], pop: null, cd: 0 })); if (S.insp) closeInsp(); }
+    if (o.b) { S.b = o.b.map(d => ({ t: d[0], x: d[1], y: d[2], w: d[0] === 'core' ? 32 : 16, lv: d[3], hp: d[4], m: d[5], off: !!d[6], a: d[7], pop: null, cd: 0 })); grid(); if (S.insp) closeInsp(); }
+    if (o.mo !== undefined) S.morale = o.mo;
+    if (o.ex && S.exp) o.ex.forEach((d, i) => { const e = S.exp[i]; if (!e) return; if (d[0] === 2 && e.st !== 2) toast(e.ic, 'Expedition complete', e.n, `+${e.cr} 💰`); e.st = d[0]; e.p = d[1]; if (e.pts && d[2]) e.pts.forEach((q, j) => q.done = d[2][j] === '1'); });
+    S.smo = o.smo || 0; S.kfoc = o.kfoc;
+    if (o.cin) { const c = o.cin; if (!S.cin || S.cin.title !== c[5]) { S.cin = { k: c[0], x: c[1], y: c[2], t: c[3], dur: c[4], title: c[5], sub: c[6], ic: c[7], col: c[8], zoom: c[9], pit: c[10], orb: c[11] }; cineUI(1); } else S.cin.t = c[3]; }
+    else if (S.cin) { S.cin = null; cineUI(0); }
+    if (o.mis && S.mis) o.mis.forEach((d, i) => { const m = S.mis[i]; if (!m) return; if (d[0] && !m.done) toast('📋', 'Mission complete', m.t, '+30 💰'); m.done = d[0]; m.c = d[1]; m.on = d[2]; m.okN = d[3]; m.bad = d[4]; });
     if (o.rk) S.rocks = o.rk.map(d => ({ x: d[0], y: d[1], a: d[2], c: !!d[3], sup: !!d[4], met: !!d[5] }));
     if (o.pz && !CO.pzS) { CO.pzS = 1; say('⏸ ' + (CO.peer ? CO.peer.name : 'The host') + ' is in a menu. The mission continues in a moment.'); }
     if (!o.pz) CO.pzS = 0;
   }
   H.guestUpdate = dt => {
     if (!CO.got) { fx(dt); return; }
+    if (S.cin) { S.cin.t += dt; fx(dt); return; }
     const p = S.p, k = keys;
     let dx = (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0) + S.jx, dy = (k.s || k.arrowdown ? 1 : 0) - (k.w || k.arrowup ? 1 : 0) + S.jy;
+    if (window.R3) [dx, dy] = R3.rot(dx, dy, dt);
     const l = Math.hypot(dx, dy); S.moving = l > .12;
     if (S.moving && S.winT <= 0 && S.bint <= 0) {
       const sp = 78 * (1 + .15 * S.spd) * Math.min(1, l) * dt;
@@ -314,8 +340,11 @@
   }
 
   /* ---------------- host results ---------------- */
+  CO.wait = m => guestLobby(m);
+  CO.after = () => { if (CO.role === 'host') { send('lobby', {}); MODE = 'space'; hostLobby(); } else { MODE = 'space'; guestLobby('Waiting for the host to start the next mission…'); } };
   CO.done = info => {
-    const last = P.lv >= LV.length - 1;
+    if (S && S.lv === 6 && typeof coopStory === 'function') { const c = S.fin ? (typeof SPN === 'function' && SPN() >= 6 ? 'true' : 'final') : 'twist'; send('story', { c }); coopStory(c); return true; }
+    const last = P.lv >= 5;
     send('end', { win: true, info, last });
     Object.assign(P, { cr: S.cr + 25, lvl: S.lvl, fr: S.fr, spd: S.spd, wo: S.wo, wp: S.wp, drone: S.drone, kills: S.kills, crew: S.crewL });
     const nx = last ? null : LV[P.lv + 1];
@@ -344,7 +373,7 @@
   H.role = () => (CO.on ? CO.role : null);
   H.start = () => {
     if (!CO.on) return;
-    if (CO.role === 'host') { CO.n = 0; send('start', { P: P0, DF }); send('s', snapshot(true)); if (CO.peer) S.p2 = { x: S.p.x + 20, y: S.p.y + 6, cd: 0, walk: 0, tx: S.p.x + 20, ty: S.p.y + 6, name: CO.peer.name, suit: CO.peer.suit }; }
+    if (CO.role === 'host') { CO.n = 0; send('start', { P: P0, DF, roles: CO.roles }); send('s', snapshot(true)); if (CO.peer) S.p2 = { x: S.p.x + 20, y: S.p.y + 6, cd: 0, walk: 0, tx: S.p.x + 20, ty: S.p.y + 6, name: CO.peer.name, suit: CO.peer.suit }; }
     else { CO.got = false; S.land = 0; S.p2 = null; CO.rxT = performance.now(); }
   };
   H.frame = () => {

@@ -23,6 +23,18 @@
   let profile = store.get('profile', null);
   let ready = null;
 
+  function friendly(m) {
+    const s = String(m || '');
+    if (/invalid login credentials/i.test(s)) return 'That email or password is not right. Check them and try again.';
+    if (/already (been )?registered|already exists/i.test(s)) return 'That email already has an account. Use Sign in instead.';
+    if (/password should be at least|weak password/i.test(s)) return 'Your password needs at least 6 characters.';
+    if (/anonymous sign-ins are disabled/i.test(s)) return 'Guest play is switched off on the server. (Setup: turn on anonymous sign-ins in Supabase.)';
+    if (/rate limit|too many/i.test(s)) return 'Too many tries in a row. Wait a minute, then try again.';
+    if (/could not find the function|does not exist|schema cache/i.test(s)) return 'The online database needs an update. (Setup: run schema.sql again in Supabase.)';
+    if (/jwt|token (is )?expired|invalid token/i.test(s)) return 'Your sign-in expired. Tap Sync or sign in again.';
+    if (/email.*invalid|invalid.*email/i.test(s)) return 'That email address does not look right.';
+    return s;
+  }
   async function http(path, { method = 'POST', body, auth = true, timeout = 12000 } = {}) {
     const headers = { apikey: KEY, 'Content-Type': 'application/json' };
     // Newer Supabase 'publishable' keys are not tokens, so only send a token as Authorization.
@@ -35,7 +47,7 @@
       let j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) { j = txt; }
       if (!r.ok) {
         const m = (j && (j.message || j.msg || j.error_description || j.error)) || ('Server error ' + r.status);
-        throw Object.assign(new Error(m), { status: r.status, body: j });
+        throw Object.assign(new Error(friendly(m)), { status: r.status, body: j });
       }
       return j;
     } catch (e) {
@@ -80,15 +92,16 @@
   }
 
   /* ---------------- cloud save ---------------- */
-  const KEYS = ['mx', 'stars', 'jr', 'ach', 'stat', 'cp', 'tw', 'suit', 'rskin', 'cosu', 'df', 'tut', 'intro'];
+  const KEYS = ['mx', 'stars', 'jr', 'ach', 'stat', 'cp', 'tw', 'suit', 'rskin', 'cosu', 'df', 'tut', 'intro', 'tech', 'rp', 'xp', 'dq', 'streak'];
   let muted = false, pushT = 0, lastSync = store.get('lastSync', 0), syncing = false;
   const localData = () => { const d = {}; KEYS.forEach(k => { const v = LS.get(k, undefined); if (v !== undefined) d[k] = v; }); d._t = LS.get('savedAt', 0); return d; };
   function merge(a, b) {
     const newer = (b._t || 0) > (a._t || 0) ? b : a, out = { ...a, ...b, ...newer };
     out.mx = Math.max(a.mx || 0, b.mx || 0);
-    out.stars = [0, 1, 2, 3, 4].map(i => Math.max((a.stars || [])[i] || 0, (b.stars || [])[i] || 0));
-    ['jr', 'ach', 'cosu'].forEach(k => { out[k] = [...new Set([...(a[k] || []), ...(b[k] || [])])]; });
+    out.stars = LV.map((_, i) => i).map(i => Math.max((a.stars || [])[i] || 0, (b.stars || [])[i] || 0));
+    ['jr', 'ach', 'cosu', 'tech'].forEach(k => { out[k] = [...new Set([...(a[k] || []), ...(b[k] || [])])]; });
     out.stat = {}; new Set([...Object.keys(a.stat || {}), ...Object.keys(b.stat || {})]).forEach(k => { out.stat[k] = Math.max((a.stat || {})[k] || 0, (b.stat || {})[k] || 0); });
+    out.xp = Math.max(a.xp || 0, b.xp || 0);
     out.tut = a.tut || b.tut || 0; out.intro = a.intro || b.intro || 0;
     if (out.tw > out.mx) out.tw = out.mx;
     out._t = Date.now();
@@ -159,10 +172,10 @@
   }
   function scoreBox(info, mode) {
     return `<div class="box scorebox"><h3>MISSION SCORE</h3><div class="bigscore">${info.score.toLocaleString()}</div>
-      <p class="sub" id="nRank" style="margin:4px 0 0;font-size:13.5px">${ON ? '📡 Sending your score to the leaderboard…' : '📴 Offline. Add your Supabase project in config.js to rank this score worldwide.'}</p></div>`;
+      <p class="sub" id="nRank" style="margin:4px 0 0;font-size:13.5px">${ON ? '📡 Sending your score to the leaderboard…' : '📴 Offline. Add your Supabase project in config.js to rank this score worldwide.'}</p></div>${mode === 'daily' ? '<div class="box" id="ghostBox"></div>' : ''}`;
   }
   async function sendScore(info, mode) {
-    if (!ON) return;
+    if (!ON) { if (mode === 'daily' && window.ghostBox) setTimeout(() => ghostBox(q('#ghostBox'), encBase(), null), 60); return; }
     const el = () => q('#nRank');
     try {
       await boot();
@@ -170,6 +183,7 @@
       const where = mode === 'daily' ? 'today’s daily board' : mode === 'coop' ? 'the co-op board' : LV[info.world].n;
       if (el()) el().innerHTML = `🏆 You are <b>${fmtRank(r)}</b> on ${esc(where)}.${r.new_best ? ' <span class="nb">New personal best!</span>' : ` Your best is ${Number(r.best).toLocaleString()}.`}`;
       if (r.new_best) snd('ach');
+      if (mode === 'daily') { const mine = typeof encBase === 'function' ? encBase() : ''; try { if (mine) await rpc('save_daily_base', { p_base: mine }); } catch (e) {} let top = null; try { const t = await rpc('get_daily_top_base'); top = Array.isArray(t) ? t[0] : t; } catch (e) {} if (window.ghostBox) ghostBox(q('#ghostBox'), mine, top); }
     } catch (e) { if (el()) el().textContent = '⚠ Score not sent: ' + e.message; }
   }
   H.doneHtml = info => scoreBox(info, 'campaign');
@@ -224,7 +238,7 @@
     return `<div class="lbt">${rows.map(r => `<div class="lbr${r.is_me ? ' me' : ''}"><span class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : '#' + r.rank}</span><span class="nm">${esc(r.name)}${r.is_me ? ' (you)' : ''}</span><span class="st">${'★'.repeat(Math.min(3, r.stars))}${r.stars > 3 ? ' ×' + r.stars : ''}</span><span class="sc">${Number(r.score).toLocaleString()}</span></div>`).join('')}</div>`;
   }
   async function board(mode = 'campaign', world = null, back = title) {
-    const tabs = [['campaign', null, '🌍 Overall'], ...LV.map((l, i) => ['campaign', i, l.n]), ['daily', null, '📅 Today'], ['coop', null, '🤝 Co-op']];
+    const tabs = [['campaign', null, '🌍 Overall'], ...LV.slice(0, 6).map((l, i) => ['campaign', i, l.n]), ['daily', null, '📅 Today'], ['coop', null, '🤝 Co-op']];
     const draw = body => {
       show(`<div class="eyebrow">Worldwide</div><h2>🏆 Leaderboard</h2>
         <div class="tabs lbtabs">${tabs.map(([m, w, n], i) => `<button data-i="${i}" class="${m === mode && w === world ? 'on' : ''}">${n}</button>`).join('')}</div>

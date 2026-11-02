@@ -31,7 +31,7 @@ create table if not exists public.scores (
   id           bigint generated always as identity primary key,
   user_id      uuid not null references auth.users(id) on delete cascade,
   mode         text not null check (mode in ('campaign','daily','coop')),
-  world        smallint not null check (world between 0 and 4),
+  world        smallint not null check (world between 0 and 6),
   day          date,
   score        int not null check (score between 0 and 100000),
   stars        smallint not null check (stars between 0 and 3),
@@ -43,6 +43,9 @@ create table if not exists public.scores (
   created_at   timestamptz not null default now()
 );
 create index if not exists scores_board_idx on public.scores (mode, world, day, score desc);
+-- Worlds 0-5 (Ceres was added as world 5). Safe to run again.
+alter table public.scores drop constraint if exists scores_world_check;
+alter table public.scores add constraint scores_world_check check (world between 0 and 6);
 create index if not exists scores_user_idx  on public.scores (user_id, created_at desc);
 
 -- Row level security: players can read their own rows. All writes go
@@ -147,7 +150,7 @@ declare
 begin
   if v_uid is null then raise exception 'Not signed in'; end if;
   if p_mode not in ('campaign','daily','coop') then raise exception 'Unknown mode'; end if;
-  if p_world not between 0 and 4 then raise exception 'Unknown world'; end if;
+  if p_world not between 0 and 6 then raise exception 'Unknown world'; end if;
   if p_difficulty not in (0.75, 1, 1.3) then raise exception 'Unknown difficulty'; end if;
   if p_stars not between 0 and 3 or p_discoveries not between 0 and 3 then raise exception 'Bad stars'; end if;
   if p_kills not between 0 and 3000 or p_seconds not between 0 and 36000 then raise exception 'Bad stats'; end if;
@@ -209,6 +212,41 @@ language sql stable security definer set search_path = public as $$
   where r.rank <= least(greatest(coalesce(p_limit, 50), 1), 100) or r.is_me
   order by r.rank, r.name;
 $$;
+
+-- Daily base ghosts: the layout of each player's best daily base (v23).
+create table if not exists public.daily_bases (
+  user_id uuid not null references auth.users on delete cascade,
+  day     date not null,
+  score   int  not null,
+  base    text not null check (char_length(base) <= 4000),
+  primary key (user_id, day));
+alter table public.daily_bases enable row level security;
+
+create or replace function public.save_daily_base(p_base text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := auth.uid(); v_day date; v_best int; v_last int;
+begin
+  if v_uid is null then raise exception 'Not signed in'; end if;
+  if p_base is null or char_length(p_base) > 4000 or p_base !~ '^[a-z0-9,;-]*$' then raise exception 'Bad base'; end if;
+  v_day := (get_daily() ->> 'day')::date;
+  select max(score) into v_best from scores where user_id = v_uid and mode = 'daily' and day = v_day;
+  select score into v_last from scores where user_id = v_uid and mode = 'daily' and day = v_day order by created_at desc limit 1;
+  if v_best is null or v_last is distinct from v_best then return; end if;
+  insert into daily_bases (user_id, day, score, base) values (v_uid, v_day, v_best, p_base)
+  on conflict (user_id, day) do update set score = excluded.score, base = excluded.base;
+end $$;
+
+create or replace function public.get_daily_top_base()
+returns table (name text, score int, base text)
+language sql stable security definer set search_path = public as $$
+  select coalesce(p.name, 'Commander'), d.score, d.base
+  from daily_bases d left join profiles p on p.id = d.user_id
+  where d.day = (now() at time zone 'utc')::date
+  order by d.score desc limit 1;
+$$;
+revoke all on function public.save_daily_base(text) from public, anon;
+grant execute on function public.save_daily_base(text) to authenticated;
+grant execute on function public.get_daily_top_base() to anon, authenticated;
 
 -- Lock everything down: only signed-in players (guests count) may call these.
 revoke all on function public.ensure_profile()  from public, anon;
