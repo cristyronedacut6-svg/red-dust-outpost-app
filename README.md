@@ -545,3 +545,20 @@ On phones, the game screen has been tidied so you can see the action and know wh
   - On-screen counter showing FPS, loaded triangles, texture MB, draw calls and resolution.
   - The presets also set anti-aliasing, shadow size, grass and rock density, ground detail, glow and particle amounts.
 - **The model cache is renamed to `rdo-models-2`,** so devices download the new lighter models instead of keeping the old ones.
+
+## v60 — Realism pass 1: real sunlight, atmospheres, cockpit, sound
+
+- **Real sunlight on every planet and moon** (`js/adv_planet.js`):
+  - Shaders light each pixel from the Sun, with a soft day/night line and a truly dark night side. Ambient light was cut from 0.75 to 0.22, so the dark sides are actually dark.
+  - Light turns red-orange near the day/night line, because sunrise and sunset light crosses more air.
+  - Earth's oceans glint where the Sun reflects off them.
+  - A sky-coloured glow shows at the day-side edge of each planet, with orange along the day/night line.
+- **Atmosphere shells** now glow on the lit side, turn orange at sunset, blaze when you look toward the Sun through them, and fade out at night.
+- **Clouds** are lit by the Sun and turn pink-orange at dusk. They use new swirling, latitude-banded patterns, like the real tropics and storm belts, instead of streaks.
+- **Saturn's rings** are lit from the Sun, and the planet casts its shadow across them.
+- **Real Space Shuttle cockpit:** the cockpit view (V) is now framed by NASA's own photos of Space Shuttle Discovery's flight-deck panels (NASA 3D Resources, Images and Textures). It has three green flight screens showing speed, throttle, ship, nearest body, altitude, landing readiness, target, scan count and mission.
+- **Sound design** (`js/adv_audio.js`, Web Audio, no graphics cost):
+  - an engine roar and low throb that follow the throttle and boost
+  - wind and plasma roar during atmospheric entry and when flying aircraft
+  - a quiet ambient space drone with reverb
+  - soft cockpit beeps in cockpit view
