@@ -503,3 +503,16 @@ On phones, the game screen has been tidied so you can see the action and know wh
 - **Model loading never gets stuck:** each model tries `.glb` first, then falls back to `.json`, then retries.
 - **The loading badge is accurate:** it counts every object in range, so it only says done when everything nearby has appeared.
 - **Upload note:** `www/models/nasa/lod/` adds 258 small files. Use GitHub Desktop, because the website stops at 100 files per upload.
+
+## v57 — Download resources screen and a black-flicker fix
+
+- **⬇ Download resources:** opening Adventure Mode on the web now first shows a launcher-style screen, like Genshin's:
+  - **Full pack:** every NASA model in full detail, about 298 MB.
+  - **Light pack:** light versions of every model plus the ships and aircraft, about 60 MB.
+  - **Skip:** stream models while you play.
+  - Downloads run 6 at a time, with a progress bar, speed and time left. Files go into the device's model cache, so Adventure Mode then loads from the device, even offline. Files you already have are skipped, so a download can resume. Use the **⬇** button in Adventure Mode to download more later.
+  - The Android app skips this screen, because every model is already inside it.
+- **Black flicker fix:**
+  - Dynamic resolution now changes rarely. It used to adjust every 1.5 s when the frame rate hovered near its thresholds, and each change cleared the screen for one frame. Now it only steps down after about 6 s of sustained slowness, waits at least 12 s between changes, and makes at most 6 changes per session.
+  - The HDR/anti-aliased render buffers are only used when the phone's GPU supports rendering to them. Otherwise the game uses standard buffers, which avoids black frames on some Android GPUs.
+- `www/models/manifest.json` lists every resource for the downloader.

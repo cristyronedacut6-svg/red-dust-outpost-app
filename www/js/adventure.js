@@ -211,7 +211,7 @@ function css() {
 /* ---------------- build the scene ---------------- */
 function build() {
   css(); try { MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1))); } catch (e) {} const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder); // geometry decoding runs on background threads, so loading doesn't stutter
-  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aX">✕ Exit</button></div>
+  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aX">✕ Exit</button></div>
   <div id="labs"></div><div id="aJoy"><div class="k"><i></i></div></div><button class="rbtn" id="aBst">BOOST</button><button class="rbtn" id="aThr">🚀<br>THRUST</button><button class="rbtn" id="aScn">📡<br>SCAN</button><button class="ab" id="aLand"></button><button class="ab" id="aFly"></button><div id="aScan">SCANNING…</div><div id="aSpd"></div><div id="aToast"></div><div id="aLd"></div>`;
   document.body.appendChild(root);
   const cv = root.querySelector('canvas'), mob = matchMedia('(pointer:coarse)').matches;
@@ -222,7 +222,8 @@ function build() {
   const scn = new THREE.Scene(), cam = new THREE.PerspectiveCamera(60, 1, .1, 12000);
   // realistic reflections on the NASA models: a studio environment map, plus bloom for glowing things
   const pm = new THREE.PMREMGenerator(ren), envTex = pm.fromScene(new RoomEnvironment(), .04).texture; scn.environment = envTex; scn.environmentIntensity = .45;
-  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: Q === 'ultra' ? 4 : 2 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), .45, .4, .95), cine = new ShaderPass(CineShader); comp.addPass(rp); comp.addPass(bloom); comp.addPass(new OutputPass()); comp.addPass(cine);
+  const hdrOK = ren.capabilities.isWebGL2 && (ren.extensions.has('EXT_color_buffer_float') || ren.extensions.has('EXT_color_buffer_half_float')); R_HDR = hdrOK;
+  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? (Q === 'ultra' ? 4 : 2) : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), .45, .4, .95), cine = new ShaderPass(CineShader); comp.addPass(rp); comp.addPass(bloom); comp.addPass(new OutputPass()); comp.addPass(cine);
   scn.add(new THREE.AmbientLight(0x8090b0, .75)); const sunL = new THREE.PointLight(0xfff2dd, 3.2, 0, 0); scn.add(sunL);
   const hem = new THREE.HemisphereLight(0xbfd8ff, 0x201810, .35); scn.add(hem);
   // stars
@@ -292,7 +293,7 @@ function build() {
     ui: (b, W, mode) => surfUI(b, W, mode), ship: () => R.shipStat || SHIPS[0], fixMat, craftUI: (on, cr) => { const b = R.root.querySelector('#aFly'); b.innerHTML = on ? '🧑‍🚀 LAND & WALK' : (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); R.root.querySelector('#aThr').innerHTML = on ? (cr.heli ? '⬆<br>CLIMB' : '⬆<br>PULL UP') : '⤒<br>JUMP'; R.root.querySelector('#aBst').innerHTML = on ? (cr.heli ? 'FAST' : 'THROTTLE') : 'RUN'; } });
   root.querySelector('#aLand').onclick = () => landOrLaunch(); root.querySelector('#aQ').textContent = '⚙ ' + QL[Q]; root.querySelector('#aQ').onclick = () => { setQ(QN[(QN.indexOf(Q) + 1) % 2]); toast('Graphics: <b>' + QL[Q] + '</b>' + (Q === 'ultra' ? ' (max detail, 4× anti-aliasing, 2× resolution)' : ' (max effects, a little lighter for phones)')); };
 }
-const LQ = { busy: 0, max: (navigator.hardwareConcurrency || 4) >= 8 ? 6 : 4 }, FLARE = [];
+let R_HDR = true; const LQ = { busy: 0, max: (navigator.hardwareConcurrency || 4) >= 8 ? 6 : 4 }, FLARE = [];
 function flare() { if (!FLARE.length) return; const sp = R.bpos.sun, v = tmpV.copy(sp).project(R.cam), on = v.z < 1 && Math.abs(v.x) < 1.3 && Math.abs(v.y) < 1.3;
   // hidden when a planet blocks the Sun
   let occ = 0; if (on) { const o = R.cam.position, dir = new THREE.Vector3().subVectors(sp, o), L = dir.length(); dir.divideScalar(L); for (const b of BODIES) { if (b.id === 'sun') continue; const c = R.bpos[b.id], t = new THREE.Vector3().subVectors(c, o).dot(dir); if (t < 0 || t > L) continue; const dd = new THREE.Vector3().subVectors(c, o).addScaledVector(dir, -t).length(); if (dd < b.r) { occ = 1; break; } } }
@@ -300,10 +301,13 @@ function flare() { if (!FLARE.length) return; const sp = R.bpos.sun, v = tmpV.co
   for (const s of FLARE) { const k = 1 - 2 * s.userData.d, p = new THREE.Vector3(v.x * k, v.y * k, .2).unproject(R.cam), dist = p.distanceTo(R.cam.position); s.position.copy(p); s.scale.setScalar(s.userData.sz * dist * (s.userData.d ? 1 : 1.4)); s.material.opacity = a * (s.userData.d ? .55 : .9); s.visible = a > .01; } }
 function disposeTree(o) { o.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => { for (const k in m) { const v = m[k]; if (v && v.isTexture) v.dispose(); } m.dispose(); }); }); }
 // dynamic resolution: keeps the frame rate smooth by trimming render resolution (never the effects) when the device struggles
-const DR = { t: 0, n: 0, s: 1, cool: 0 };
-function dynRes(dt) { DR.t += dt; DR.n++; DR.cool = Math.max(0, DR.cool - dt); if (DR.t < 1.5) return; const fps = DR.n / DR.t; DR.t = 0; DR.n = 0; if (DR.cool > 0) return;
+const DR = { t: 0, n: 0, s: 1, cool: 4, low: 0, high: 0, changes: 0 };
+// Each resolution change reallocates the render buffers (one blank frame), so it changes rarely and only after a sustained slowdown.
+function dynRes(dt) { DR.t += dt; DR.n++; DR.cool = Math.max(0, DR.cool - dt); if (DR.t < 2) return; const fps = DR.n / DR.t; DR.t = 0; DR.n = 0;
+  DR.low = fps < 32 ? DR.low + 1 : 0; DR.high = fps > 58 ? DR.high + 1 : 0; if (DR.cool > 0 || DR.changes >= 6) return;
   const max = Math.min(devicePixelRatio || 1, Q === 'ultra' ? 2 : 1.5); let s = DR.s;
-  if (fps < 40 && s > .5) s = Math.max(.5, s - .15); else if (fps > 56 && s < 1) s = Math.min(1, s + .08); if (s !== DR.s) { DR.s = s; DR.cool = 1.5; R.ren.setPixelRatio(max * s); resize(); } }
+  if (DR.low >= 3 && s > .55) s = Math.max(.55, s - .15); else if (DR.high >= 8 && s < 1) s = Math.min(1, s + .15);
+  if (s !== DR.s) { DR.s = s; DR.cool = 12; DR.low = DR.high = 0; DR.changes++; R.ren.setPixelRatio(max * s); resize(); } }
 function ldUI(k, n) { const el = R.root.querySelector('#aLd'), on = n > 0 && k < n; el.style.display = on ? 'block' : 'none'; if (on) el.textContent = '⏳ Loading NASA 3D models ' + k + ' / ' + n; }
 function lookAtYP(p) { const d = p.clone().sub(R.ship.position).normalize(); R.yaw = Math.atan2(-d.x, -d.z); R.pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)); }
 
@@ -318,7 +322,7 @@ function controls() {
   const hold = (id, k) => { const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); R[k] = 1; if (k === 'thr') R.ap = null; }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(v => b.addEventListener(v, () => R[k] = 0)); };
   hold('#aThr', 'thr'); hold('#aBst', 'bst');
   $('#aScn').addEventListener('pointerdown', e => { e.preventDefault(); scan(); });
-  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aFly').onclick = () => flyToggle();
+  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
   // mouse look on desktop
   let drag = null; R.ren.domElement.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
   addEventListener('pointermove', e => { if (!drag || !ST.on || e.pointerId !== drag.id) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
@@ -507,12 +511,43 @@ function surfStep(dt) { const k = R.keys, S = R.surf.S, jump = !!(R.thr || k[' '
   for (; i < R.lab.length; i++) R.lab[i].style.display = 'none'; }
 /* ---------------- open / close ---------------- */
 function draw(sc) { R.rp.scene = sc; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
-function setQ(q) { Q = q; P('adv_q', q); DR.s = 1; DR.cool = 2; R.ren.setPixelRatio(Math.min(devicePixelRatio || 1, Q === 'ultra' ? 2 : Q === 'high' ? 1.5 : 1)); R.ren.shadowMap.enabled = true; [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = Q === 'ultra' ? 4 : 2; t.dispose(); }); R.bloom.strength = Q === 'ultra' ? .45 : .4; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + QL[Q]; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+function setQ(q) { Q = q; P('adv_q', q); DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(Math.min(devicePixelRatio || 1, Q === 'ultra' ? 2 : Q === 'high' ? 1.5 : 1)); R.ren.shadowMap.enabled = true; [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? (Q === 'ultra' ? 4 : 2) : 0; t.dispose(); }); R.bloom.strength = Q === 'ultra' ? .45 : .4; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + QL[Q]; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
 function loop(t) { if (!ST.on) return; const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
   if (sf) { if (!pnl) { surfStep(dt); draw(R.surf.S.scn); } }
   else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) lb.textContent = k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase(); draw(R.scn); } }
   requestAnimationFrame(loop); }
-function open() { if (ST.on) return; if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); if (!G('adv_seen', 0)) intro(); else toast('🗺 Map → pick a destination · 📡 scan signals'); }
+/* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
+const MC = 'rdo-models-1', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
+function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== 56; }
+function resPanel(done, fromGame) {
+  const o = document.createElement('div'); o.id = 'advDL'; o.innerHTML = `<style>#advDL{position:fixed;inset:0;z-index:99999;background:radial-gradient(ellipse at 50% 30%,#14204a,#02040c 70%);color:#eaf2ff;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
+  #advDL .c{width:min(520px,94vw);background:rgba(10,16,36,.85);border:1px solid rgba(125,249,255,.35);border-radius:18px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}#advDL h2{margin:2px 0 6px;font-size:22px}#advDL .ey{font:700 10px system-ui;letter-spacing:.16em;color:#7df9ff}
+  #advDL .mt{font-size:12px;color:#b9c8de;line-height:1.45}#advDL .opt{display:grid;gap:8px;margin:12px 0}#advDL button{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:12px;padding:11px 14px;font:700 14px system-ui;text-align:left;cursor:pointer}
+  #advDL button.pr{background:linear-gradient(180deg,#3aa0e8,#1f6fb8);border-color:#7df9ff}#advDL button small{display:block;font-weight:500;opacity:.8;font-size:11px;margin-top:2px}#advDL .bar{height:12px;border-radius:8px;background:rgba(255,255,255,.1);overflow:hidden;margin:12px 0 6px}#advDL .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7df9ff,#ffcf4a);transition:width .25s}
+  #advDL .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}</style><div class="c"><div class="ey">🚀 ADVENTURE MODE · RESOURCES</div><h2>Download NASA resources</h2><div class="mt" id="dlT">Loading the file list…</div><div id="dlB"></div></div>`;
+  document.body.appendChild(o); const $ = q => o.querySelector(q), mb = b => (b / 1048576).toFixed(b > 1e8 ? 0 : 1) + ' MB';
+  fetch('models/manifest.json', { cache: 'no-store' }).then(r => r.json()).then(async M => {
+    const cache = await caches.open(MC), uniq = L => { const seen = new Set(); return L.filter(x => !seen.has(x[0]) && seen.add(x[0])); };
+    const light = uniq([...M.base, ...M.lod, ...M.core]), full = uniq([...M.base, ...M.lod, ...M.full]), sum = L => L.reduce((a, x) => a + x[1], 0);
+    let have = 0; for (const [p] of full) if (await cache.match(p)) have++;
+    $('#dlT').innerHTML = `Store every NASA 3D model on this device once, so Adventure Mode loads instantly and plays smoothly, even offline.${have ? `<br><b>${have} of ${full.length} files are already on this device.</b>` : ''}<br><span style="opacity:.75">Use Wi-Fi for the full pack. You can always download more later from ⬇ in Adventure Mode.</span>`;
+    $('#dlB').innerHTML = `<div class="opt"><button class="pr" id="dF">⬇ Full pack · best quality<small>Every model in full detail · ${mb(sum(full))} · ${full.length} files</small></button><button id="dL">⬇ Light pack · fast start<small>Light versions of every model, plus the ships and aircraft · ${mb(sum(light))}. Full detail streams in when you fly close.</small></button><button id="dS">▶ Skip, stream while playing<small>Uses the least storage. Models load as you fly near them.</small></button></div>`;
+    const finish = (pack) => { if (pack) P('adv_dl', { v: 56, pack }); o.remove(); done && done(); };
+    $('#dS').onclick = () => { open.skipDL = 1; finish(null); };
+    const run = async (L, pack) => { let doneB = 0, doneN = 0, fail = 0, stop = false; const tot = sum(L), t0 = performance.now();
+      $('#dlB').innerHTML = `<div class="bar"><i></i></div><div class="mt" id="dlP">Starting…</div><div class="row" style="margin-top:12px"><button id="dX">Play now (keeps downloading in this session)</button></div>`;
+      $('#dX').onclick = () => { stop = 'play'; finish(null); };
+      const upd = () => { const el = performance.now() - t0, sp = doneB / Math.max(.5, el / 1000), left = (tot - doneB) / Math.max(1, sp); $('.bar i').style.width = (doneB / tot * 100).toFixed(1) + '%'; $('#dlP').textContent = `${(doneB / tot * 100).toFixed(0)}% · ${mb(doneB)} of ${mb(tot)} · ${doneN}/${L.length} files · ${mb(sp)}/s · about ${left > 90 ? Math.ceil(left / 60) + ' min' : Math.ceil(left) + ' s'} left${fail ? ' · ' + fail + ' to retry' : ''}`; };
+      let i = 0; const worker = async () => { while (i < L.length && stop !== 'abort') { const [p, sz] = L[i++];
+          try { if (!(await cache.match(p))) { let r = await fetch(p); if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) { const pj = p.replace(/\.glb$/, '.json'); if (pj !== p) { r = await fetch(pj); if (r.ok) await cache.put(pj, r); else fail++; } else fail++; } else await cache.put(p, r); } } catch (e) { fail++; }
+          doneB += sz; doneN++; if (o.isConnected) upd(); } };
+      await Promise.all(Array.from({ length: 6 }, worker)); if (stop === 'play') { P('adv_dl', { v: 56, pack }); return; }
+      $('.bar i').style.width = '100%'; $('#dlP').innerHTML = `<b>✅ Download complete.</b> ${mb(tot)} stored on this device${fail ? ` (${fail} files could not be downloaded and will stream instead)` : ''}.`;
+      $('.row').innerHTML = '<button class="pr" id="dGo">🚀 Launch Adventure</button>'; $('#dGo').onclick = () => finish(pack); };
+    $('#dF').onclick = () => run(full, 'full'); $('#dL').onclick = () => run(light, 'light');
+  }).catch(() => { $('#dlT').textContent = 'Resources are built into this version, so no download is needed.'; $('#dlB').innerHTML = '<div class="row" style="margin-top:12px"><button class="pr" id="dGo">🚀 Launch</button></div>'; $('#dGo').onclick = () => { open.skipDL = 1; o.remove(); done && done(); }; });
+}
+function open() { if (ST.on) return; if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); if (!G('adv_seen', 0)) intro(); else toast('🗺 Map → pick a destination · 📡 scan signals'); }
 function close() { ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
 window.ADV = { open, close, goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R };
 export { open, close };
