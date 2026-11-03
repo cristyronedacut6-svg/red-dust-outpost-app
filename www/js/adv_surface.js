@@ -38,6 +38,7 @@ export const WORLD = {
   vesta: { g: .25, t: 'about −100 °C', air: 'None', sky: null, gr: ['#4a4642', '#7e7872', '#b8b0a8'], amp: 18, cr: 1.2, site: 'Rheasilvia basin', sun: '#ffffff' },
   charon: { g: .29, t: 'about −220 °C', air: 'None', sky: null, gr: ['#5a5a5e', '#8e8e92', '#c4c4c8'], amp: 14, cr: .7, site: 'Mordor Macula (red north pole)', inSky: 'pluto', sun: '#ffffff' },
 };
+const SKYP = { earth: ['#2a64c0', '#bcd8f2', '#ff8a3a', '#03060f'], mars: ['#6e4630', '#d6a77a', '#5f8fd8', '#050302'], venus: ['#6a3a14', '#e0a050', '#fff0b0', '#0a0603'], titan: ['#5a3a12', '#c88c40', '#ffd080', '#050301'], pluto: ['#050812', '#2a3a62', '#cfd8ff', '#010205'] };
 const SKYG = { earth: ['#2f6fc0', '#c4def4', '#fff4dc'], mars: ['#7a4e34', '#d9ae84', '#9ec4e8'], venus: ['#7a4418', '#e2a456', '#fff0c0'], titan: ['#6a4416', '#d0984a', '#ffe0a0'], pluto: ['#050812', '#2a3a62', '#cfd8ff'] };
 export const DIVE = {
   jupiter: { cols: ['#d9b48a', '#a8724a', '#f2e2c8', '#7a4a2a'], facts: ['Jupiter has no solid ground. The gas just gets thicker and hotter the deeper you go.', 'The Galileo probe parachuted into Jupiter on 7 December 1995 and sent data for about 58 minutes.', 'Deep inside, hydrogen is squeezed so hard it turns into a liquid metal.'], max: 1000 },
@@ -80,16 +81,34 @@ export function makeSurface(ctx) {
     const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, map: dt, roughness: .95, metalness: 0 })); m.receiveShadow = true; return m;
   }
   function sky(id, W, scn) {
-    if (W.sky) { const g = SKYG[id] || [W.sky, W.sky, '#ffffff']; scn.background = col(g[1]); scn.fog = new THREE.FogExp2(col(g[1]), W.fog || .002);
-      const sd = new THREE.Mesh(new THREE.SphereGeometry(3500, 48, 24), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { z: { value: col(g[0]) }, h: { value: col(g[1]) }, s: { value: col(g[2]) }, sd: { value: new THREE.Vector3(-1500, 900, -1800).normalize() } },
+    if (W.sky) { const P = (SKYP[id] || [W.sky, W.sky, '#ffffff', '#020202']).map(c => col(c)); scn.background = P[1].clone(); scn.fog = new THREE.FogExp2(P[1].clone(), W.fog || .002);
+      // physical-looking sky: blends day/night by sun elevation, sunset glow toward the Sun near the horizon, sharp sun disc and halo
+      const U = { zd: { value: P[0] }, hd: { value: P[1] }, sg: { value: P[2] }, ng: { value: P[3] }, sd: { value: new THREE.Vector3(-1500, 900, -1800).normalize() }, e: { value: .4 } }; S.skyU = U; S.skyP = P;
+      const sd = new THREE.Mesh(new THREE.SphereGeometry(3500, 48, 24), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: U,
         vertexShader: 'varying vec3 d;void main(){d=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-        fragmentShader: 'uniform vec3 z,h,s,sd;varying vec3 d;void main(){float t=pow(max(d.y,0.),.45);vec3 c=mix(h,z,t);float k=max(dot(d,sd),0.);c+=s*(pow(k,700.)*3.+pow(k,18.)*.35);gl_FragColor=vec4(c,1.);}' })); scn.add(sd); }
+        fragmentShader: `uniform vec3 zd,hd,sg,ng,sd; uniform float e; varying vec3 d;
+        void main(){ float t = pow(max(d.y, 0.), .45), day = smoothstep(-.12, .2, e), k = max(dot(d, sd), 0.), low = 1. - smoothstep(.02, .38, e);
+          vec3 zen = mix(ng, zd, day), hor = mix(ng * 1.6 + sg * .06 * smoothstep(-.25, 0., e), hd, day), c = mix(hor, zen, t);
+          c = mix(c, sg, clamp(low * smoothstep(-.22, .02, e) * pow(k, 2.2) * (1. - t * .75) * 1.6, 0., 1.));
+          c += sg * pow(k, 12.) * .35 * day + vec3(1., .96, .88) * (pow(k, 1400.) * 6. + pow(k, 120.) * .25) * smoothstep(-.04, .01, e);
+          gl_FragColor = vec4(c, 1.); }` })); scn.add(sd);
+      const st = ctx.stars(); if (st) { const sm = new THREE.Mesh(new THREE.SphereGeometry(3400, 32, 16), new THREE.MeshBasicMaterial({ map: st, side: THREE.BackSide, color: 0xb0b0b0, transparent: true, opacity: 0, depthWrite: false, fog: false, blending: THREE.AdditiveBlending })); scn.add(sm); S.starM = sm.material; } }
     else { scn.background = new THREE.Color('#000'); const st = ctx.stars(); if (st) { const s = new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), new THREE.MeshBasicMaterial({ map: st, side: THREE.BackSide, color: 0x9a9a9a, fog: false })); scn.add(s); } }
     const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,240,1)', 'rgba(255,220,150,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); sun.position.set(-1500, 900, -1800); sun.scale.setScalar(260 * (W.bigSun || 1)); if (!W.sky) scn.add(sun);
     if (W.inSky) { const tex = ctx.texOf(W.inSky); const big = { earth: 120, mars: 260, jupiter: 900, saturn: 600, uranus: 420, neptune: 380, pluto: 300, charon: 260 }[W.inSky] || 200;
       const pl = new THREE.Mesh(new THREE.SphereGeometry(big, 48, 32), new THREE.MeshStandardMaterial({ map: tex, roughness: 1, fog: false })); pl.position.set(900, 1100, -2600); scn.add(pl);
       if (W.inSky === 'saturn') { const r = new THREE.Mesh(new THREE.RingGeometry(big * 1.25, big * 2.3, 96), new THREE.MeshBasicMaterial({ color: 0xd8c8a0, transparent: true, opacity: .55, side: THREE.DoubleSide, fog: false })); r.rotation.x = -1.2; pl.add(r); } }
-    if (W.sea) { const sea = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), new THREE.MeshStandardMaterial({ color: col(W.sea), roughness: .15, metalness: .3, transparent: true, opacity: .9 })); sea.rotation.x = -Math.PI / 2; sea.position.y = -1; scn.add(sea); S.sea = sea; }
+    if (W.sea) { // ocean: layered moving waves, sky reflection by Fresnel, sun glitter, fades into the haze at the horizon
+      const OU = { time: { value: 0 }, deep: { value: col(W.sea).multiplyScalar(.45) }, sky: { value: S.skyP ? S.skyP[1].clone() : col('#bcd8f2') }, sd: S.skyU ? S.skyU.sd : { value: new THREE.Vector3(0, 1, 0) }, sunI: { value: 1 }, fogD: { value: W.fog || .0011 } }; S.seaU = OU;
+      const sea = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400, 1, 1), new THREE.ShaderMaterial({ uniforms: OU, transparent: true, depthWrite: false, fog: false,
+        vertexShader: 'varying vec3 wp; void main(){ vec4 w = modelMatrix * vec4(position,1.); wp = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+        fragmentShader: `uniform float time, sunI, fogD; uniform vec3 deep, sky, sd; varying vec3 wp;
+        vec2 wv(vec2 p, vec2 dir, float f, float s){ float ph = dot(p, dir) * f + time * s; return dir * cos(ph) * f; }
+        void main(){ vec2 p = wp.xz; vec2 g = wv(p, normalize(vec2(1., .3)), .05, 1.1) * .9 + wv(p, normalize(vec2(-.4, 1.)), .09, 1.6) * .5 + wv(p, normalize(vec2(.7, -.6)), .23, 2.4) * .22 + wv(p, normalize(vec2(-.9, -.2)), .51, 3.3) * .1;
+          vec3 n = normalize(vec3(-g.x, 1., -g.y)), v = normalize(cameraPosition - wp); float fr = .02 + .98 * pow(1. - max(dot(n, v), 0.), 5.);
+          vec3 c = mix(deep, sky, fr); vec3 h = normalize(sd + v); c += vec3(1., .95, .85) * pow(max(dot(n, h), 0.), 260.) * 3.5 * sunI;
+          float dist = length(cameraPosition - wp); c = mix(c, sky, 1. - exp(-dist * fogD * .9)); gl_FragColor = vec4(c, .96); }` }));
+      sea.rotation.x = -Math.PI / 2; sea.position.y = -1; scn.add(sea); S.sea = sea; }
   }
   function playerModel() { const g = new THREE.Group(); const fb = new THREE.Mesh(new THREE.CapsuleGeometry(.35, 1, 4, 10), new THREE.MeshStandardMaterial({ color: 0xf2f2f5 })); fb.position.y = .9; g.add(fb);
     ctx.loader.load('models/nasa/astronaut.glb', gl => { const m = gl.scene; if (ctx.fixMat) ctx.fixMat(m); const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3()), k = 1.8 / Math.max(s.y, .01); m.scale.setScalar(k); const b2 = new THREE.Box3().setFromObject(m); m.position.y -= b2.min.y; m.position.x -= (b2.min.x + b2.max.x) / 2; m.position.z -= (b2.min.z + b2.max.z) / 2; m.traverse(n => { if (n.isMesh) n.castShadow = true; }); g.remove(fb); g.add(m); }, undefined, () => {});
@@ -99,7 +118,7 @@ export function makeSurface(ctx) {
   function placeModel(e, force) { if (e.loading || (!force && busy >= 3)) return; e.loading = 1; busy++; const done = () => { busy = Math.max(0, busy - 1); }; ctx.loader.load('models/nasa/' + (e.useLod ? 'lod/' : '') + (e.o.model || e.o.id) + '.glb', gl => { const m = gl.scene; if (ctx.fixMat) ctx.fixMat(m); if (e.r) { m.rotation.set(e.r[0], e.r[1], e.r[2], 'YXZ'); m.updateMatrixWorld(true); } const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3()), k = e.s / Math.max(s.x, s.y, s.z, .001); m.scale.setScalar(k); const b2 = new THREE.Box3().setFromObject(m); m.position.y -= b2.min.y; m.position.x -= (b2.min.x + b2.max.x) / 2; m.position.z -= (b2.min.z + b2.max.z) / 2; m.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } }); e.g.add(m); e.model = m; done(); }, undefined, () => { done(); e.loading = 0; e.fails = (e.fails || 0) + 1; if (e.fails >= 2 && !e.useLod) { e.useLod = 1; e.fails = 0; } else if (e.fails >= 3) e.model = new THREE.Group(); }); }
   function enter(body, kind, site) {
     const W = kind === 'dive' ? null : WORLD[body.id], scn = new THREE.Scene(); S.scn = scn; S.body = body; S.mode = kind; S.t = 0; S.items = []; S.cols = []; S.depth = 0; S.sea = null;
-    scn.add(new THREE.HemisphereLight(0xdfe8ff, 0x302820, .55)); const dl = new THREE.DirectionalLight(W ? col(W.sun) : 0xffffff, 2.6); dl.position.set(-1500, 900, -1800); scn.add(dl); scn.add(dl.target); S.dl = dl;
+    const hemi = new THREE.HemisphereLight(0xdfe8ff, 0x302820, .55); scn.add(hemi); S.hemi = hemi; S.skyU = null; S.starM = null; S.seaU = null; S.devils = null; S.tod = .055; const dl = new THREE.DirectionalLight(W ? col(W.sun) : 0xffffff, 2.6); dl.position.set(-1500, 900, -1800); scn.add(dl); scn.add(dl.target); S.dl = dl;
     if (ctx.env) { scn.environment = ctx.env(); scn.environmentIntensity = .5; }
     const q = ctx.q ? ctx.q() : 'high'; if (kind !== 'dive') { dl.castShadow = true; const ms = ctx.pre ? ctx.pre().shadow : 2048; dl.shadow.mapSize.set(ms, ms); const c = dl.shadow.camera; c.left = c.bottom = -70; c.right = c.top = 70; c.near = 10; c.far = 600; dl.shadow.bias = -.0006; dl.shadow.normalBias = .4; }
     if (kind === 'dive') return enterDive(body, scn);
@@ -142,6 +161,7 @@ export function makeSurface(ctx) {
     S.factI = 0; ctx.ui(body, null, 'dive'); S.on = true; ctx.toast(`🌀 Diving into <b>${body.n}</b><br><small>Steer with the joystick · collect 3 glowing gas samples · climb back out before the pressure crushes you</small>`, 4500); }
   function step(dt, inp) {
     if (!S.on) return; S.t += dt; if (S.launch) { stepLaunch(dt); S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, S.player.position.x, S.player.position.z); return {}; } const r = S.mode === 'dive' ? stepDive(dt, inp) : stepLand(dt, inp);
+    if (S.mode !== 'dive') dayCycle(dt);
     if (S.fx && S.mode !== 'dive') { const P = S.player.position; if (WORLD[S.body.id].air !== 'None' && Math.random() < dt * 6) S.dust.emit(new THREE.Vector3(P.x + (Math.random() - .5) * 40, P.y + Math.random() * 8, P.z + (Math.random() - .5) * 40), new THREE.Vector3(1.2, .1, .4), S.dc, .25, 6, 1, .6, { drag: .1, a: .35, fadeIn: .3, grow: 1 });
       S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, P.x, P.z); }
     return r; }
@@ -236,6 +256,18 @@ export function makeSurface(ctx) {
     if (t > .7 && t < .8) S.rings.add(new THREE.Vector3(-12, gy + .3, -8), 0xffd27a, 34, 1.4);
     const cp = new THREE.Vector3(14, gy + 3.5, 26), look = wp.clone(); look.y = Math.max(look.y, gy + 6); ctx.cam.position.lerp(cp.add(new THREE.Vector3((Math.random() - .5), (Math.random() - .5), 0).multiplyScalar(t > .7 && up < 30 ? .12 : 0)), Math.min(1, dt * 3)); ctx.cam.lookAt(look);
     if (t > 3.2) { const cb = L.cb; S.launch = null; S.player.visible = true; if (S.player.userData.sh) S.player.userData.sh.visible = true; cb(); } }
+  // day/night cycle on worlds with air: a full day every 4 minutes; light, sky, fog, stars and ocean all follow the Sun
+  function dayCycle(dt) { const U = S.skyU; if (!U) return; const W = WORLD[S.body.id]; S.tod = (S.tod + dt / 240) % 1; const a = S.tod * Math.PI * 2, e = Math.sin(a) * .9;
+    U.e.value = e; U.sd.value.set(-Math.cos(a) * .82, e, -.42).normalize(); const day = THREE.MathUtils.smoothstep(e, -.06, .22), low = 1 - THREE.MathUtils.smoothstep(e, .02, .4);
+    const P = S.skyP, fogC = P[3].clone().multiplyScalar(1.6).lerp(P[1], day).lerp(P[2], low * day * .55); if (S.scn.fog) S.scn.fog.color.copy(fogC); S.scn.background.copy(fogC);
+    const dl = S.dl, pl = S.player ? S.player.position : new THREE.Vector3(); if (e > -.05) { dl.intensity = 2.6 * THREE.MathUtils.smoothstep(e, -.05, .2); dl.color.copy(col(W.sun || '#ffffff')).lerp(P[2].clone().lerp(new THREE.Color(1, .6, .35), .5), low * .7); dl.position.copy(pl).addScaledVector(U.sd.value, 420); }
+    else { dl.intensity = .28; dl.color.setRGB(.6, .7, 1); dl.position.copy(pl).addScaledVector(U.sd.value, -420).setY(pl.y + 300); }   // moonlight / starlight
+    dl.target.position.copy(pl); S.hemi.intensity = .06 + .5 * day; S.scn.environmentIntensity = .5 * (.1 + .9 * day); S.hemi.color.copy(P[1]).lerp(new THREE.Color(1, 1, 1), .4); if (S.starM) S.starM.opacity = 1 - THREE.MathUtils.smoothstep(e, -.15, .05);
+    if (S.seaU) { S.seaU.time.value = S.t; S.seaU.sky.value.copy(fogC); S.seaU.sunI.value = day; }
+    // Mars: wandering dust devils
+    if (S.body.id === 'mars' && S.dust) { if (!S.devils) S.devils = [0, 1, 2].map(i => ({ x: 60 + i * 90, z: -120 + i * 110, a: i * 2, h: 0 }));
+      for (const dv of S.devils) { dv.a += dt * .07; dv.x += Math.cos(dv.a) * dt * 3; dv.z += Math.sin(dv.a * 1.3) * dt * 3; const gy = H(dv.x, dv.z);
+        for (let k = 0; k < 3; k++) { const r = 1 + Math.random() * 4, th = Math.random() * 6.283; S.dust.emit(new THREE.Vector3(dv.x + Math.cos(th) * r, gy + Math.random() * 2, dv.z + Math.sin(th) * r), new THREE.Vector3(-Math.sin(th) * 7, 4 + Math.random() * 7, Math.cos(th) * 7), S.dc, 1.4 + Math.random() * 1.6, 3.2, 1, 1, { grow: 3, drag: .25, a: .28 }); } } } }
   function collect(c) { c.got = true; c.m.visible = false; if (S.fx) { S.fx.emit(c.m.position, new THREE.Vector3(0, 2, 0), c.sample ? 0x7df9ff : 0xffcf4a, .6, .9, 36, 9, { grow: .4, drag: .85 }); S.rings.add(c.m.position, c.sample ? 0x7df9ff : 0xffcf4a, 6, .7, ctx.cam.position); } c.gotSet.add(c.i); ctx.set(c.key, [...c.gotSet]); ctx.sfx(c.sample ? 'chime' : 'pop');
     if (c.sample) { ctx.reward(2, 25); ctx.toast(`🧪 <b>Science sample</b> +2 🔧<br><small>${c.fact}</small>`, 5200); } else { ctx.reward(1, 10); ctx.toast('⭐ Star fragment +1 🔧', 1400); }
     const left = S.cols.filter(x => !x.got).length; if (!left) { ctx.reward(15, 120); setTimeout(() => ctx.toast(`🏅 Everything collected on <b>${S.body.n}</b>! +15 🔧`, 3500), 1600); } }

@@ -605,3 +605,13 @@ On phones, the game screen has been tidied so you can see the action and know wh
 - **🪐 Gas giants move:** Jupiter, Saturn, Uranus and Neptune have cloud bands that flow east and west in alternating jet streams. A seamless flow-map method keeps the bands moving forever without smearing.
 - **💡 Engine light:** your engine now casts real blue light (orange on boost) onto your ship and nearby spacecraft.
 - **Night lights:** NASA's Earth at Night / Black Marble 2016 map is the right source for city lights, and the game already supports it. The session can't download it, so it's waiting for the file.
+
+## v64 — Realism pass 5: real night lights, living skies, ocean, dust devils (and the black-square fix)
+
+- **🌃 Real city lights:** Earth's night side now glows with NASA's **Black Marble 2016** night-lights map (`www/models/tex/earth_night.webp`, made from NASA Earth Observatory's 8000×4000 image). The city lights were separated from the blue land base so only real lights glow, warm sodium-orange, and they fade in exactly where the Sun sets.
+- **🌅 Day/night cycle on planets with air** (Earth, Mars, Venus, Titan, Pluto): one day passes every 4 minutes. The sun moves across the sky, and the light, sky, fog, shadows and stars all follow it.
+  - The sky blends from day to night and glows in sunset colours toward the Sun near the horizon. **Mars sunsets are blue**, as NASA's rovers photographed them, and Earth's are orange.
+  - At night the stars come out, and moonlight and starlight replace the Sun.
+- **🌊 Ocean at Kennedy Space Center:** four layers of moving waves reflect the sky (stronger at grazing angles, like real water), with sun glitter on the waves, fading into the haze at the horizon.
+- **🌪 Dust devils on Mars:** three swirling dust columns wander across the plains.
+- **🐛 Fix for the black square:** the flight-HUD target bracket was picking up a style from the main game that gave it a dark filled background. It showed up as a black square that flickered as targets changed. The HUD classes are renamed, so the bracket is only corner marks now. The HUD is also hidden on planet surfaces.
