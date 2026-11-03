@@ -16,7 +16,10 @@
     rxT: 0, inT: 0, txT: 0, n: 0, aid: 1, sq: [], ft: [], bSig: '', rSig: '', lost: false, world: 0, dif: 1, roles: 0, fxq: []
   };
   const esc = s => (window.NET ? NET.esc(s) : String(s));
-  const meInfo = () => ({ name: window.NET ? NET.name : 'Commander', suit: typeof SUIT !== 'undefined' ? SUIT : 'classic' });
+  const meInfo = () => (typeof meLobby === 'function' ? meLobby() : { name: window.NET ? NET.name : 'Commander', suit: typeof SUIT !== 'undefined' ? SUIT : 'classic' });
+  const pInfo = (d, def) => ({ name: String(d.name || def).slice(0, 16), suit: d.suit, rk: Math.max(1, Math.min(999, d.rk | 0)) || 1, rn: String(d.rn || 'Cadet').slice(0, 24), lead: Math.max(0, Math.min(2, d.lead | 0)) });
+  CO.info = () => { if (CO.on && CO.ch) send('info', meInfo()); };
+  CO.relobby = () => { if (q('#cStart')) hostLobby(CO.hst); else if (CO.on && CO.role === 'guest' && q('#vlob')) guestLobby(CO.gst); };
 
   /* ---------------- rooms ---------------- */
   function connect(code, role, onOpen) {
@@ -68,11 +71,11 @@
     hostLobby('Opening the room…');
   }
   function hostLobby(status) {
-    const p = CO.peer;
+    const p = CO.peer; CO.hst = status;
     show(`<div class="eyebrow">🤝 Co-op · You are hosting</div><h2>Room code</h2>
       <div class="roomcode">${CO.code.split('').map(c => `<span>${c}</span>`).join('')}</div>
       <p class="sub" style="text-align:center">Tell your friend to tap 🤝 Co-op, then Join, and type this code.</p>
-      <div class="box"><h3>CREW</h3><p style="margin:0">👩‍🚀 ${esc(NET.name)} (you)<br>${p ? '🧑‍🚀 ' + esc(p.name) + ' <span class="nb">joined!</span>' : '<span class="sub">' + (status || '⏳ Waiting for your partner to join…') + '</span>'}</p></div>
+      ${typeof vLobby === 'function' ? vLobby(p, true) + (p ? '' : '<p class="sub" style="text-align:center;margin:-4px 0 8px">' + (status || '⏳ Waiting for your partner to join…') + '</p>') : `<div class="box"><h3>CREW</h3><p style="margin:0">👩‍🚀 ${esc(NET.name)} (you)<br>${p ? '🧑‍🚀 ' + esc(p.name) + ' <span class="nb">joined!</span>' : '<span class="sub">' + (status || '⏳ Waiting for your partner to join…') + '</span>'}</p></div>`}
       <div class="box"><h3>WORLD</h3><div class="worlds">${LV.slice(0, typeof secOpen === 'function' && secOpen() ? 7 : 6).map((l, i) => `<button class="wd${i === CO.world ? ' on' : ''}" data-w="${i}" ${i > mx && i < 6 ? 'disabled' : ''}><span class="pl" style="${plCss(i)}"></span>${i > mx && i < 6 ? '🔒 ' : ''}${l.n}</button>`).join('')}</div>
         <div class="seg" role="group" aria-label="Difficulty">${[['Easy', .75], ['Normal', 1], ['Hard', 1.3]].map(d => `<button data-d="${d[1]}" class="${CO.dif == d[1] ? 'on' : ''}">${d[0]}</button>`).join('')}</div></div>
       <div class="box"><h3>ROLES</h3><div class="seg" role="group" aria-label="Roles">${['Both do everything', 'You build, partner fights', 'You fight, partner builds'].map((t, i) => `<button data-r="${i}" class="${CO.roles === i ? 'on' : ''}">${t}</button>`).join('')}</div>
@@ -81,6 +84,7 @@
     ov.querySelectorAll('.wd').forEach(b => b.onclick = () => { CO.world = +b.dataset.w; hostLobby(status); });
     ov.querySelectorAll('.seg button[data-d]').forEach(b => b.onclick = () => { CO.dif = +b.dataset.d; hostLobby(status); });
     ov.querySelectorAll('.seg button[data-r]').forEach(b => b.onclick = () => { CO.roles = +b.dataset.r; hostLobby(status); });
+    if (typeof vLobbyBind === 'function') vLobbyBind();
     q('#cLeave').onclick = () => leave();
     q('#cStart').onclick = () => { if (!CO.peer) return; P = newP(CO.world); DF = CO.dif; start(); };
   }
@@ -98,9 +102,11 @@
     guestLobby('⏳ Looking for room ' + code + '…');
   }
   function guestLobby(status) {
+    CO.gst = status;
     show(`<div class="eyebrow">🤝 Co-op · Room ${esc(CO.code)}</div><h2>${CO.peer ? 'Joined ' + esc(CO.peer.name) + '’s outpost' : 'Joining…'}</h2>
-      <div class="box"><p style="margin:0">${status || '⏳ Waiting for the host to start the mission…'}</p></div>
+      ${typeof vLobby === 'function' ? vLobby(CO.peer, false) : ''}<div class="box"><p style="margin:0">${status || '⏳ Waiting for the host to start the mission…'}</p></div>
       <div class="acts"><button class="btn" id="cLeave">Leave</button></div>`);
+    if (typeof vLobbyBind === 'function') vLobbyBind();
     q('#cLeave').onclick = () => leave();
   }
   function lobbyError(m) {
@@ -120,11 +126,12 @@
     if (CO.role === 'host') {
       CO.inT = now;
       if (ev === 'hello') {
-        CO.peer = { name: String(d.name || 'Commander').slice(0, 16), suit: d.suit };
+        CO.peer = pInfo(d, 'Commander');
         send('welcome', meInfo());
         if (MODE === 'game' && S && S.run) { send('start', { P: P0, DF, roles: CO.roles }); send('s', snapshot(true)); }
         else if (q('#cStart')) hostLobby();
         snd('boot');
+      } else if (ev === 'info') { if (CO.peer) { Object.assign(CO.peer, pInfo(d, CO.peer.name)); if (q('#cStart')) hostLobby(CO.hst); }
       } else if (ev === 'in' && S && S.run) {
         const p = S.p2 || (S.p2 = { x: d.x, y: d.y, cd: 0, walk: 0 });
         p.tx = d.x; p.ty = d.y; p.fx = d.fx; p.fire = d.f; p.wp = d.wp; p.name = CO.peer ? CO.peer.name : 'Partner'; p.suit = CO.peer && CO.peer.suit; p.moving = d.m;
@@ -136,7 +143,8 @@
       }
     } else {
       CO.rxT = now;
-      if (ev === 'welcome') { CO.peer = { name: String(d.name || 'Host').slice(0, 16), suit: d.suit }; clearInterval(CO.hiT); snd('boot'); guestLobby(); }
+      if (ev === 'info') { if (CO.peer) { Object.assign(CO.peer, pInfo(d, CO.peer.name)); if (q('#vlob') && !(S && S.run && MODE === 'game')) guestLobby(CO.gst); } }
+      else if (ev === 'welcome') { CO.peer = pInfo(d, 'Host'); clearInterval(CO.hiT); snd('boot'); guestLobby(); }
       else if (ev === 'story') { if (typeof coopStory === 'function') coopStory(d.c); }
       else if (ev === 'start') { if (typeof CUT !== 'undefined' && CUT) { CUT = null; q('#cut').hidden = true; q('#cut').classList.remove('glitch'); if (window.CUT3D) CUT3D.hide(); if (typeof horDrone === 'function') horDrone(false); } P = d.P; DF = d.DF; CO.roles = d.roles || 0; CO.lost = false; start(); }
       else if (ev === 's' && S && S.net === 'guest') apply(d);

@@ -30,6 +30,39 @@ radiation shielding (based on NASA data) while fighting aliens, exploring, and c
 - **Moon Productions intro**: an animated team intro and the game logo play when the game opens (tap to skip)
 - **Showcase demo**: one button on the title screen tours every world, event and story beat in 10 steps (about 4 to 5 minutes),
   played live while a presenter talks. Each step has a timer bar, a pause button and Next. The base is protected
+- **HD view (new)**: pick 2D, 3D or **HD ✨** on the title screen, or tap the view button in game. HD has smooth
+  hills, craters, dunes and ice ridges, anime-style cel shading with ink outlines and rim light, clouds on worlds
+  with air, a detailed jointed astronaut and a wider camera behind you. It switches back to 3D by itself if a phone is too slow
+- **Real gravity physics**: in 3D and HD, tap **JUMP** (or press J). Each world uses its real NASA gravity, so you
+  float for 2 s on the Moon and almost 13 s on Ceres. In HD the rover's suspension also follows that gravity, so it
+  can fly off crater rims on low-gravity worlds
+- **Boss fight**: the ⚔️ Boss fight button on the title screen jumps straight into any world's boss battle in HD
+- **Great Dust Worm (HD)**: the Mars boss uses the "Giant Worm" 3D model by Vasian-Digital3D (Sketchfab, CC-BY-4.0,
+  credited in the game's sources screen). It is skinned with its real skeleton and plays baked animation clips: it roars
+  when it bursts out, rears up and slams for the sand jets, lunges for the tail sweep, and does a biting combo while
+  spitting glowing acid globs. New effects: glowing ground cracks before it surfaces, rocks thrown on Mars-gravity
+  arcs, shockwaves, sand geysers along the jets, a glowing throat weak point, and a stagger animation when stunned.
+  Baked into `www/js/worm.js` by `tools/bake_worm.py`
+- **HD v5**: the robot ally is NASA's Robonaut 2 (skinned, walks and aims), Sparky is a jointed quadruped robot dog with a
+  trotting gait, and buildings change as you upgrade them, like Clash of Clans: level 2 adds silver trim and corner
+  lights, level 3 adds gold pylons, banners and a beacon. The base core grows a radio mast, then solar wings, an airlock
+  and a dish, then a second habitat module, a greenhouse dome, a landing pad and a flag. Bosses get a glowing weak point
+  (white when stunned), a red warning ring before attacks, and a signature halo, crown or ice spikes
+- **HD v4**: free orbit camera (drag to look anywhere, scroll or pinch to zoom, move where the camera faces), the
+  astronaut has a real 10-bone skeleton with smooth skin at shoulders, elbows, hips, knees and neck, poses blend
+  smoothly and turning is eased. Rounded smooth shapes replace hard boxes on aliens, bosses and buildings, bosses
+  get orbiting energy shards and a glowing ring, the rover is bigger, and the NASA models are about 2x more detailed
+- **HD v3: real NASA models**: in HD, your crew are the NASA astronaut model, the rover is Perseverance, the base core and
+  habitats are NASA's Habitat Demonstration Unit, drills are the RASSOR mining robot, the landing craft is the Apollo
+  Lunar Module, the helper drone is Ingenuity, and a Deep Space Network dish stands beside the base. Models come from
+  NASA 3D Resources (public domain), simplified into `www/js/models.js` by `tools/bake.py`
+- **Emotes**: tap 💃 EMOTE (or press Y) for Dance, Wave, Cheer, Flip, Sit and Party. Your crew joins in when you dance,
+  dancing plays a little beat, and Flip does a backflip using the world's real gravity
+- **HD v2 (Genshin-style)**: the astronaut's height follows the hills, so running off a crest or crater rim
+  launches you with that world's gravity, uphill is slower, and landings kick up dust. Hold JUMP while falling
+  to open a glider. New sci-fi rifle with glowing rings and a muzzle flash, glowing tracer shots, a scarf that
+  hangs with real gravity and flutters only on worlds with air, colored ink outlines, glow on lights, drifting
+  light specks, and glowing crystal grass on Echo. New layered rifle, scatter and plasma sounds in every view
 - **Cleaner title screen**: pick a world and it flies into orbit around Earth on its own, with its real NASA data beside it.
   Extra menus sit behind one "More" button
 - **Arrival flyover**: each new world opens with a short camera sweep over the terrain and a NASA data card (tap to skip)
@@ -230,3 +263,243 @@ npm run android:apk      # APK at android/app/build/outputs/apk/debug/app-debug.
 
 Made for the space outpost hackathon challenge. Planet facts and numbers come from NASA's public
 fact sheets and mission pages.
+
+### v35: Great Dust Worm, 3-phase boss fight
+- Much more HP (260 base) and armor: bullets do half damage unless you hit it in a **punish window** right after an attack (throat glows), or while it is **staggered**.
+- Yellow **poise bar** under its health: fill it to stagger the worm for big damage.
+- **Phase 2 at 66%** (Burrowing Frenzy): faster digging, **quake rings** (jump over them in 3D/HD) and **sand rivers**.
+- **Phase 3 at 33%** (The Devourer): a huge circle hunts you before it erupts, it calls its brood, and attacks come much faster.
+- Short immunity and a roar on each phase change; phase marks on the health bar.
+
+### v36: every boss is a 3-phase fight
+All bosses now use the same system as the Dust Worm: armor, punish windows (gold glow right after an attack), a yellow poise bar that staggers them, and phase changes at 66% and 33% with a roar, short immunity and new attacks.
+| Boss | HP | Phase 2 | Phase 3 |
+|---|---|---|---|
+| Crystal Golem (Moon) | 150 | Crystal Fury: crystal prison ring + jumpable shockwave | Shattered Core: leaps onto you and bursts into shards |
+| Solar Scorcher (Mercury) | 280 | Solar Flare: + then X sun beams | Supernova: triple dash chain or a huge explosion |
+| Ice Kraken (Europa) | 320 | Maelstrom: 3 freezing ice waves (jump them) | Abyssal Wrath: tentacle spiral |
+| Asteroid Colossus (Ceres) | 360 | Meteor Storm: 12 meteors | Event Horizon: black hole pull, then explosion |
+| Hive Queen (Titan) | 420 | Royal Guard: Chargers + acid rain | Hive Frenzy: triple dash or egg-ring storm |
+
+### v37: real 3D boss models in HD (animated like the Dust Worm)
+Every boss now has its own animated model in HD view, each with a clip for every attack, smooth blending between clips, and attack impacts timed to land exactly when the red warning zone fires.
+| Boss | Model (CC-BY-4.0, Sketchfab) | Animations |
+|---|---|---|
+| Crystal Golem (Moon) | Ricky the Golem by Agustin Ruella | idle, walk, roar, hurt, stagger, double-fist slam, ground smash, crystal blast, boulder throw, stomp, leap crash |
+| Solar Scorcher (Mercury) | Red Cherub by Spinnee | dash wind-up + charge, sun-beam blast, flame-ring slam, fire summon, spin, supernova |
+| Ice Kraken (Europa) | Octopus Blue Animal by 3dUVpro | tentacle smash, tentacle ring, freezing beam, ice spit, quake, swirl |
+| Asteroid Colossus (Ceres) | Stonebound Colossus by antromar3 | rock throw, gravity pull, pound, stomp, meteor summon |
+| Hive Queen (Titan) | Fireborne Blight Queen by HighPolyDensity | its own animations: fire spray, leap, lay egg, burrow, vomit, fire sweep |
+| The Echo (final boss) and the Hive Mind (Echo world) | Xenomorph Queen Alien by M0RPH0 | tail slam, screech, eye beam / acid spit from the inner jaw, tail sweep, slam (giant, purple-tinted) |
+The farm in HD is the Sci-Fi Plant Capsule by Berk Gedik.
+
+Effects: crystal shards and a glowing core (Golem), burning claws, sun beam and supernova (Scorcher), frost mist and an ice beam (Kraken), a gravity vortex and meteors (Colossus), acid spray and a glowing stinger (Queen), fire breath, embers and a burning eye (Echo). Shockwaves, debris on gravity arcs, camera shake on every slam, a gold shield while immune, a glowing weak point after each attack and stars when staggered. The Echo now also has the stagger bar and weak-point windows.
+
+Tools: `tools/bosses.py` + `tools/rigkit.py` rig the models (own skeletons for the static ones, existing skins mapped onto a simple skeleton for the rest), author the keyframe clips and export `js/boss_*.js`.
+
+### v38: Cartoon HD (default) + Realistic HD
+The view button and the title screen now have 4 views: **2D, 3D, HD ✨ (Cartoon), Real 🎬**.
+- **HD ✨ Cartoon** (default for HD and for the Boss fight button): the chunky toy style of the 3D view (cartoon astronauts, boxy crystal bosses, toy rover, buildings) on top of everything HD adds: hills and craters, jumping and gliding with real gravity, free camera, clouds, outlines, glow and the boss aura/weak-point effects. The farm still uses the plant capsule.
+- **Real 🎬**: the realistic models (NASA astronauts, Perseverance, Lunar Module, Robonaut, robot dog, and the animated Sketchfab bosses).
+
+### v39: model fixes, harder bosses, smoother frames
+- Hive Queen (Titan) now uses the Fireborne Blight Queen; the final boss (the Echo) uses the Xenomorph Queen, and the Echo world's own boss (the Hive Mind) uses it too, purple-tinted. Every planet's boss has a model in Real 🎬 view.
+- Every boss now fires bullet patterns between its attacks: aimed fans, rings with a gap, sniper bursts, spirals and sweeping walls (more and faster in phase 2 and 3). JUMP over boss bullets in 3D/HD. Boss bullets don't hit buildings.
+- Shorter cooldowns, combo follow-ups in phase 2 and 3, and boss attacks hit 25% harder.
+- Smoother play: the 3D view lowers its render resolution automatically when frames get slow (and raises it again when there is headroom), skips the outline pass on very slow devices, and the three heaviest boss models were slimmed down.
+
+### v40: polish update
+- **💨 Dodge roll** (button next to FIRE, or Shift / K): a quick roll with a moment of invulnerability, 2 charges that refill. Works in 2D (afterimages), 3D and HD (the astronaut actually rolls).
+- **✨ Perfect dodge**: dodge just as an attack lands to slow time, get the charge back, and force the boss's weak point open.
+- **Combat feel**: damage numbers on bosses (gold ✦ when you hit the weak point or a staggered boss), a Souls-style trailing damage bar on the boss health bar, slow motion on the killing blow, and a red pulse when the crew is low on health.
+- **Boss ranks**: every boss win is graded C to S on time, damage taken and perfect dodges. Your best rank shows in the Boss fight menu.
+- **🎮 Controls screen** in the pause menu and the title screen; How to play now explains weak points, stagger, phases and dodging.
+- **Cleaner boss HUD**: fact cards stay hidden during boss fights; Jump/Emote moved above the action buttons so they don't cover the build bar on phones.
+- **Fixes**: the "Arriving at…" card could get stuck on screen when a new game started during the arrival fly-over (e.g. Boss fight); boss roars on phase change could be skipped at the very start of a game; the frame timer could go slightly negative after the arrival fly-over (caused rare drawing errors); particle/floating text caps keep long fights smooth.
+- Tested: automated sweep of all 7 worlds in 2D, 3D, HD and Real views (no errors, under 1 ms of game logic per frame).
+
+### v41: smooth boss fights, consistent graphics
+- **Level of detail**: every sphere, cylinder and cone now picks its detail by how big it looks on screen (size ÷ distance to the camera). Big and close things stay smooth; small and far parts use simpler shapes; specks smaller than a pixel or two are skipped. A Cartoon HD boss fight went from ~295,000 to ~120,000–135,000 vertices per frame (Real view: ~374,000 → ~213,000).
+- Outlines are only drawn around characters, buildings and bosses (not around sparks, bullets and particles).
+- The dynamic vertex buffer is reused instead of being reallocated on the GPU every frame.
+- In Real view your crewmates and hero use the lighter astronaut model; yours uses the full one in close cameras.
+- **No more surprise downgrades**: the game no longer switches HD back to 3D or drops to the low-quality preset in the middle of play. The resolution helper only nudges between 80% and 100% in small steps.
+- Real fact cards stay hidden during boss fights.
+
+### v42: real VFX, ⚡ Burst, punchier guns, intense boss music
+- **Sprite VFX engine** (3D/HD/Real): a procedural texture atlas (glow, flame, smoke, spark streaks, rings, flares, shock waves, scorch decals) drawn as camera-facing quads with additive light and soft smoke. Every boss attack erupts in its element when its warning zone fires (crystal, sand, fire, ice, gravity, void): fireballs, sparks on gravity, rising smoke, ground shock rings and scorch marks; beams leave glowing trails, cones spray flames, quake rings ripple. Danger zones glow with an element-colored rim that pulses faster as they charge. Boss bullets are glowing orbs, your shots are glowing tracers with muzzle flashes and impact sparks (gold flares on weak-point hits), and aliens explode when they die. Phase changes raise a pillar of light; boss deaths chain explosions.
+- **⚡ BURST** (button above DODGE, or T): fills as you deal damage (and +15 on a perfect dodge). Slow motion, then an orbital strike: heavy damage, breaks the boss's poise and opens its weak point.
+- **Guns** have a sub-bass thump and room tail; boss impacts, the phase stinger and the burst have their own heavy sounds.
+- **Boss music**: taiko drums, galloping bass, string ostinato, brass stabs and a choir. Phase 1 → 2 → 3 speeds up (148 → 160 → 172 BPM) and adds layers (16th strings, extra toms, snare rolls, crashes every bar), with a stinger on each phase change.
+
+### v43: squad, elements, lock-on, loadout, bloom
+- **👥 Squad of 3** (portraits on the left, or Tab): ⚡ **Vega** (Vanguard, Electro: your rifles, EMP skill, Orbital Burst), 🔥 **Ember** (Engineer, Pyro: short-range flamethrower, Flame Nova skill, Meteor Rain burst), ❄️ **Frost** (Medic, Cryo: piercing cryo lance that slows, Frost Field heal skill, Healing Blizzard burst). Each has their own suit, weapon, skill (E) and burst energy (off-field members charge a little too). Swapping gives a short moment of invulnerability.
+- **🔬 Elemental reactions (real science)**: Pyro + Cryo = **Steam Burst** (x2.2, ice expands ~1,700x as steam), Electro + Cryo = **Superconduct** (cracks boss armor for 7 s and breaks poise), Electro + Pyro = **Overload** (explosion that hits nearby enemies), Cryo + Cryo = **Freeze** (small aliens), Pyro on Titan can trigger a **Methane Flare**. Each reaction explains its science the first time. Enemies show a glowing element marker.
+- **🎯 Lock-on** (button in the camera row, or L): the camera turns to keep the boss in front of you and your shots prefer the boss. A red reticle marks it.
+- **Boss bar** moved to the top centre, Genshin style, with a slide-in.
+- **🎒 Loadout** (title screen and pause menu): spend tech points from boss wins (S 40, A 30, B 20, C 12) on Arc Rifle / Hotter Flames / Sharper Lance damage, Elemental Mastery, Energy Recharge, Reinforced Suits and a third dodge charge.
+- **Realistic astronaut**: aims the rifle with both hands while shooting (with recoil), leans into runs, flinches when hit.
+- **Bloom**: effect light (fire, beams, sparks, bullets, bursts) glows through a blurred bloom pass; surfaces never bloom, so planets keep their colors. Soft blob shadows under everyone. Bloom turns itself off on devices slow enough to need the resolution helper.
+- Fix: the EMP button passed the click event in as a player, so tapping it ignored the cooldown.
+
+### v45 — Boss entrances & squad lobby
+- **Elden Ring–style boss entrance:** every boss now gets a 6-second cinematic. The screen darkens, the camera starts low and wide while the boss rises out of the ground, then pushes in for a roar (white flash, shockwave rings, screen shake, stinger) before a gold serif name card fades in.
+- **ENEMY FELLED:** beating a boss shows a gold "ENEMY FELLED" banner before the rank card.
+- **Valorant-style co-op lobby:** the waiting room now shows tall character cards for both players with their astronaut, rank number, READY tag, name plate and rank title, plus empty "+" slots and a CLOSED PARTY label.
+- **Pick your character in the lobby:** choose Vega, Ember or Frost; your partner sees the change live, and you start the mission as that character.
+
+### v46 — Elden Ring difficulty
+- **Bosses are much tougher:** 1.5× to 3.2× more health depending on the world, and more again in co-op. Maxed weapons no longer melt them: they still help (about 10% faster kills), but skill decides the fight.
+- **Guard and openings:** hits outside an opening show **GUARDED** and do little. Strike right after a boss attacks (gold glow), while it's stunned, or when its stance breaks (**CRITICAL!** hits). Burst damage is capped outside openings, so constant spraying doesn't work.
+- **Stance:** it takes much more pressure to stagger a boss now, and its stance recovers if you back off.
+- **Every phase is an upgrade:** each new phase gets a cinematic (dark screen, camera push-in, roar, shockwave, gold serif title). The boss then hits harder (+10% / +30% / +55% damage), moves faster, grows bigger and stronger-stanced, and burns with an ember aura (gold in phase 2, blood-red in phase 3).
+- **New boss moves:** a *delayed slam* in phase 2+ (long wind-up, then a quick follow-up where you dodged), a *3-hit tracking combo* followed by a shockwave ring in phase 3, and a one-time *last-stand blast* below 15% health.
+
+### v47 — Real view graded like Elden Ring, plus 15 new boss moves
+- **Real 🎬 view, Elden Ring look:** a film grade runs over the Real view. Colours are muted, shadows lean teal and highlights warm gold, golden haze sits on the horizon, and there's a heavy vignette, light lens fringing and film grain. It follows each world's own sky and haze colours.
+- **Signature moves for every boss (3 each, unlocked by phase):** each one flashes its name above the boss when cast.
+  - Crystal Golem: Crystal Lance (a line of spikes racing at you), Prism Cross (4 + 4 crossing beams), Shatter Rain (a spiral of falling shards)
+  - Solar Scorcher: Flare Sweep (3 cones, left to right), Corona Rings (4 rings rolling outward), Sunfall (a huge slow sun plus 6 fragments)
+  - Ice Kraken: Tentacle Sweep (one side, then the other), Frost Lattice (a chessboard that bursts in two waves), Abyssal Geysers (5 geysers that chase you)
+  - Hive Queen: Stinger Volley (a fan of 5 stinger lines), Brood Ambush (flyers plus acid), Royal Pounce (leaps onto you, then a landing wave)
+  - Asteroid Colossus: Orbital Lasers (3 lasers in sequence), Starfall Spiral (closing spiral of stars), Collapsing Star (only a small circle of light is safe)
+- Bosses use their signature moves from phase 1, and more often each phase.
+
+### v48 — Bug fixes
+- **Ceres low gravity:** your squad hero, the crew, your co-op partner and the robot dog now bounce in low gravity just like you do. Before, only you bounced while everyone else walked normally.
+- **Photo mode:** pressing Esc/P (or leaving through the pause menu) while in photo mode no longer leaves the HUD hidden, or the photo buttons stuck on the world map.
+- **Boss bar:** moved low on the screen, Elden Ring style, in a gold serif font on one line. It no longer covers the tips and raid warnings at the top or wraps over the minimap.
+- **Phone portrait:** the Shop, view and pause buttons no longer cover the wave and stats rows, and "Real fact" cards no longer cover the EMP/Burst/Dodge buttons.
+- **Short phone screens (landscape):** the Vega/Ember/Frost portraits are smaller and sit higher, so they no longer overlap the build bar.
+- **Smoother wave starts:** the checkpoint saved at each wave no longer forces a GPU stall (fog map readback).
+
+### v49 — Clean phone HUD
+On phones, the game screen has been tidied so you can see the action and know what to press.
+- **One action arc around FIRE**, the way Genshin and other mobile action games do it. FIRE is the big button, with Dodge, Skill (EMP), Burst and Jump arranged around it within thumb reach.
+  - The 🎯 Lock button only shows up during boss fights.
+  - EARTH only shows (glowing) when your uplink is charged.
+- **⋯ More menu (top right)** for things you rarely need mid-fight: Emote, Switch weapon, Inspect, Top/Free camera, Zoom, Turn left/right, View (2D/3D/HD/Real) and Earth help.
+- **Top right is just three small icons:** 🛒 Shop, ⋯ More and ❚❚ Pause, plus the minimap. The camera row and view switch no longer sit on top of the game.
+- **Compact status:** smaller resource chips, chat messages cut to 2 lines, smaller warning cards, and "Real fact" cards that sit at the top instead of the middle of the screen.
+- **Build** is one button (bottom middle in landscape, bottom left in portrait), and the "drag to move" hint is gone.
+- Works in both landscape and portrait. Tablets and computers keep the full layout.
+
+### v50 — Squad progression and Adventure Mode
+**Squad progression (Genshin style)**
+- **Character levels:** Vega, Ember and Frost each level up separately (Lv 1–40). Defeating aliens gives XP to whoever is active (the others get a share), and waves and bosses give XP to everyone. Every level adds gun damage and toughness, shown as a "Lv" badge on each portrait.
+- **Ascension:** levels stop at 20 and at 30. To raise the cap, ascend with boss materials plus tech points.
+- **Boss materials:** each boss drops its own material (Moon Crystal Core, Dust Worm Fang, Solar Shard, Abyssal Ice Pearl, Royal Hive Jelly, Asteroid Heart, Echo Fragment): 3 for an S rank, 2 for an A, 1 otherwise.
+- **Talents:** 3 per character, unlocking at Lv 10, 20 and 30.
+  - Vega: Overcharge, Arc Crit, Storm Caller
+  - Ember: Kindling, Heat Shield, Phoenix
+  - Frost: Field Medic, Shatter, Absolute Zero
+- **Daily commissions:** 3 new tasks every day (defeat aliens, trigger reactions, dodge, use Bursts, build, survive waves, beat a boss, swap). Each gives +15 🔧 and +120 XP, plus a +30 🔧 bonus for finishing all three.
+- **Squad screen:** replaces Loadout (open it from the pause menu, the title's More menu or the phone ⋯ menu). It shows character art, level and XP, Ascend, talents, commissions and materials. The old gear upgrades are under "🔧 Gear upgrades".
+- Bosses still scale, so higher levels help a little against them, but skill still decides the fight.
+
+**🚀 Adventure Mode: The Grand Tour** (new button on the title screen)
+- Fly a crew capsule (NASA's ESAS crew-module concept, the design that became Orion) across a 3D solar system: the Sun, 8 planets, the Moon, Ceres and the asteroid belt.
+- **45 real NASA 3D models** from NASA 3D Resources, shrunk for phones (meshopt + WebP, about 23 MB in total) and loaded only when you fly near them. They include Perseverance, Ingenuity, Opportunity, InSight, Viking, the Apollo Lunar Module, the ISS, Hubble, JWST, the Space Shuttle, Saturn V, Juno, Cassini, Voyager 1, Parker Solar Probe, OSIRIS-REx and asteroid Bennu.
+- Every spacecraft is placed where it belongs: in orbit, on a planet's surface, at L1/L2, or far out in deep space.
+- **Scan** anything to read its NASA fact card: agency, launch year, where it is and 3 facts. Planets and the Sun have cards too, with 56 entries in total.
+- **Codex** of everything you've scanned, a **Map with autopilot**, and **6 Grand Tour missions** (ISS & Hubble → Moon → Mars → Jupiter → Saturn → Voyager).
+- **Rewards feed the main game:** +5 🔧 and squad XP per new scan, +20 🔧 per mission, and codex milestones (10/25/all) worth +30/+60/+150 🔧.
+- **Controls:**
+  - Phone: joystick, THRUST, BOOST and SCAN buttons.
+  - Computer: W/Shift to fly, A/D and arrow keys or mouse drag to steer, E to scan, M for the map, C for the codex, Esc to exit.
+- three.js (MIT) is bundled locally in `js/vendor/three`, so it also works offline in the APK.
+
+### v51 — Adventure Mode: the whole NASA library, real planet maps, landing and diving
+- **Every model from NASA 3D Resources** is now in Adventure Mode: 209 models, shrunk for phones (about 120 MB in total, each loaded only when you get close). Only the ones that couldn't be converted are missing: Base Station, Tall Dish, Terra, an oversized ISS variant and one oversized Cassiopeia A variant. Each model sits where it belongs:
+  - Around Earth: Earth-science satellites, high and geostationary orbits, CubeSats and Robonaut near the ISS, Hubble's instruments
+  - At L1 and L2: the Sun-watchers and the telescopes
+  - Deep space and the outer planets, plus a **deep-sky gallery** of 3D supernova remnants and the young star BP Tauri
+  - Kennedy Space Center: rockets, launch hardware, antennas, aircraft and the spacesuit hall
+  - Mars and the Moon: rovers, landers and habitats
+- **Real NASA planet maps** (from NASA 3D Resources textures) for Earth, Venus, Mars, Jupiter, Saturn, Neptune, Pluto and 19 moons, plus NASA's Tycho star map as the sky.
+- **20 moons and Pluto added:** Phobos, Deimos, Io, Europa, Ganymede, Callisto, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus, Miranda, Ariel, Umbriel, Titania, Oberon, Triton, Pluto and Charon. Each has a fact card.
+- **🛬 Land on any rocky world** (Earth, Moon, Mercury, Venus, Mars, Ceres, Pluto and every moon) and explore on foot as an astronaut (NASA's astronaut model).
+  - Each world uses its real gravity, so you leap on the Moon and float on Enceladus. Hold JUMP to glide on your jetpack, and RUN to move fast.
+  - The camera follows behind you, and you drag to look around.
+  - Every world has its own sky and terrain:
+    - Atmospheres: Mars's butterscotch dust, Venus's thick orange haze, Titan's methane fog with a methane sea, Earth's blue sky and ocean
+    - Airless moons: black sky, stars, and the parent planet hanging overhead
+    - Special features: craters, Io's lava, Europa's cracks, Enceladus and Triton geysers, Ceres's salt deposits
+  - **Earth lands you at Kennedy Space Center:** walk among the VAB, crawler, mobile launcher, gantry, Saturn V, a rocket garden (Mercury Atlas, Redstone, Jupiter-C, Ares I), Deep Space Network dishes, NASA HQ and Mission Control, a spacesuit hall, and aircraft flying overhead.
+  - **Mars lands you in Jezero Crater** with Perseverance, Ingenuity hovering nearby, plus Opportunity, InSight, Viking, the habitat, the Space Exploration Vehicle and RASSOR.
+  - **The Moon lands you at Tranquility Base** with the Apollo Lunar Module.
+  - **Collect on every world:** 6 🧪 science samples, each with a fact about that world (+2 🔧), and 12 ⭐ star fragments (+1 🔧). Finding everything on a world gives +15 🔧.
+- **🌀 Dive into the gas giants** (Jupiter, Saturn, Uranus, Neptune): descend through the cloud layers with lightning, watch the depth and pressure rise, and grab 3 gas samples, each with a fact. Climb out before the pressure crushes your probe.
+- **Every scan shows the real thing:** the fact card now has a **spinning 3D model** of what you scanned (or the planet itself). The codex is grouped by place, and each group shows how many you've found.
+- **9 Grand Tour missions:** ISS and Hubble → Kennedy Space Center → lost spacewalk tools → Moon landing → Mars (Perseverance and Ingenuity) → Jupiter dive and Europa → Saturn, Cassini and Titan → Voyager 1 and 2 → Pluto's heart.
+
+### v52 — Maximum detail, every NASA 3D model, and real NASA terrain
+- **Full-detail models:** every NASA GLB model was re-processed with **no geometry simplification** and **2048 px textures** (meshopt + WebP, lossless-looking). That's about 240 MB in total, and each model loads only when you get near it.
+- **Even more NASA models:** the three that failed before (Base Station, Tall Dish, Terra) were repaired. **37 models from NASA's "3D Printing" library** were converted too:
+  - Spacecraft and rockets: Curiosity, New Horizons, Orion, SLS Block 1, SOFIA, DART, Landsat 9, Explorer 1, ISEE-3, a Europa orbiter concept, the NIAC Titan submarine, and a Perseverance wheel and sample tube
+  - **9 real asteroid shapes:** Eros, Itokawa, Vesta, Toutatis, Geographos, Kleopatra, Mithra, Golevka and 1996 HW1
+  - Deep-sky objects: the Crab Nebula, Pillars of Creation, Eta Carinae, DG Tau, SN 1006, SN 1987A, Tycho's supernova remnant and U Scorpii
+  - 3D hurricane models (Katrina, Sandy, Julio) floating above Earth
+  - NASA emblems (meatball insignia, Hubble 25 medallion, Viking 40 emblem) in the Kennedy spacesuit hall
+- **Real NASA terrain landing sites:** 21 3D terrain models from NASA were turned into walkable ground.
+  - **Mars:** Gale Crater with Curiosity, Pahrump Hills, Victoria Crater with Opportunity, Gusev Crater with Spirit, plus Jezero (Perseverance), Elysium (InSight) and Chryse (Viking).
+  - **Moon:** all six Apollo landing sites, each with its own Lunar Module (Eagle, Intrepid, Antares, Falcon, Orion, Challenger), plus Mount Hadley and Hadley Rille, Copernicus, Tycho, Aristarchus, Gassendi and Linné.
+  - **Vesta (new landable asteroid):** Rheasilvia, the Snowman craters and Numisia.
+- **More realistic rendering:**
+  - A studio reflection map so the metal and foil on NASA models shine like the real hardware
+  - Bloom glow and a lens flare from the Sun
+  - Glowing atmosphere rims on Earth, Venus, Mars, Titan, Pluto and the giant planets
+  - Earth's cloud layer drifting slowly
+  - Real sky colours with a sun halo on the ground (blue on Earth, butterscotch with a bluish sun glow on Mars, orange on Venus and Titan)
+  - Soft shadows when you're on the ground
+  - More detailed terrain
+- **⚙ Graphics button:**
+  - **Ultra:** full resolution, bloom and 2048 px shadows
+  - **High:** for most phones
+  - **Lite:** for older phones, with no bloom or shadows
+- **2 new Grand Tour missions:** Gale Crater with Curiosity, and Apollo 15 plus Vesta.
+- **Note on GitHub uploads:** the full-detail ISS "IGOAL" model is **43 MB**, which is over GitHub's 25 MB web-upload limit. Upload that one file with GitHub Desktop or git, or leave it out and the game shows a simple stand-in. Every other file is under 25 MB.
+
+## v53 — Hangar, flyable aircraft, restored models and terrain
+
+- **🛠 Hangar (Adventure Mode):** fly 9 real NASA spacecraft as your ship: ESAS Crew Module, Orion (Artemis), Gemini, Apollo–Soyuz, Agena, Apollo Lunar Module, Space Shuttle orbiter, Shuttle launch stack and SLS Block 1. Each ship has its own speed, boost and turning. You unlock a ship by scanning it in the world (the Shuttle stack and SLS also unlock at 15 and 25 scans). Your chosen ship also waits on the landing pad and dives into gas giants with you. Key: **H**.
+- **✈ Aircraft flight:** after landing on Earth, tap ✈ FLY to fly the X-57 Maxwell, Global Hawk or a Space Shuttle glide over Kennedy Space Center. You can scan and collect finds from the air. On Mars, fly the Ingenuity helicopter with spinning rotors (hold CLIMB to rise, let go to land). Key: **F**.
+- **Restored models:** ACRIMSAT (A, B) and ICESat-2 (A, B, C) now each have their own file. Eclipse 2017 (the printed USA map plus all 53 state and territory tiles) and LISA (16 parts in an exploded view) are new displays at Kennedy Space Center.
+- **Restored terrain:** rebuilt from NASA's 3D-print terrain by sampling the real surface. New Mars landing sites: Valles Marineris, the Valles Marineris canyon floor, the Tharsis volcanoes, and Meridiani Planum (Opportunity).
+- **Fixes:** the 3D model on fact cards now sits inside the card. The space scene pauses while a menu is open, which saves battery. Untextured NASA models no longer render black.
+
+## v54 — Max graphics Adventure: real models everywhere, VFX, smoother flight
+
+- **No more boxes:** the stand-in boxes are gone. If a model is still loading you see only its glowing marker. The online preview now loads the real NASA models too, using a second copy of each model as an embedded glTF `.json` file, because the preview host can't serve `.glb`. GitHub Pages and the Android app still use the `.glb` files.
+- **Max graphics only:** Lite mode is removed. The choices are **Ultra** (4× anti-aliasing, 2× resolution, 4096 px shadows, the most rocks and grass) and **High**. Both keep every effect.
+- **Cinematic look:** HDR rendering with anti-aliasing, then bloom, ACES tone mapping and a film grade with vignette, soft lens fringing, grain, and a contrast and colour lift.
+- **VFX:**
+  - Space: engine exhaust that changes with thrust and boost, warp streaks at high speed, a field-of-view kick when you speed up, and scan sparks with a shockwave ring.
+  - On the ground: footstep dust, jetpack thrusters, landing dust rings, floating dust in the air, and a burst with a ring when you collect a find.
+  - Aircraft: contrails, wingtip vortices and ground spray. Ingenuity: rotor wash that kicks up dust.
+- **More realistic worlds:** about 1,500 lumpy, shadow-casting rocks on every rocky world, and up to 30,000 blades of grass waving in the wind at Kennedy Space Center. The ground mesh has 40% more detail.
+- **Smoother controls:** steering input is smoothed, so the ship banks and turns more gently.
+- Graphics key: tap ⚙ to switch between Ultra and High.
+
+## v55 — Adventure stability fix
+
+- **Fixed: the astronaut, aircraft and landing-pad ships not showing correctly.** A v53 code mix-up meant the astronaut never loaded (a white capsule stood in its place), and aircraft and your ship on the landing pad loaded without their correct rotation, so they looked sideways or glitchy.
+- **Smooth model streaming:**
+  - NASA models now load nearest first, three at a time, instead of all at once. Loading everything at once froze the game for a moment.
+  - Models far behind you are unloaded so memory stays steady.
+  - A small "⏳ Loading NASA 3D models 12 / 38" badge shows progress, so a model that is still loading doesn't look missing.
+- **No more memory crashes:** raw model files are no longer kept in memory twice. If the phone's graphics memory still runs out, the game recovers by itself instead of losing all its models.
+- **Dynamic resolution:** if the frame rate drops, the game lowers the resolution a little, never the effects, and raises it again when it can.
+- Failed model downloads are retried automatically.
+
+## v56 — Adventure performance: level of detail, no flicker, instant reloads
+
+- **Fixed: a flickering black square in space.** It came from the Sun's lens flare: three.js's Lensflare copies a square of the screen each frame, and that breaks with the anti-aliased renderer added in v54. It's replaced with a flare built from sprites that never reads the screen, and the flare hides when a planet is in front of the Sun.
+- **Level of detail (LOD):** every NASA model now also has a light version in `www/models/nasa/lod/` (about 5% of the triangles, 256 px textures).
+  - All light versions within range stream in within seconds, so every spaceship appears almost right away.
+  - The full-detail model swaps in when you fly close, and unloads when you fly away while the light version stays.
+- **Faster streaming:** 4–6 parallel loads depending on the device's CPU, nearest first, with one full-detail model and one light model started each frame.
+- **Instant reloads:** the service worker keeps NASA models and textures in their own cache (`rdo-models-1`) that survives game updates. After the first load they come from the device, even offline.
+- **Model loading never gets stuck:** each model tries `.glb` first, then falls back to `.json`, then retries.
+- **The loading badge is accurate:** it counts every object in range, so it only says done when everything nearby has appeared.
+- **Upload note:** `www/models/nasa/lod/` adds 258 small files. Use GitHub Desktop, because the website stops at 100 files per upload.

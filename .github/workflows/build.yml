@@ -1,5 +1,6 @@
 # Builds the Android app (APK) and publishes the web version to GitHub Pages
-# every time you upload changes to the main branch.
+# every time you upload changes to the main branch. You can also run it by hand:
+# Actions tab > "Build app and website" > Run workflow.
 name: Build app and website
 
 on:
@@ -47,6 +48,9 @@ jobs:
 
       - name: Copy the game into the app
         run: npx cap sync android
+
+      - name: Same signing key every build, so updates install over the old app
+        run: mkdir -p ~/.android && base64 -d scripts/debug-keystore.txt > ~/.android/debug.keystore
 
       - name: Build the APK
         working-directory: android

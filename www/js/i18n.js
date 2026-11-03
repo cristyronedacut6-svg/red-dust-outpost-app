@@ -144,7 +144,14 @@
     ["Daily", "Araw-araw", "Adlaw-adlaw", "Diario", "Quotidien", "Diário", "Täglich", "Harian", "デイリー", "每日", "일일", "दैनिक"],
     ["Arriving at", "Darating sa", "Moabot sa", "Llegando a", "Arrivée sur", "Chegando a", "Ankunft auf", "Tiba di", "到着", "即将抵达", "도착", "पहुँच रहे हैं"],
     ["Tap to skip", "Pindutin para laktawan", "Pindota aron laktawan", "Toca para saltar", "Touche pour passer", "Toque para pular", "Tippen zum Überspringen", "Ketuk untuk melewati", "タップでスキップ", "点击跳过", "탭해서 건너뛰기", "छोड़ने के लिए टैप करें"],
-    ["NASA data", "Datos ng NASA", "Datos sa NASA", "Datos de la NASA", "Données NASA", "Dados da NASA", "NASA-Daten", "Data NASA", "NASAデータ", "NASA数据", "NASA 데이터", "NASA डेटा"]
+    ["NASA data", "Datos ng NASA", "Datos sa NASA", "Datos de la NASA", "Données NASA", "Dados da NASA", "NASA-Daten", "Data NASA", "NASAデータ", "NASA数据", "NASA 데이터", "NASA डेटा"],
+    ["EMOTE", "EMOTE", "EMOTE", "GESTO", "EMOTE", "EMOTE", "EMOTE", "EMOTE", "エモート", "表情", "이모트", "इमोट"],
+    ["Dance", "Sayaw", "Sayaw", "Bailar", "Danser", "Dançar", "Tanzen", "Menari", "ダンス", "跳舞", "춤", "नाचो"],
+    ["Wave", "Kaway", "Kaway", "Saludar", "Saluer", "Acenar", "Winken", "Melambai", "手を振る", "挥手", "손 흔들기", "हाथ हिलाओ"],
+    ["Cheer", "Hiyaw", "Singgit", "Celebrar", "Hourra", "Comemorar", "Jubeln", "Bersorak", "歓声", "欢呼", "환호", "जयकार"],
+    ["Flip", "Sirko", "Pitik", "Voltereta", "Salto", "Mortal", "Salto", "Salto", "宙返り", "空翻", "공중제비", "पलटी"],
+    ["Sit", "Umupo", "Lingkod", "Sentarse", "S’asseoir", "Sentar", "Sitzen", "Duduk", "座る", "坐下", "앉기", "बैठो"],
+    ["Party", "Party", "Party", "Fiesta", "Fête", "Festa", "Party", "Pesta", "パーティー", "派对", "파티", "पार्टी"]
   ];
   // patterns with numbers or names in them
   const PT = [
