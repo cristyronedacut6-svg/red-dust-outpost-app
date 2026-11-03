@@ -594,3 +594,14 @@ On phones, the game screen has been tidied so you can see the action and know wh
   Turn it on or off in ⚙ Settings, under Mission Control Voice.
 - **☄️ Real-looking asteroid belt:** up to 2,100 lumpy, irregular asteroids in three rock shapes, with mixed sizes (some large ones), stony brown-grey colours and a ragged thickness. The count scales with the graphics preset.
 - **✨ Star field:** a new star shader keeps the black between stars truly dark and pushes the brightest stars past white, so they glow and twinkle through the bloom like a real night sky.
+
+## v63 — Realism pass 4: a living Sun, flowing gas giants, engine light
+
+- **☀️ The Sun is now a live star:**
+  - its surface boils with three layers of granulation
+  - dark sunspot groups drift slowly across it
+  - the edge is darker and more orange (limb darkening), like real photos
+  - a flickering corona shell surrounds it
+- **🪐 Gas giants move:** Jupiter, Saturn, Uranus and Neptune have cloud bands that flow east and west in alternating jet streams. A seamless flow-map method keeps the bands moving forever without smearing.
+- **💡 Engine light:** your engine now casts real blue light (orange on boost) onto your ship and nearby spacecraft.
+- **Night lights:** NASA's Earth at Night / Black Marble 2016 map is the right source for city lights, and the game already supports it. The session can't download it, so it's waiting for the file.

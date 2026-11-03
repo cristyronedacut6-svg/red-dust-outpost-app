@@ -12,11 +12,15 @@ void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vWP = w.xyz; vW
 export function planetMaterial(map, o = {}) {
   const m = new THREE.ShaderMaterial({
     uniforms: { map: { value: map }, night: { value: null }, hasNight: { value: 0 }, sunPos: { value: new THREE.Vector3() }, sunCol: { value: SUN.clone().multiplyScalar(o.sun || 1.55) },
-      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
+      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
     vertexShader: COMMON_VS,
-    fragmentShader: `uniform sampler2D map; uniform sampler2D night; uniform float hasNight, atmoK, ocean, amb, rough; uniform vec3 sunPos, sunCol, atmo; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D map; uniform sampler2D night; uniform float hasNight, atmoK, ocean, amb, rough, flow, time; uniform vec3 sunPos, sunCol, atmo; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
     void main(){ vec3 N = normalize(vWN), L = normalize(sunPos - vWP), V = normalize(cameraPosition - vWP); float ndl = dot(N, L);
-      vec3 alb = texture2D(map, vUv).rgb;
+      vec3 alb;
+      if (flow > 0.) { float T = 40., f1 = fract(time / T), f2 = fract(time / T + .5), w = abs(1. - 2. * f1);
+        float sp = flow * (sin(vUv.y * 61.) * .6 + sin(vUv.y * 23. + 1.3) * .4) * .004;   // alternating jet streams, east and west
+        vec3 a1 = texture2D(map, vec2(vUv.x + sp * f1 * T, vUv.y)).rgb, a2 = texture2D(map, vec2(vUv.x + sp * f2 * T, vUv.y)).rgb; alb = mix(a1, a2, w); }
+      else alb = texture2D(map, vUv).rgb;
       // soft terminator (light wraps a little through the atmosphere), true dark night side
       float lit = clamp(ndl * .92 + .08 * smoothstep(-.18, .12, ndl), 0., 1.); float day = smoothstep(-.1, .2, ndl);
       // reddened light near the terminator: sunlight crosses more air at sunrise/sunset
@@ -30,7 +34,7 @@ export function planetMaterial(map, o = {}) {
       col += atmoK * (atmo * fr * smoothstep(-.2, .45, ndl) * 1.3 + vec3(1., .45, .18) * fr * term * .55);
       col = mix(col, col + atmo * .06 * atmoK, smoothstep(-.1, .5, ndl));
       gl_FragColor = vec4(col, 1.); }` });
-  Object.defineProperty(m, 'map', { get() { return m.uniforms.map.value; }, set(v) { m.uniforms.map.value = v; } });
+  Object.defineProperty(m, 'map', { get() { return m.uniforms.map.value; }, set(v) { if (v && v.wrapS !== THREE.RepeatWrapping) { v.wrapS = THREE.RepeatWrapping; v.needsUpdate = true; } m.uniforms.map.value = v; } });
   return m;
 }
 // outer atmosphere shell (additive): glows on the lit limb, turns orange at the terminator, fades away on the night side
@@ -68,4 +72,30 @@ export function ringMaterial(map, planetR) {
     transparent: true, side: THREE.DoubleSide, depthWrite: false });
 }
 // keep every planet shader's sun/planet positions current (call once per frame)
-export function updatePlanetUniforms(list, sunPos) { for (const it of list) { const u = it.mat.uniforms; if (u.sunPos) u.sunPos.value.copy(sunPos); if (u.pc && it.mesh) it.mesh.getWorldPosition(u.pc.value); } }
+export function updatePlanetUniforms(list, sunPos, time = 0) { for (const it of list) { const u = it.mat.uniforms; if (u.time) u.time.value = time; if (u.sunPos) u.sunPos.value.copy(sunPos); if (u.pc && it.mesh) it.mesh.getWorldPosition(u.pc.value); } }
+
+// the Sun: boiling granulation, dark sunspots, limb darkening and an HDR core that drives the bloom
+const NOISE3 = `vec3 hash3(vec3 p){ p = vec3(dot(p,vec3(127.1,311.7,74.7)), dot(p,vec3(269.5,183.3,246.1)), dot(p,vec3(113.5,271.9,124.6))); return -1. + 2. * fract(sin(p) * 43758.5453); }
+float noise3(vec3 p){ vec3 i = floor(p), f = fract(p), u = f * f * (3. - 2. * f);
+  return mix(mix(mix(dot(hash3(i), f), dot(hash3(i + vec3(1,0,0)), f - vec3(1,0,0)), u.x), mix(dot(hash3(i + vec3(0,1,0)), f - vec3(0,1,0)), dot(hash3(i + vec3(1,1,0)), f - vec3(1,1,0)), u.x), u.y),
+             mix(mix(dot(hash3(i + vec3(0,0,1)), f - vec3(0,0,1)), dot(hash3(i + vec3(1,0,1)), f - vec3(1,0,1)), u.x), mix(dot(hash3(i + vec3(0,1,1)), f - vec3(0,1,1)), dot(hash3(i + vec3(1,1,1)), f - vec3(1,1,1)), u.x), u.y), u.z); }`;
+export function sunMaterial() {
+  return new THREE.ShaderMaterial({ uniforms: { time: { value: 0 } },
+    vertexShader: `varying vec3 vN; varying vec3 vP; varying vec3 vV; void main(){ vN = normalize(normal); vP = position; vec4 w = modelMatrix * vec4(position,1.); vV = normalize(cameraPosition - w.xyz); vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: NOISE3 + `uniform float time; varying vec3 vN; varying vec3 vP; varying vec3 vV;
+    void main(){ vec3 p = normalize(vP); float t = time * .05;
+      float g = noise3(p * 18. + t * 1.7) * .5 + noise3(p * 40. - t * 2.3) * .3 + noise3(p * 90. + t * 3.1) * .2;      // granulation
+      float big = noise3(p * 3. + vec3(t * .3, 0., -t * .2)); float spots = smoothstep(.42, .55, big) * smoothstep(.0, .3, noise3(p * 7. + 4.));
+      float mu = max(dot(normalize(vN), normalize(vV)), 0.); float limb = pow(mu, .45);                                    // limb darkening
+      vec3 hot = vec3(1.0, .82, .45), warm = vec3(1.0, .42, .08);
+      vec3 col = mix(warm, hot, .5 + g * 1.1) * (1.25 + g * 1.1) * mix(.3, 1., limb); col *= 1. - spots * .85;
+      col += warm * pow(1. - mu, 3.) * .6;
+      gl_FragColor = vec4(col, 1.); }` }); }
+// corona: flickering additive shell around the Sun
+export function coronaMaterial() {
+  return new THREE.ShaderMaterial({ uniforms: { time: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide,
+    vertexShader: `varying vec3 vP; varying vec3 vN; varying vec3 vV; void main(){ vP = position; vec4 w = modelMatrix * vec4(position,1.); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: NOISE3 + `uniform float time; varying vec3 vP; varying vec3 vN; varying vec3 vV;
+    void main(){ float mu = abs(dot(normalize(vN), normalize(vV))); float rim = pow(mu, 2.2); vec3 p = normalize(vP);
+      float fl = noise3(p * 6. + vec3(0., time * .08, 0.)) * .5 + noise3(p * 14. - time * .12) * .5;
+      float a = rim * (.55 + fl * .9); gl_FragColor = vec4(vec3(1., .62, .25) * a * 1.4, a); }` }); }

@@ -13,7 +13,7 @@ import { OutputPass } from './vendor/three/postprocessing/OutputPass.js';
 import { ShaderPass } from './vendor/three/postprocessing/ShaderPass.js';
 import { makeFX, makeRings, makeWarp, CineShader, SafeShader, rockGeo } from './adv_fx.js';
 import { AUD } from './adv_audio.js';
-import { planetMaterial, atmosphereMaterial, cloudMaterial, ringMaterial, updatePlanetUniforms } from './adv_planet.js';
+import { planetMaterial, atmosphereMaterial, cloudMaterial, ringMaterial, updatePlanetUniforms, sunMaterial, coronaMaterial } from './adv_planet.js';
 // Every model ships as .glb (GitHub Pages / app). The preview host can't serve .glb, so each also exists as embedded glTF (.json).
 // Try .glb first; if it fails (404, or an HTML page instead of a model) use .json, and remember which works so later loads go straight there.
 const PA = { 'international-space-station-iss-d-igoal': 'iss', 'cassiopeia-a-supernova-b-2023': 'cassiopeia-a-supernova', 'cassiopeia-a-supernova-c-2025': 'cassiopeia-a-supernova' };
@@ -269,13 +269,14 @@ function build() {
   const bmesh = {}, PL = [];
   const ATM = { earth: [0x5fa8ff, .9], venus: [0xffd28a, .7], mars: [0xff9a6a, .35], titan: [0xffb05a, .8], jupiter: [0xffe2b0, .35], saturn: [0xfff0c8, .3], uranus: [0xa8f0ff, .45], neptune: [0x7aa0ff, .45], pluto: [0x9ab4ff, .15] };
   BODIES.forEach(b => { const geo = new THREE.SphereGeometry(b.r, b.r > 20 ? 64 : 40, b.r > 20 ? 48 : 28);
-    const mat = b.id === 'sun' ? new THREE.MeshBasicMaterial() : planetMaterial(null, { atmo: (ATM[b.id] || [0])[0], atmoK: (ATM[b.id] || [0, 0])[1], ocean: b.id === 'earth' }); mat.map = texFor(b, b.id === 'sun' ? null : mat); if (b.id !== 'sun') PL.push({ mat });
+    const mat = b.id === 'sun' ? sunMaterial() : planetMaterial(null, { atmo: (ATM[b.id] || [0])[0], atmoK: (ATM[b.id] || [0, 0])[1], ocean: b.id === 'earth', flow: { jupiter: 1, saturn: .6, uranus: .25, neptune: .5 }[b.id] || 0 }); if (b.id !== 'sun') mat.map = texFor(b, mat); PL.push({ mat });
     const m = new THREE.Mesh(geo, mat); m.position.copy(bpos[b.id]); if (b.tilt) m.rotation.z = b.tilt; scn.add(m); bmesh[b.id] = m;
     if (b.model) loader.load('models/nasa/' + b.model + '.glb', gl => { const sm = gl.scene, bx = new THREE.Box3().setFromObject(sm), sp = bx.getBoundingSphere(new THREE.Sphere()), k = b.r * 1.15 / sp.radius; sm.position.sub(sp.center).multiplyScalar(k); sm.scale.setScalar(k); m.add(sm); mat.visible = false; });
     if (b.id === 'sun') { // screen-space lens flare made of sprites (no framebuffer reads, so no flicker with anti-aliasing)
       const ft = glowTex('rgba(255,255,255,1)', 'rgba(255,200,120,.35)'), rt = glowTex('rgba(255,255,255,.0)', 'rgba(160,200,255,.25)'); FLARE.length = 0;
       [[.16, 0, ft, 0xfff2d8], [.03, .6, rt, 0xffffff], [.05, .7, rt, 0xcfe0ff], [.08, .9, rt, 0xbfd4ff], [.03, 1, rt, 0xffe0c0]].forEach(([sz, d, t, c]) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, color: c, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true })); sp.renderOrder = 20; sp.userData = { sz, d }; sp.visible = false; scn.add(sp); FLARE.push(sp); });
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex('rgba(255,240,200,1)', 'rgba(255,170,60,.45)'), blending: THREE.AdditiveBlending, depthWrite: false })); s.scale.set(300, 300, 1); m.add(s); }
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex('rgba(255,240,200,1)', 'rgba(255,170,60,.45)'), blending: THREE.AdditiveBlending, depthWrite: false, opacity: .55 })); s.scale.set(320, 320, 1); m.add(s);
+      const cm = coronaMaterial(); PL.push({ mat: cm }); m.add(new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.35, 64, 48), cm)); }
     const AC = { earth: 0x5fa8ff, venus: 0xffd28a, mars: 0xff9a6a, titan: 0xffb05a, jupiter: 0xffe2b0, saturn: 0xfff0c8, uranus: 0xa8f0ff, neptune: 0x7aa0ff, pluto: 0x9ab4ff }[b.id];
     if (AC) { const sm = atmosphereMaterial(AC, b.id === 'earth' ? 3.2 : 4); PL.push({ mat: sm });
       m.add(new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.035, 64, 48), sm)); }
@@ -311,9 +312,10 @@ function build() {
   // the ship (NASA's ESAS crew module concept, the design that became Orion)
   const ship = new THREE.Group(); scn.add(ship); { const tmp = new THREE.Mesh(new THREE.ConeGeometry(.9, 1.8, 16), new THREE.MeshStandardMaterial({ color: 0xdfe4ee, metalness: .3, roughness: .5 })); tmp.rotation.x = Math.PI / 2; ship.add(tmp); ship.userData.tmp = tmp;
     ship.userData.loader = loader; }
+  const engL = new THREE.PointLight(0x9fd8ff, 0, 40, 2); scn.add(engL);
   const flame = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex('rgba(255,255,255,1)', 'rgba(110,190,255,.6)'), blending: THREE.AdditiveBlending, depthWrite: false })); flame.position.set(0, 0, 1.4); ship.add(flame);
   const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: .9 })); beam.visible = false; scn.add(beam);
-  R = { PL, comp, rp, bloom, cine, fx: makeFX(scn, 2600), rings: makeRings(scn), warp: makeWarp(scn), yi: 0, pi: 0, envTex, byId: Object.fromEntries(objs.map(e => [e.o.id, e])), mkS, root, ren, scn, cam, bpos, bmesh, objs, ship, flame, beam, placeObj, loadModel, mob, vel: new THREE.Vector3(), yaw: 0, pitch: 0, t: 0, labs: root.querySelector('#labs'), lab: [], keys: {}, joy: { x: 0, y: 0 }, thr: 0, bst: 0, ap: null, scanning: null, last: 0 };
+  R = { engL, PL, comp, rp, bloom, cine, fx: makeFX(scn, 2600), rings: makeRings(scn), warp: makeWarp(scn), yi: 0, pi: 0, envTex, byId: Object.fromEntries(objs.map(e => [e.o.id, e])), mkS, root, ren, scn, cam, bpos, bmesh, objs, ship, flame, beam, placeObj, loadModel, mob, vel: new THREE.Vector3(), yaw: 0, pitch: 0, t: 0, labs: root.querySelector('#labs'), lab: [], keys: {}, joy: { x: 0, y: 0 }, thr: 0, bst: 0, ap: null, scanning: null, last: 0 };
   setShip(G('adv_ship', 'orion'), true);
   // start near Earth, looking at it
   const e = bpos.earth; ship.position.set(e.x - 40, e.y + 6, e.z + 30); lookAtYP(e);
@@ -406,6 +408,7 @@ function step(dt) {
   const spd = R.vel.length(); R.flame.scale.setScalar(.5 + Math.min(3, spd / 40)); R.flame.material.opacity = Math.min(1, .25 + spd / 60);
   // engine exhaust, warp streaks and a speed FOV kick
   { const burn = (thrust || boost || R.ap) ? 1 : 0, sz = (R.shipStat || SHIPS[0]).sz; R.burn = (R.burn || 0) + (burn - (R.burn || 0)) * Math.min(1, dt * 5);
+    R.engL.intensity = R.burn * (boost ? 60 : 30) * (CAM.photo ? 0 : 1); R.engL.color.setHex(boost ? 0xffb070 : 0x9fd8ff); R.flame.getWorldPosition(R.engL.position);
     if (R.burn > .05) { const ep = R.flame.getWorldPosition(tmpV), back = fwd.set(0, 0, 1).applyQuaternion(ship.quaternion), n = Math.ceil((boost ? 7 : 4) * R.burn * PRE().fx);
       const v = back.clone().multiplyScalar(10 + spd * .08).addScaledVector(R.vel, .85);
       R.fx.emit(ep, v, boost ? 0xffc27a : 0x9fd8ff, sz * (boost ? .55 : .4), boost ? .7 : .5, n, 1.4 * sz, { grow: 2.6, drag: .5, jit: sz * .2 });
@@ -435,7 +438,7 @@ function step(dt) {
   // speed + destination
   { const cb = BODIES.reduce((a, b) => { const d = R.bpos[b.id].distanceTo(ship.position); return d - b.r < a[1] ? [b, d - b.r, d] : a; }, [null, 1e9, 0]); R.altTxt = cb[0] && cb[1] < cb[0].r * 4 ? ' · ' + fmtKm(realAlt(cb[0], cb[2])) + ' above ' + cb[0].n : ''; }
   R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.altTxt}${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
-  updatePlanetUniforms(R.PL, R.bpos.sun); flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
+  updatePlanetUniforms(R.PL, R.bpos.sun, R.t); flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
   labels();
 }
 function labels() {
@@ -554,7 +557,7 @@ function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || S
   R.cam.position.copy(ship.position).addScaledVector(C.dir, sz * 7).addScaledVector(side, sz * 3.2).add(tmpV.set((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh));
   R.cam.lookAt(tmpV.copy(ship.position).lerp(C.c, .02)); R.cam.fov += ((56 - heat * 6) - R.cam.fov) * Math.min(1, dt * 3); R.cam.updateProjectionMatrix();
   AUD.set({ eng: C.air ? .2 : .7, boost: 0, wind: C.air ? Math.min(1, heat * 1.2) : 0, dt }); const ov = R.root.querySelector('#aHeat'); ov.style.opacity = Math.min(1, (C.air ? heat * .85 : 0) + (k > .86 ? (k - .86) / .14 : 0)); ov.classList.toggle('w', k > .86);
-  for (const e2 of R.objs) R.placeObj(e2, R.t); updatePlanetUniforms(R.PL, R.bpos.sun); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
+  for (const e2 of R.objs) R.placeObj(e2, R.t); updatePlanetUniforms(R.PL, R.bpos.sun, R.t); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
   if (C.air && heat > .92 && !C.pk) { C.pk = 1; say('Peak heating.'); }
   if (k >= 1) { const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
 /* ---------------- mission-control voice callouts (speech synthesis behind a radio chirp) ---------------- */
@@ -579,7 +582,7 @@ function stepIntro(dt) { const I = R.intro; I.t += dt; R.t += dt; const k = Math
   // first 70%: glide past Earth's terminator; last 30%: settle in behind the ship
   const mid = I.p0.clone().lerp(I.p1, Math.min(1, e / .7)); R.cam.position.copy(k < .7 ? mid : I.p1.clone().lerp(chase, (k - .7) / .3 * ((k - .7) / .3) * (3 - 2 * (k - .7) / .3)));
   const look = R.bpos.earth.clone().lerp(ship.position, Math.max(0, (k - .55) / .45)); R.cam.lookAt(look); R.cam.fov = 48 + 12 * e; R.cam.updateProjectionMatrix();
-  updatePlanetUniforms(R.PL, R.bpos.sun); flare(); R.fx.update(dt, R.cam);
+  updatePlanetUniforms(R.PL, R.bpos.sun, R.t); flare(); R.fx.update(dt, R.cam);
   const t = R.root.querySelector('#aTitle'); if (k > .78) t.className = 'off';
   if (k >= 1) { R.intro = null; R.root.classList.remove('cine', 'intro'); t.className = 'off'; setTimeout(() => t.remove(), 900); if (!G('adv_seen', 0)) intro(); else toast('🗺 Map → pick a destination · 📡 scan signals · 🎬 Demo for a guided tour', 3500); } }
 /* ---------------- demo tour: flies itself through the best moments (any input takes control back) ---------------- */
