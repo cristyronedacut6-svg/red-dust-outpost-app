@@ -12,9 +12,10 @@ void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vWP = w.xyz; vW
 export function planetMaterial(map, o = {}) {
   const m = new THREE.ShaderMaterial({
     uniforms: { map: { value: map }, night: { value: null }, hasNight: { value: 0 }, sunPos: { value: new THREE.Vector3() }, sunCol: { value: SUN.clone().multiplyScalar(o.sun || 1.55) },
-      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
+      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, occ: { value: new THREE.Vector4(0, 0, 0, 0) }, occ2: { value: new THREE.Vector4(0, 0, 0, 0) }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
     vertexShader: COMMON_VS,
-    fragmentShader: `uniform sampler2D map; uniform sampler2D night; uniform float hasNight, atmoK, ocean, amb, rough, flow, time; uniform vec3 sunPos, sunCol, atmo; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D map; uniform sampler2D night; uniform float hasNight, atmoK, ocean, amb, rough, flow, time; uniform vec4 occ, occ2;
+    float eclipse(vec4 o, vec3 p, vec3 L){ if (o.w <= 0.) return 1.; vec3 oc = o.xyz - p; float tca = dot(oc, L); if (tca < 0.) return 1.; float d2 = dot(oc, oc) - tca * tca, r2 = o.w * o.w; return smoothstep(r2 * .78, r2 * 1.18, d2); } uniform vec3 sunPos, sunCol, atmo; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
     void main(){ vec3 N = normalize(vWN), L = normalize(sunPos - vWP), V = normalize(cameraPosition - vWP); float ndl = dot(N, L);
       vec3 alb;
       if (flow > 0.) { float T = 40., f1 = fract(time / T), f2 = fract(time / T + .5), w = abs(1. - 2. * f1);
@@ -22,7 +23,8 @@ export function planetMaterial(map, o = {}) {
         vec3 a1 = texture2D(map, vec2(vUv.x + sp * f1 * T, vUv.y)).rgb, a2 = texture2D(map, vec2(vUv.x + sp * f2 * T, vUv.y)).rgb; alb = mix(a1, a2, w); }
       else alb = texture2D(map, vUv).rgb;
       // soft terminator (light wraps a little through the atmosphere), true dark night side
-      float lit = clamp(ndl * .92 + .08 * smoothstep(-.18, .12, ndl), 0., 1.); float day = smoothstep(-.1, .2, ndl);
+      float sh = eclipse(occ, vWP, L) * eclipse(occ2, vWP, L);   // a planet's shadow on its moons, a moon's shadow on its planet
+      float lit = clamp(ndl * .92 + .08 * smoothstep(-.18, .12, ndl), 0., 1.) * sh; float day = smoothstep(-.1, .2, ndl) * sh;
       // reddened light near the terminator: sunlight crosses more air at sunrise/sunset
       vec3 sc = mix(sunCol * vec3(1., .55, .32), sunCol, smoothstep(-.02, .35, ndl));
       vec3 col = alb * sc * lit + alb * amb;
@@ -45,9 +47,9 @@ export function atmosphereMaterial(color, power = 4) {
     void main(){ vec3 N = normalize(vWN), V = normalize(cameraPosition - vWP), L = normalize(sunPos - vWP); float ndl = dot(N, L);
       float f = pow(1. - max(dot(N, V), 0.), p), lit = smoothstep(-.35, .3, ndl), term = exp(-pow((ndl + .05) / .2, 2.));
       // forward scattering: the limb blazes when you look toward the Sun through the air
-      float fw = pow(max(dot(-V, L), 0.), 8.) * .8;
-      vec3 col = c * f * 1.7 * lit + vec3(1., .5, .2) * f * term * 1.1 + c * f * fw;
-      gl_FragColor = vec4(col, clamp(f * (lit + term), 0., 1.)); }`,
+      float fw = pow(max(dot(-V, L), 0.), 6.) * 2.6;
+      vec3 col = c * f * 1.7 * lit + vec3(1., .5, .2) * f * term * 1.1 + mix(c, vec3(1., .72, .45), .45) * f * fw;
+      gl_FragColor = vec4(col, clamp(f * (lit + term + fw), 0., 1.)); }`,
     transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
 }
 // clouds: white alpha layer lit by the Sun, pink-orange at the terminator, invisible at night

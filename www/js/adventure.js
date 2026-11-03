@@ -307,7 +307,7 @@ function build() {
     const fin = () => { LQ.busy = Math.max(0, LQ.busy - 1); e.loading = false; };
     loader.load('models/nasa/' + (full ? '' : 'lod/') + (e.o.model || e.o.id) + '.glb', gl => { fin(); const m = gl.scene;
       if (!full && e.fit) { m.position.copy(e.fit.p); m.scale.setScalar(e.fit.k); } else { const box = new THREE.Box3().setFromObject(m), sph = box.getBoundingSphere(new THREE.Sphere()), k = e.o.sz / Math.max(.001, sph.radius); m.position.copy(sph.center).multiplyScalar(-k); m.scale.setScalar(k); if (!e.fit) e.fit = { p: m.position.clone(), k }; }
-      m.traverse(n => { if (n.isMesh && n.material) { n.material.side = THREE.FrontSide; if (n.material.metalness > .6) n.material.metalness = .6; } }); fixMat(m); e.g.add(m); e[key] = m; if (full) { e.cost = costOf(m); MEM.tris += e.cost.tris; MEM.tex += e.cost.tex; } },
+      m.traverse(n => { if (n.isMesh && n.material) { n.material.side = THREE.FrontSide; if (n.material.metalness > .6) n.material.metalness = .6; } }); fixMat(m); e.g.add(m); e[key] = m; navLights(e, m); if (full) { e.cost = costOf(m); MEM.tris += e.cost.tris; MEM.tex += e.cost.tex; } },
       undefined, () => { fin(); if (full) { e.failed = (e.failed || 0) + 1; e.retryT = R.t + 8; } else { e.noLod = 1; } }); }
   // the ship (NASA's ESAS crew module concept, the design that became Orion)
   const ship = new THREE.Group(); scn.add(ship); { const tmp = new THREE.Mesh(new THREE.ConeGeometry(.9, 1.8, 16), new THREE.MeshStandardMaterial({ color: 0xdfe4ee, metalness: .3, roughness: .5 })); tmp.rotation.x = Math.PI / 2; ship.add(tmp); ship.userData.tmp = tmp;
@@ -315,6 +315,9 @@ function build() {
   const engL = new THREE.PointLight(0x9fd8ff, 0, 40, 2); scn.add(engL);
   const flame = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex('rgba(255,255,255,1)', 'rgba(110,190,255,.6)'), blending: THREE.AdditiveBlending, depthWrite: false })); flame.position.set(0, 0, 1.4); ship.add(flame);
   const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: .9 })); beam.visible = false; scn.add(beam);
+  BODIES.forEach(b => { const m = bmesh[b.id]; if (!m || !m.material.uniforms || !m.material.uniforms.occ) return; const u = m.material.uniforms;
+    if (b.at && BI[b.at] && b.at !== 'sun') u.occ.value.set(bpos[b.at].x, bpos[b.at].y, bpos[b.at].z, BI[b.at].r);
+    const kids = BODIES.filter(x => x.at === b.id).sort((a, c) => c.r / bpos[c.id].distanceTo(bpos[b.id]) - a.r / bpos[a.id].distanceTo(bpos[b.id])); if (kids[0]) u.occ2.value.set(bpos[kids[0].id].x, bpos[kids[0].id].y, bpos[kids[0].id].z, kids[0].r); });
   R = { engL, PL, comp, rp, bloom, cine, fx: makeFX(scn, 2600), rings: makeRings(scn), warp: makeWarp(scn), yi: 0, pi: 0, envTex, byId: Object.fromEntries(objs.map(e => [e.o.id, e])), mkS, root, ren, scn, cam, bpos, bmesh, objs, ship, flame, beam, placeObj, loadModel, mob, vel: new THREE.Vector3(), yaw: 0, pitch: 0, t: 0, labs: root.querySelector('#labs'), lab: [], keys: {}, joy: { x: 0, y: 0 }, thr: 0, bst: 0, ap: null, scanning: null, last: 0 };
   setShip(G('adv_ship', 'orion'), true);
   // start near Earth, looking at it
@@ -330,7 +333,14 @@ function build() {
     ui: (b, W, mode) => surfUI(b, W, mode), ship: () => R.shipStat || SHIPS[0], fixMat, craftUI: (on, cr) => { const b = R.root.querySelector('#aFly'); b.innerHTML = on ? '🧑‍🚀 LAND & WALK' : (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); R.root.querySelector('#aThr').innerHTML = on ? (cr.heli ? '⬆<br>CLIMB' : '⬆<br>PULL UP') : '⤒<br>JUMP'; R.root.querySelector('#aBst').innerHTML = on ? (cr.heli ? 'FAST' : 'THROTTLE') : 'RUN'; } });
   root.querySelector('#aLand').onclick = () => landOrLaunch(); root.querySelector('#aQ').textContent = '⚙ ' + PRE().n; root.querySelector('#aQ').onclick = () => settings();
 }
-let R_HDR = true; const dprCap = () => Math.min(devicePixelRatio || 1, PRE().dpr) * SET.scale / 100; const LQ = { busy: 0, max: (navigator.hardwareConcurrency || 4) >= 8 ? 6 : 4 }, FLARE = [];
+let R_HDR = true; const dprCap = () => Math.min(devicePixelRatio || 1, PRE().dpr) * SET.scale / 100; // blinking navigation lights (red port, green starboard, white strobe) on spacecraft, like real ones
+const NAV = { r: null, g: null, w: null };
+function navLights(e, m) { if (e.nav || e.o.far || /^ast-|^storm-|^neb-|^snr-|supernova|nebula/.test(e.o.id) || e.o.r) return; e.nav = 1;
+  if (!NAV.r) { const t = glowTex('rgba(255,255,255,1)', 'rgba(255,255,255,.35)'); NAV.r = new THREE.SpriteMaterial({ map: t, color: 0xff3030, blending: THREE.AdditiveBlending, depthWrite: false }); NAV.g = new THREE.SpriteMaterial({ map: t, color: 0x30ff60, blending: THREE.AdditiveBlending, depthWrite: false }); NAV.w = new THREE.SpriteMaterial({ map: t, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false }); }
+  e.g.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(m), inv = e.g.matrixWorld.clone().invert(), lo = b.min.clone().applyMatrix4(inv), hi = b.max.clone().applyMatrix4(inv), cy = (lo.y + hi.y) / 2, cz = (lo.z + hi.z) / 2, s = e.o.sz * .22;
+  [[NAV.r, Math.min(lo.x, hi.x), cy, cz], [NAV.g, Math.max(lo.x, hi.x), cy, cz], [NAV.w, (lo.x + hi.x) / 2, Math.max(lo.y, hi.y), cz]].forEach(([mt, x, y, z]) => { const sp = new THREE.Sprite(mt); sp.position.set(x, y, z); sp.scale.setScalar(s); e.g.add(sp); }); }
+function navBlink(t) { if (!NAV.r) return; const ph = t % 1.6; NAV.w.opacity = ph < .07 || (ph > .2 && ph < .27) ? 1 : 0; const p2 = .55 + .45 * (Math.sin(t * 3) > 0 ? 1 : .35); NAV.r.opacity = NAV.g.opacity = p2; }
+const LQ = { busy: 0, max: (navigator.hardwareConcurrency || 4) >= 8 ? 6 : 4 }, FLARE = [];
 function flare() { if (!FLARE.length) return; const sp = R.bpos.sun, v = tmpV.copy(sp).project(R.cam), on = v.z < 1 && Math.abs(v.x) < 1.3 && Math.abs(v.y) < 1.3;
   // hidden when a planet blocks the Sun
   let occ = 0; if (on) { const o = R.cam.position, dir = new THREE.Vector3().subVectors(sp, o), L = dir.length(); dir.divideScalar(L); for (const b of BODIES) { if (b.id === 'sun') continue; const c = R.bpos[b.id], t = new THREE.Vector3().subVectors(c, o).dot(dir); if (t < 0 || t > L) continue; const dd = new THREE.Vector3().subVectors(c, o).addScaledVector(dir, -t).length(); if (dd < b.r) { occ = 1; break; } } }
@@ -438,7 +448,7 @@ function step(dt) {
   // speed + destination
   { const cb = BODIES.reduce((a, b) => { const d = R.bpos[b.id].distanceTo(ship.position); return d - b.r < a[1] ? [b, d - b.r, d] : a; }, [null, 1e9, 0]); R.altTxt = cb[0] && cb[1] < cb[0].r * 4 ? ' · ' + fmtKm(realAlt(cb[0], cb[2])) + ' above ' + cb[0].n : ''; }
   R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.altTxt}${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
-  updatePlanetUniforms(R.PL, R.bpos.sun, R.t); flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
+  updatePlanetUniforms(R.PL, R.bpos.sun, R.t); navBlink(R.t); flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
   labels();
 }
 function labels() {

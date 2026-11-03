@@ -629,3 +629,9 @@ On phones, the game screen has been tidied so you can see the action and know wh
   - **Bootprints:** each step leaves a print made from NASA's real Apollo 11 bootprint photo (AS11-40-5878, from NASA 3D Resources). Prints alternate left and right, follow your heading, and the last 220 stay on the ground. They appear on every world except grassy Earth.
   - **Low-gravity walk:** a slower, bouncier gait on the Moon and Mars, scaled by each world's real gravity.
   - **Helmet lamp:** a spotlight on the helmet turns on by itself as night falls.
+
+## v66 — Realism pass 8: eclipses, navigation lights, sunrise ring
+
+- **🌑 Real eclipse shadows:** every moon now sits in its planet's shadow when it passes behind it. Each planet can also be crossed by the shadow of its biggest nearby moon, like Io's shadow on Jupiter or a solar eclipse on Earth. The shadow is worked out per pixel with a soft penumbra edge.
+- **🚨 Navigation lights:** spacecraft carry a red light on the left (port), a green light on the right (starboard) and a white strobe that double-flashes, like real spacecraft and aircraft. Planets, asteroids, storms and deep-sky objects don't get them.
+- **🌅 Sunrise ring:** from Earth's night side with the Sun behind it, sunlight shining through the atmosphere lights up a bright, warm ring around the whole planet, like astronaut photos of orbital sunrise.
