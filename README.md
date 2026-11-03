@@ -532,3 +532,16 @@ On phones, the game screen has been tidied so you can see the action and know wh
   - A target bracket locks onto the nearest object and shows its name (or UNKNOWN SIGNAL), distance and closing speed.
   - A green ◎ prograde marker shows where the ship is actually drifting.
 - **📷 Photo mode (P):** hides the UI, adds cinematic letterbox bars, and slowly orbits the camera around your ship for screenshots.
+
+## v59 — Genshin-style performance: memory budget, graphics settings, lighter textures
+
+- **Measured first:** all 258 NASA models together come to 31.6 million triangles and about 2.1 GB of texture memory, far more than a phone has. That, not draw calls, was the main cause of lag (the models were already merged into few parts).
+- **Memory budget, like Genshin:** each graphics preset sets how many full-detail triangles and how many MB of model textures may be loaded at once. The nearest models get full detail, and everything beyond the budget shows its light version. A model that was swapped out only reloads once you're clearly closer, so nothing flickers between detail levels. The nearest model always stays full detail.
+- **Lighter textures:** every model texture is now at most 1024 px. The ISS IGOAL and Gateway models, which have more than 100 and 37 textures, go down to 512 px. The ISS IGOAL model alone drops from 577 MB to 146 MB of texture memory.
+- **⚙ Graphics settings panel:**
+  - Quality preset: Low, Medium, High or Max. Phones default to Medium and computers to High.
+  - Frame-rate cap: 30, 45 or 60 FPS.
+  - Render-resolution slider: 50–100%.
+  - On-screen counter showing FPS, loaded triangles, texture MB, draw calls and resolution.
+  - The presets also set anti-aliasing, shadow size, grass and rock density, ground detail, glow and particle amounts.
+- **The model cache is renamed to `rdo-models-2`,** so devices download the new lighter models instead of keeping the old ones.

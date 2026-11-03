@@ -164,8 +164,17 @@ function glowTex(c1, c2) { const cv = document.createElement('canvas'); cv.width
 
 /* ---------------- state ---------------- */
 let R = null; // everything created once
-const QN = ['ultra', 'high'], QL = { ultra: 'Ultra', high: 'High' };
-let Q = G('adv_q', 'ultra'); if (!QN.includes(Q)) Q = 'high';
+// Graphics presets, like Genshin's: each sets resolution, anti-aliasing, shadows, scenery density and how much full-detail NASA geometry/texture memory may be loaded at once.
+const PRESETS = {
+  low:    { n: 'Low',    dpr: 1,   msaa: 0, shadow: 1024, grass: 6000,  rocks: .25, tris: 1.5e6, tex: 260, full: .6, bloom: .3, seg: 200, fx: .6 },
+  medium: { n: 'Medium', dpr: 1.25, msaa: 2, shadow: 1024, grass: 12000, rocks: .5,  tris: 3e6,   tex: 420, full: .8, bloom: .4, seg: 260, fx: .8 },
+  high:   { n: 'High',   dpr: 1.5, msaa: 2, shadow: 2048, grass: 20000, rocks: .75, tris: 6e6,   tex: 700, full: 1,  bloom: .42, seg: 320, fx: 1 },
+  max:    { n: 'Max',    dpr: 2,   msaa: 4, shadow: 4096, grass: 30000, rocks: 1,   tris: 14e6,  tex: 1400, full: 1.25, bloom: .45, seg: 420, fx: 1.5 } };
+const PHONE = matchMedia('(pointer:coarse)').matches;
+let GFX = G('adv_gfx', null); if (!PRESETS[GFX]) GFX = PHONE ? 'medium' : 'high'; const PRE = () => PRESETS[GFX];
+const SET = Object.assign({ cap: 60, scale: 100, fps: 0 }, G('adv_set', {}));
+// compatibility: older code paths read Q
+let Q = GFX === 'max' ? 'ultra' : 'high'; const QL = { ultra: 'Max', high: 'High' };
 const ST = { on: false, scanned: new Set(G('adv_scan', [])), flags: new Set(G('adv_flags', [])), mi: G('adv_mis2', 0), seen: G('adv_seen', 0) };
 const save = () => { P('adv_scan', [...ST.scanned]); P('adv_mis2', ST.mi); P('adv_flags', [...ST.flags]); };
 
@@ -216,6 +225,8 @@ function css() {
 #adv.photo::before,#adv.photo::after{content:'';position:absolute;left:0;right:0;height:9vh;background:#000;z-index:7;pointer-events:none}#adv.photo::before{top:0}#adv.photo::after{bottom:0}
 #adv #aPh{position:absolute;inset:0;z-index:8;display:none;align-items:flex-end;justify-content:center;padding-bottom:3vh;font:700 11px var(--disp,system-ui);letter-spacing:.2em;color:rgba(255,255,255,.6)}#adv.photo #aPh{display:flex}
 @media (max-width:760px){#adv #aTop{flex-wrap:wrap;justify-content:flex-end;max-width:66vw;gap:4px}#adv #aTop .ab{padding:6px 8px;font-size:11px}}
+#adv #aFps{position:absolute;left:calc(10px + env(safe-area-inset-left));bottom:calc(6px + env(safe-area-inset-bottom));font:700 10px ui-monospace,monospace;color:#9dff9d;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:6px;display:none;pointer-events:none;z-index:4}
+#adv .seg{display:flex;gap:6px;flex-wrap:wrap}#adv .seg button.sel{border-color:#ffcf4a;background:rgba(255,207,74,.18)}#adv h4.sh{margin:12px 0 6px;font-size:10px;letter-spacing:.14em;color:#9fb3c8}
 @media (hover:hover) and (pointer:fine){#adv #aJoy,#adv #aThr,#adv #aBst{display:none}#adv #aScn{right:20px;bottom:20px}}`; document.head.appendChild(s);
 }
 
@@ -223,18 +234,18 @@ function css() {
 function build() {
   css(); try { MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1))); } catch (e) {} const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder); // geometry decoding runs on background threads, so loading doesn't stutter
   const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aCam" title="Camera (V)">🎥</button><button class="ab" id="aPhoto" title="Photo mode (P)">📷</button><button class="ab" id="aX">✕ Exit</button></div>
-  <div id="labs"></div><div id="aJoy"><div class="k"><i></i></div></div><button class="rbtn" id="aBst">BOOST</button><button class="rbtn" id="aThr">🚀<br>THRUST</button><button class="rbtn" id="aScn">📡<br>SCAN</button><button class="ab" id="aLand"></button><button class="ab" id="aFly"></button><div id="aScan">SCANNING…</div><div id="aSpd"></div><div id="aToast"></div><div id="aLd"></div><div id="aHud"><div class="tb"><span></span><i></i><i></i><i></i><i></i></div><div class="pg">◎</div><div class="ck"><svg viewBox="0 0 200 120"><path d="M70 60h22M108 60h22M100 52v-10M100 68v10" stroke="#7df9ff" stroke-width="2" fill="none"/><circle cx="100" cy="60" r="3" fill="#7df9ff"/></svg></div></div><div id="aPh">📷 PHOTO MODE · tap to exit</div>`;
+  <div id="labs"></div><div id="aJoy"><div class="k"><i></i></div></div><button class="rbtn" id="aBst">BOOST</button><button class="rbtn" id="aThr">🚀<br>THRUST</button><button class="rbtn" id="aScn">📡<br>SCAN</button><button class="ab" id="aLand"></button><button class="ab" id="aFly"></button><div id="aScan">SCANNING…</div><div id="aSpd"></div><div id="aToast"></div><div id="aLd"></div><div id="aFps"></div><div id="aHud"><div class="tb"><span></span><i></i><i></i><i></i><i></i></div><div class="pg">◎</div><div class="ck"><svg viewBox="0 0 200 120"><path d="M70 60h22M108 60h22M100 52v-10M100 68v10" stroke="#7df9ff" stroke-width="2" fill="none"/><circle cx="100" cy="60" r="3" fill="#7df9ff"/></svg></div></div><div id="aPh">📷 PHOTO MODE · tap to exit</div>`;
   document.body.appendChild(root);
   const cv = root.querySelector('canvas'), mob = matchMedia('(pointer:coarse)').matches;
   const ren = new THREE.WebGLRenderer({ canvas: cv, antialias: false, powerPreference: 'high-performance' });
-  ren.setPixelRatio(dprCap()); ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.05;
+  ren.setPixelRatio(dprCap()); ren.info.autoReset = false; ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.05;
   cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); if (R) { R.lost = true; toast('⚠ Graphics memory full: recovering…', 3000); } });
   cv.addEventListener('webglcontextrestored', () => { if (!R) return; R.lost = false; DR.s = .7; R.ren.setPixelRatio(Math.min(devicePixelRatio || 1, 2) * .7); resize(); LQ.max = 2; toast('✅ Graphics recovered', 1800); });
   const scn = new THREE.Scene(), cam = new THREE.PerspectiveCamera(60, 1, .1, 12000);
   // realistic reflections on the NASA models: a studio environment map, plus bloom for glowing things
   const pm = new THREE.PMREMGenerator(ren), envTex = pm.fromScene(new RoomEnvironment(), .04).texture; scn.environment = envTex; scn.environmentIntensity = .45;
   const hdrOK = ren.capabilities.isWebGL2 && (ren.extensions.has('EXT_color_buffer_float') || ren.extensions.has('EXT_color_buffer_half_float')); R_HDR = hdrOK;
-  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? (Q === 'ultra' ? 4 : 2) : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), .45, .4, .95), cine = new ShaderPass(CineShader); comp.addPass(rp); comp.addPass(new ShaderPass(SafeShader)); comp.addPass(bloom); comp.addPass(new OutputPass()); comp.addPass(cine);
+  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? PRE().msaa : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), PRE().bloom, .4, .95), cine = new ShaderPass(CineShader); comp.addPass(rp); comp.addPass(new ShaderPass(SafeShader)); comp.addPass(bloom); comp.addPass(new OutputPass()); comp.addPass(cine);
   scn.add(new THREE.AmbientLight(0x8090b0, .75)); const sunL = new THREE.PointLight(0xfff2dd, 3.2, 0, 0); scn.add(sunL);
   const hem = new THREE.HemisphereLight(0xbfd8ff, 0x201810, .35); scn.add(hem);
   // stars
@@ -282,7 +293,7 @@ function build() {
     const fin = () => { LQ.busy = Math.max(0, LQ.busy - 1); e.loading = false; };
     loader.load('models/nasa/' + (full ? '' : 'lod/') + (e.o.model || e.o.id) + '.glb', gl => { fin(); const m = gl.scene;
       if (!full && e.fit) { m.position.copy(e.fit.p); m.scale.setScalar(e.fit.k); } else { const box = new THREE.Box3().setFromObject(m), sph = box.getBoundingSphere(new THREE.Sphere()), k = e.o.sz / Math.max(.001, sph.radius); m.position.copy(sph.center).multiplyScalar(-k); m.scale.setScalar(k); if (!e.fit) e.fit = { p: m.position.clone(), k }; }
-      m.traverse(n => { if (n.isMesh && n.material) { n.material.side = THREE.FrontSide; if (n.material.metalness > .6) n.material.metalness = .6; } }); fixMat(m); e.g.add(m); e[key] = m; },
+      m.traverse(n => { if (n.isMesh && n.material) { n.material.side = THREE.FrontSide; if (n.material.metalness > .6) n.material.metalness = .6; } }); fixMat(m); e.g.add(m); e[key] = m; if (full) { e.cost = costOf(m); MEM.tris += e.cost.tris; MEM.tex += e.cost.tex; } },
       undefined, () => { fin(); if (full) { e.failed = (e.failed || 0) + 1; e.retryT = R.t + 8; } else { e.noLod = 1; } }); }
   // the ship (NASA's ESAS crew module concept, the design that became Orion)
   const ship = new THREE.Group(); scn.add(ship); { const tmp = new THREE.Mesh(new THREE.ConeGeometry(.9, 1.8, 16), new THREE.MeshStandardMaterial({ color: 0xdfe4ee, metalness: .3, roughness: .5 })); tmp.rotation.x = Math.PI / 2; ship.add(tmp); ship.userData.tmp = tmp;
@@ -294,7 +305,7 @@ function build() {
   // start near Earth, looking at it
   const e = bpos.earth; ship.position.set(e.x - 40, e.y + 6, e.z + 30); lookAtYP(e);
   controls(); root.querySelector('#aLoad').remove();
-  R.surf = makeSurface({ ren, cam, loader, mob, q: () => Q, env: () => R.envTex, toast: (t, ms) => toast(t, ms), reward, sfx, get: G, set: P, scanned: ST.scanned,
+  R.surf = makeSurface({ ren, cam, loader, mob, q: () => Q, pre: () => PRE(), env: () => R.envTex, toast: (t, ms) => toast(t, ms), reward, sfx, get: G, set: P, scanned: ST.scanned,
     stars: () => R.starTex, texOf: id => { const m = R.bmesh[id]; return m && m.material.map; },
     objs: (id, site) => { if (!site || !site.items) return (SURF[id] || []).filter(x => OI[x.id]).map(x => ({ ...x, o: OI[x.id] }));
       const SZ = { curiosity: 3, spirit: 1.6, opportunity: 1.6, lm: 7, insight: 6, viking: 3, 'm2020-wheel': .9, 'm2020-tube': .8 };
@@ -302,14 +313,19 @@ function build() {
         const o = OI[i]; return { ...it, o: site.lm && i === 'lm' ? { ...o, n: 'Lunar Module ' + site.lm + ' (' + site.n.split(' ·')[0] + ')' } : o }; }); },
     sampleFacts: (id, site) => [...(site && site.facts ? site.facts : []), ...(SAMPLE_FACTS[id] || []), ...(BI[id] ? BI[id].facts : [])],
     ui: (b, W, mode) => surfUI(b, W, mode), ship: () => R.shipStat || SHIPS[0], fixMat, craftUI: (on, cr) => { const b = R.root.querySelector('#aFly'); b.innerHTML = on ? '🧑‍🚀 LAND & WALK' : (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); R.root.querySelector('#aThr').innerHTML = on ? (cr.heli ? '⬆<br>CLIMB' : '⬆<br>PULL UP') : '⤒<br>JUMP'; R.root.querySelector('#aBst').innerHTML = on ? (cr.heli ? 'FAST' : 'THROTTLE') : 'RUN'; } });
-  root.querySelector('#aLand').onclick = () => landOrLaunch(); root.querySelector('#aQ').textContent = '⚙ ' + QL[Q]; root.querySelector('#aQ').onclick = () => { setQ(QN[(QN.indexOf(Q) + 1) % 2]); toast('Graphics: <b>' + QL[Q] + '</b>' + (Q === 'ultra' ? ' (max detail, 4× anti-aliasing, 2× resolution)' : ' (max effects, a little lighter for phones)')); };
+  root.querySelector('#aLand').onclick = () => landOrLaunch(); root.querySelector('#aQ').textContent = '⚙ ' + PRE().n; root.querySelector('#aQ').onclick = () => settings();
 }
-let R_HDR = true; const PHONE = matchMedia('(pointer:coarse)').matches; const dprCap = () => Math.min(devicePixelRatio || 1, Q === 'ultra' ? (PHONE ? 1.6 : 2) : (PHONE ? 1.3 : 1.5)); const LQ = { busy: 0, max: (navigator.hardwareConcurrency || 4) >= 8 ? 6 : 4 }, FLARE = [];
+let R_HDR = true; const dprCap = () => Math.min(devicePixelRatio || 1, PRE().dpr) * SET.scale / 100; const LQ = { busy: 0, max: (navigator.hardwareConcurrency || 4) >= 8 ? 6 : 4 }, FLARE = [];
 function flare() { if (!FLARE.length) return; const sp = R.bpos.sun, v = tmpV.copy(sp).project(R.cam), on = v.z < 1 && Math.abs(v.x) < 1.3 && Math.abs(v.y) < 1.3;
   // hidden when a planet blocks the Sun
   let occ = 0; if (on) { const o = R.cam.position, dir = new THREE.Vector3().subVectors(sp, o), L = dir.length(); dir.divideScalar(L); for (const b of BODIES) { if (b.id === 'sun') continue; const c = R.bpos[b.id], t = new THREE.Vector3().subVectors(c, o).dot(dir); if (t < 0 || t > L) continue; const dd = new THREE.Vector3().subVectors(c, o).addScaledVector(dir, -t).length(); if (dd < b.r) { occ = 1; break; } } }
   const a = on && !occ ? Math.max(0, 1 - Math.hypot(v.x, v.y) * .55) : 0;
   for (const s of FLARE) { const k = 1 - 2 * s.userData.d, p = new THREE.Vector3(v.x * k, v.y * k, .2).unproject(R.cam), dist = p.distanceTo(R.cam.position); s.position.copy(p); s.scale.setScalar(s.userData.sz * dist * (s.userData.d ? 1 : 1.4)); s.material.opacity = a * (s.userData.d ? .55 : .9); s.visible = a > .01; } }
+function dropFull(e) { if (!e.model) return; e.g.remove(e.model); disposeTree(e.model); e.model = null; if (e.cost) { MEM.tris = Math.max(0, MEM.tris - e.cost.tris); MEM.tex = Math.max(0, MEM.tex - e.cost.tex); } }
+// memory budget: keep the nearest full-detail models within the preset's triangle/texture budget; farther ones fall back to their light version
+function budget(CF) { const B = PRE(); let tris = 0, tex = 0; const L = R.objs.filter(e => e.model && e.cost).sort((a, b) => a.dist - b.dist);
+  L.forEach((e, i) => { tris += e.cost.tris; tex += e.cost.tex; if (i > 0 && (tris > B.tris || tex > B.tex) && e.lod) { dropFull(e); e.evictD = e.dist; } }); // the nearest model always keeps full detail
+  const over = MEM.tris > B.tris * .92 || MEM.tex > B.tex * .92; for (let i = CF.length - 1; i >= 0; i--) { const e = CF[i]; if ((over && !e.noLod) || (e.evictD && e.dist > e.evictD * .7)) CF.splice(i, 1); } }
 function disposeTree(o) { o.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => { for (const k in m) { const v = m[k]; if (v && v.isTexture) v.dispose(); } m.dispose(); }); }); }
 // dynamic resolution: keeps the frame rate smooth by trimming render resolution (never the effects) when the device struggles
 const DR = { t: 0, n: 0, s: 1, cool: 4, low: 0, high: 0, changes: 0 };
@@ -319,6 +335,11 @@ function dynRes(dt) { DR.t += dt; DR.n++; DR.cool = Math.max(0, DR.cool - dt); i
   const max = dprCap(); let s = DR.s;
   if (DR.low >= 3 && s > .55) s = Math.max(.55, s - .15); else if (DR.high >= 8 && s < 1) s = Math.min(1, s + .15);
   if (s !== DR.s) { DR.s = s; DR.cool = 12; DR.low = DR.high = 0; DR.changes++; R.ren.setPixelRatio(max * s); resize(); } }
+function fpsUI(dt) { const el = R.root.querySelector('#aFps'); if (!SET.fps) { if (el.style.display !== 'none') el.style.display = 'none'; return; } FP.n++; FP.t += dt; if (FP.t < .5) return; const f = FP.n / FP.t; FP.n = 0; FP.t = 0; el.style.display = 'block';
+  const info = R.ren.info; el.textContent = `${Math.round(f)} FPS · ${(MEM.tris / 1e6).toFixed(2)} M tris · ${Math.round(MEM.tex)} MB tex · ${info.render.calls} draws · ${Math.round(dprCap() * DR.s * 100) / 100}x`; }
+const FP = { n: 0, t: 0 }, MEM = { tris: 0, tex: 0 };
+function costOf(m) { let tris = 0, tex = 0; const seen = new Set(); m.traverse(n => { if (!n.isMesh) return; const g = n.geometry; tris += g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0);
+    (Array.isArray(n.material) ? n.material : [n.material]).forEach(mt => { for (const k in mt) { const v = mt[k]; if (v && v.isTexture && !seen.has(v) && v.image) { seen.add(v); tex += (v.image.width || 0) * (v.image.height || 0) * 4 * 1.33 / 1048576; } } }); }); return { tris, tex }; }
 function ldUI(k, n) { const el = R.root.querySelector('#aLd'), on = n > 0 && k < n; el.style.display = on ? 'block' : 'none'; if (on) el.textContent = '⏳ Loading NASA 3D models ' + k + ' / ' + n; }
 function lookAtYP(p) { const d = p.clone().sub(R.ship.position).normalize(); R.yaw = Math.atan2(-d.x, -d.z); R.pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)); }
 
@@ -372,7 +393,7 @@ function step(dt) {
   const spd = R.vel.length(); R.flame.scale.setScalar(.5 + Math.min(3, spd / 40)); R.flame.material.opacity = Math.min(1, .25 + spd / 60);
   // engine exhaust, warp streaks and a speed FOV kick
   { const burn = (thrust || boost || R.ap) ? 1 : 0, sz = (R.shipStat || SHIPS[0]).sz; R.burn = (R.burn || 0) + (burn - (R.burn || 0)) * Math.min(1, dt * 5);
-    if (R.burn > .05) { const ep = R.flame.getWorldPosition(tmpV), back = fwd.set(0, 0, 1).applyQuaternion(ship.quaternion), n = Math.ceil((boost ? 7 : 4) * R.burn * (Q === 'ultra' ? 1.5 : 1));
+    if (R.burn > .05) { const ep = R.flame.getWorldPosition(tmpV), back = fwd.set(0, 0, 1).applyQuaternion(ship.quaternion), n = Math.ceil((boost ? 7 : 4) * R.burn * PRE().fx);
       const v = back.clone().multiplyScalar(10 + spd * .08).addScaledVector(R.vel, .85);
       R.fx.emit(ep, v, boost ? 0xffc27a : 0x9fd8ff, sz * (boost ? .55 : .4), boost ? .7 : .5, n, 1.4 * sz, { grow: 2.6, drag: .5, jit: sz * .2 });
       R.fx.emit(ep, v, 0xffffff, sz * .22, .18, 2, .4, { grow: 1.5 }); } }
@@ -383,13 +404,13 @@ function step(dt) {
   // stream models in, nearest first, a few at a time; unload far ones so memory stays steady
   const CF = [], CL = [];
   for (const e of R.objs) { R.placeObj(e, R.t); const d = e.g.position.distanceTo(ship.position); e.dist = d;
-    const lodR = e.o.far ? 1500 : 520, fullR = e.o.far ? 1400 : Math.max(30, e.o.sz * 16), canFull = !e.failed || (e.failed < 3 && R.t > e.retryT);
+    const lodR = e.o.far ? 1500 : 520, fullR = (e.o.far ? 1400 : Math.max(30, e.o.sz * 16)) * PRE().full, canFull = !e.failed || (e.failed < 3 && R.t > e.retryT);
     if (!e.loading) { if (!e.model && canFull && (d < fullR || (e.noLod && d < lodR))) CF.push(e); else if (!e.lod && !e.noLod && d < lodR) { if (!LODS.has(e.o.model || e.o.id)) e.noLod = 1; else CL.push(e); } }
     const showFull = !!e.model && (d < fullR * 1.8 || !e.lod), vis = d < (e.o.far ? 3000 : Math.max(260, e.o.sz * 150));
-    if (e.model) { e.model.visible = vis && showFull; if (d > fullR * 3 && !e.o.far && e.lod) { e.g.remove(e.model); disposeTree(e.model); e.model = null; } }
+    if (e.model) { e.model.visible = vis && showFull; if (d > fullR * 3 && !e.o.far && e.lod) dropFull(e); }
     if (e.lod) { e.lod.visible = vis && !showFull; if (d > lodR * 2.2) { e.g.remove(e.lod); disposeTree(e.lod); e.lod = null; } }
     e.sp.visible = !(e.model || e.lod) || d > e.o.sz * 6; }
-  CF.sort((a, b) => a.dist - b.dist); CL.sort((a, b) => a.dist - b.dist); let fi = 0, li = 0; while (LQ.busy < LQ.max && (fi < CF.length || li < CL.length)) { if (li < CL.length && (fi >= CF.length || LQ.busy % 2)) R.loadModel(CL[li++], false); else R.loadModel(CF[fi++], true); }
+  CF.sort((a, b) => a.dist - b.dist); CL.sort((a, b) => a.dist - b.dist); budget(CF); let fi = 0, li = 0; while (LQ.busy < LQ.max && (fi < CF.length || li < CL.length)) { if (li < CL.length && (fi >= CF.length || LQ.busy % 2)) R.loadModel(CL[li++], false); else R.loadModel(CF[fi++], true); }
   { let n = 0, k = 0; for (const e of R.objs) if (e.dist < (e.o.far ? 1500 : 520)) { n++; if (e.model || e.lod || e.failed >= 3) k++; } ldUI(k, n); }
   for (const b of BODIES) R.bmesh[b.id].rotation.y += dt * (b.id === 'sun' ? .02 : .05); if (R.bmesh.earth.userData.clouds) R.bmesh.earth.userData.clouds.rotation.y += dt * .012;
   // scanning
@@ -562,15 +583,29 @@ function surfStep(dt) { const k = R.keys, S = R.surf.S, jump = !!(R.thr || k[' '
   for (; i < R.lab.length; i++) R.lab[i].style.display = 'none'; }
 /* ---------------- open / close ---------------- */
 function draw(sc) { R.rp.scene = sc; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
-function setQ(q) { Q = q; P('adv_q', q); DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(dprCap()); R.ren.shadowMap.enabled = true; [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? (Q === 'ultra' ? 4 : 2) : 0; t.dispose(); }); R.bloom.strength = Q === 'ultra' ? .45 : .4; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + QL[Q]; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
-function loop(t) { if (!ST.on) return; const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
+function setGfx(g) { GFX = g; P('adv_gfx', g); Q = g === 'max' ? 'ultra' : 'high'; DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(dprCap()); [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? PRE().msaa : 0; t.dispose(); }); R.bloom.strength = PRE().bloom; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + PRE().n; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+function settings() { const p = document.createElement('div'); p.className = 'pnl'; const opt = (k, v, l) => `<button data-${k}="${v}" class="${String((k === 'g' ? GFX : SET[k])) === String(v) ? 'sel' : ''}">${l}</button>`;
+  p.innerHTML = `<div class="crd"><div class="ey">⚙ GRAPHICS</div><h2>Settings</h2><div class="mt">Like Genshin: lower settings run smoother and cooler on phones. Max is for strong phones and PCs.</div>
+  <h4 class="sh">QUALITY PRESET</h4><div class="seg">${Object.entries(PRESETS).map(([k, v]) => opt('g', k, v.n)).join('')}</div>
+  <h4 class="sh">FRAME RATE</h4><div class="seg">${[30, 45, 60].map(v => opt('cap', v, v + ' FPS')).join('')}</div>
+  <h4 class="sh">RENDER RESOLUTION · <span id="rsV">${SET.scale}%</span></h4><input type="range" id="rs" min="50" max="100" step="5" value="${SET.scale}" style="width:100%">
+  <h4 class="sh">SHOW FPS COUNTER</h4><div class="seg">${opt('fps', 0, 'Off')}${opt('fps', 1, 'On')}</div>
+  <div class="mt" style="margin-top:10px">${PRE().n}: up to ${(PRE().tris / 1e6).toFixed(1)} M full-detail triangles and ${PRE().tex} MB of model textures at once. Everything farther away uses light versions.</div>
+  <div class="row"><button class="pr" id="stX">Done</button></div></div>`;
+  R.root.appendChild(p); const save2 = () => P('adv_set', SET);
+  p.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { setGfx(b.dataset.g); p.remove(); settings(); });
+  p.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { SET.cap = +b.dataset.cap; save2(); p.remove(); settings(); });
+  p.querySelectorAll('[data-fps]').forEach(b => b.onclick = () => { SET.fps = +b.dataset.fps; save2(); p.remove(); settings(); });
+  p.querySelector('#rs').oninput = e => { SET.scale = +e.target.value; p.querySelector('#rsV').textContent = SET.scale + '%'; }; p.querySelector('#rs').onchange = () => { save2(); DR.s = 1; R.ren.setPixelRatio(dprCap()); resize(); };
+  p.querySelector('#stX').onclick = () => p.remove(); }
+function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last < 1000 / SET.cap - 3) { requestAnimationFrame(loop); return; } const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); fpsUI(dt); R.ren.info.reset(); R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
   if (sf) { if (!pnl) { if (R.surf.S.launch) { R.surf.step(dt, {}); } else surfStep(dt); draw(R.surf.S.scn); } }
   else if (R.entry) { stepEntry(dt); draw(R.scn); }
   else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) lb.textContent = k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase(); draw(R.scn); } }
   requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
-const MC = 'rdo-models-1', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
-function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== 56; }
+const MC = 'rdo-models-2', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
+function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== 59; }
 function resPanel(done, fromGame) {
   const o = document.createElement('div'); o.id = 'advDL'; o.innerHTML = `<style>#advDL{position:fixed;inset:0;z-index:99999;background:radial-gradient(ellipse at 50% 30%,#14204a,#02040c 70%);color:#eaf2ff;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
   #advDL .c{width:min(520px,94vw);background:rgba(10,16,36,.85);border:1px solid rgba(125,249,255,.35);border-radius:18px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}#advDL h2{margin:2px 0 6px;font-size:22px}#advDL .ey{font:700 10px system-ui;letter-spacing:.16em;color:#7df9ff}
@@ -584,7 +619,7 @@ function resPanel(done, fromGame) {
     let have = 0; for (const [p] of full) if (await cache.match(p)) have++;
     $('#dlT').innerHTML = `Store every NASA 3D model on this device once, so Adventure Mode loads instantly and plays smoothly, even offline.${have ? `<br><b>${have} of ${full.length} files are already on this device.</b>` : ''}<br><span style="opacity:.75">Use Wi-Fi for the full pack. You can always download more later from ⬇ in Adventure Mode.</span>`;
     $('#dlB').innerHTML = `<div class="opt"><button class="pr" id="dF">⬇ Full pack · best quality<small>Every model in full detail · ${mb(sum(full))} · ${full.length} files</small></button><button id="dL">⬇ Light pack · fast start<small>Light versions of every model, plus the ships and aircraft · ${mb(sum(light))}. Full detail streams in when you fly close.</small></button><button id="dS">▶ Skip, stream while playing<small>Uses the least storage. Models load as you fly near them.</small></button></div>`;
-    const finish = (pack) => { if (pack) P('adv_dl', { v: 56, pack }); o.remove(); done && done(); };
+    const finish = (pack) => { if (pack) P('adv_dl', { v: 59, pack }); o.remove(); done && done(); };
     $('#dS').onclick = () => { open.skipDL = 1; finish(null); };
     const run = async (L, pack) => { let doneB = 0, doneN = 0, fail = 0, stop = false; const tot = sum(L), t0 = performance.now();
       $('#dlB').innerHTML = `<div class="bar"><i></i></div><div class="mt" id="dlP">Starting…</div><div class="row" style="margin-top:12px"><button id="dX">Play now (keeps downloading in this session)</button></div>`;
@@ -593,7 +628,7 @@ function resPanel(done, fromGame) {
       let i = 0; const worker = async () => { while (i < L.length && stop !== 'abort') { const [p, sz] = L[i++];
           try { if (!(await cache.match(p))) { let r = await fetch(p); if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) { const pj = p.replace(/\.glb$/, '.json'); if (pj !== p) { r = await fetch(pj); if (r.ok) await cache.put(pj, r); else fail++; } else fail++; } else await cache.put(p, r); } } catch (e) { fail++; }
           doneB += sz; doneN++; if (o.isConnected) upd(); } };
-      await Promise.all(Array.from({ length: 6 }, worker)); if (stop === 'play') { P('adv_dl', { v: 56, pack }); return; }
+      await Promise.all(Array.from({ length: 6 }, worker)); if (stop === 'play') { P('adv_dl', { v: 59, pack }); return; }
       $('.bar i').style.width = '100%'; $('#dlP').innerHTML = `<b>✅ Download complete.</b> ${mb(tot)} stored on this device${fail ? ` (${fail} files could not be downloaded and will stream instead)` : ''}.`;
       $('.row').innerHTML = '<button class="pr" id="dGo">🚀 Launch Adventure</button>'; $('#dGo').onclick = () => finish(pack); };
     $('#dF').onclick = () => run(full, 'full'); $('#dL').onclick = () => run(light, 'light');

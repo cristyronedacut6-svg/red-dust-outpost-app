@@ -52,7 +52,7 @@ export function makeSurface(ctx) {
   const glow = (c1, c2) => { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, c1); gr.addColorStop(.4, c2); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv); };
   let H = () => 0;
   function terrain(id, W, site) {
-    const size = id === 'earth' ? 1600 : 1400, seg = { ultra: 420, high: 300 }[ctx.q ? ctx.q() : 'high'] || 300, geo = new THREE.PlaneGeometry(size, size, seg, seg); geo.rotateX(-Math.PI / 2);
+    const size = id === 'earth' ? 1600 : 1400, seg = ctx.pre ? ctx.pre().seg : 300, geo = new THREE.PlaneGeometry(size, size, seg, seg); geo.rotateX(-Math.PI / 2);
     const seed = id.length * 13.7 + id.charCodeAt(0), craters = [];
     const nc = Math.round(60 * (W.cr || 0)); for (let i = 0; i < nc; i++) { const a = hash(i, seed) * 6.283, d = 60 + hash(seed, i) * 620; craters.push([Math.cos(a) * d, Math.sin(a) * d, 8 + Math.pow(hash(i * 3, seed), 3) * 90]); }
     if (site && site.hm) { const N = site.N, hm = site.hm, sc = site.relief * size * 1.3, half = size / 2;
@@ -101,7 +101,7 @@ export function makeSurface(ctx) {
     const W = kind === 'dive' ? null : WORLD[body.id], scn = new THREE.Scene(); S.scn = scn; S.body = body; S.mode = kind; S.t = 0; S.items = []; S.cols = []; S.depth = 0; S.sea = null;
     scn.add(new THREE.HemisphereLight(0xdfe8ff, 0x302820, .55)); const dl = new THREE.DirectionalLight(W ? col(W.sun) : 0xffffff, 2.6); dl.position.set(-1500, 900, -1800); scn.add(dl); scn.add(dl.target); S.dl = dl;
     if (ctx.env) { scn.environment = ctx.env(); scn.environmentIntensity = .5; }
-    const q = ctx.q ? ctx.q() : 'high'; if (kind !== 'dive') { dl.castShadow = true; const ph = matchMedia('(pointer:coarse)').matches, ms = q === 'ultra' && !ph ? 4096 : 2048; dl.shadow.mapSize.set(ms, ms); const c = dl.shadow.camera; c.left = c.bottom = -70; c.right = c.top = 70; c.near = 10; c.far = 600; dl.shadow.bias = -.0006; dl.shadow.normalBias = .4; }
+    const q = ctx.q ? ctx.q() : 'high'; if (kind !== 'dive') { dl.castShadow = true; const ms = ctx.pre ? ctx.pre().shadow : 2048; dl.shadow.mapSize.set(ms, ms); const c = dl.shadow.camera; c.left = c.bottom = -70; c.right = c.top = 70; c.near = 10; c.far = 600; dl.shadow.bias = -.0006; dl.shadow.normalBias = .4; }
     if (kind === 'dive') return enterDive(body, scn);
     sky(body.id, W, scn); const ter = terrain(body.id, W, site); scn.add(ter); S.site = site;
     // landing site: your capsule and a golden beacon (rest point)
@@ -124,8 +124,9 @@ export function makeSurface(ctx) {
     // VFX: glowing particles, soft dust, shockwave rings; rocks everywhere, grass on Earth
     S.fx = makeFX(scn, 2200, true); S.dust = makeFX(scn, 2600, false); S.rings = makeRings(scn); S.grass = null; S.gc = col(W.gr[1]); S.dc = col(W.gr[2]).lerp(new THREE.Color(0xffffff), .08).multiplyScalar(.85);
     const ultra = (ctx.q ? ctx.q() : 'high') === 'ultra' && !matchMedia('(pointer:coarse)').matches, nearPad = (x, z) => Math.hypot(x + 12, z + 8) < 14 || Math.hypot(x - 4, z - 8) < 6 || (W.sea && x > 300) || S.items.some(it => !it.geyser && Math.hypot(x - it.g.position.x, z - it.g.position.z) < it.s * .8 + 2);
-    if (body.id === 'earth') { S.grass = makeGrass(scn, H, ultra ? 30000 : 18000, ultra ? 75 : 60, (x, z) => nearPad(x, z) || Math.abs(x - 40) < 9); scatterRocks(scn, H, col('#8b8577'), ultra ? 120 : 80, 600, nearPad); }
-    else scatterRocks(scn, H, col(W.gr[1]).lerp(col(W.gr[0]), .35), ultra ? 1500 : 900, 640, nearPad);
+    const PR = ctx.pre ? ctx.pre() : { grass: 18000, rocks: .6 };
+    if (body.id === 'earth') { S.grass = makeGrass(scn, H, PR.grass, PR.grass > 20000 ? 75 : 60, (x, z) => nearPad(x, z) || Math.abs(x - 40) < 9); scatterRocks(scn, H, col('#8b8577'), Math.round(120 * PR.rocks), 600, nearPad); }
+    else scatterRocks(scn, H, col(W.gr[1]).lerp(col(W.gr[0]), .35), Math.max(60, Math.round(1500 * PR.rocks)), 640, nearPad);
     for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283; S.dust.emit(new THREE.Vector3(-12 + Math.cos(a) * 3, H(-12, -8) + .4, -8 + Math.sin(a) * 3), new THREE.Vector3(Math.cos(a) * 9, 1.2, Math.sin(a) * 9), S.dc, 1.6, 2.2, 1, 2, { grow: 3, drag: .7, a: .3, grav: W.g * .05 }); }
     S.rings.add(new THREE.Vector3(-12, H(-12, -8) + .3, -8), 0xffe6b0, 30, 1.2);
     S.gEff = Math.max(W.gameG || W.g, .05); ctx.ui(body, W, 'land'); S.on = true;
