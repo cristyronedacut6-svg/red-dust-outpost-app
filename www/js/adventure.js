@@ -600,11 +600,11 @@ const DEMO = { on: false };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 async function demoTour() { if (DEMO.on) { demoStop(); return; } DEMO.on = true; R.root.classList.add('demo'); say('Demo tour starting. Sit back and enjoy the ride.', 1); toast('🎬 Demo tour · touch the joystick or any key to take control', 3000);
   const arrive = async (max = 40000) => { const t0 = Date.now(); while (DEMO.on && R.ap && Date.now() - t0 < max) await wait(250); };
-  const showcase = async id => { if (!DEMO.on) return; goto(id); await arrive(); if (!DEMO.on) return; const e = R.objs.find(x => x.o.id === id); if (e) { R.scanning = { e, t: 0 }; sfx('beep'); await wait(1600); const p = R.root.querySelector('.pnl'); await wait(3800); if (p && p.isConnected) p.remove(); } };
+  const showcase = async id => { if (!DEMO.on) return; const lp = R.root.querySelector('.pnl'); if (lp) lp.remove(); if (!R.objs.find(x => x.o.id === id)) return; goto(id); await arrive(); if (!DEMO.on) return; const e = R.objs.find(x => x.o.id === id); if (e) { R.scanning = { e, t: 0 }; sfx('beep'); await wait(1600); const p = R.root.querySelector('.pnl'); await wait(3800); if (p && p.isConnected) p.remove(); } };
   try {
     await showcase('iss'); if (!DEMO.on) return; await showcase('hubble'); if (!DEMO.on) return;
     CAM.mode = 'cockpit'; toast('🎥 Inside the Space Shuttle cockpit', 1800); await wait(4000); CAM.mode = 'chase'; if (!DEMO.on) return;
-    goto('mars'); await arrive(60000); if (!DEMO.on) return; R.site = (SITES.mars || []).find(s => s.id === 'gale') || null; if (R.site) await loadDEM(R.site); landOrLaunch.go(); await wait(5200); if (!DEMO.on) return;
+    goto('mars'); await arrive(60000); if (!DEMO.on) return; R.site = (SITES.mars || []).find(s => s.id === 'gale') || (SITES.mars || [])[0] || null; if (R.site) await loadDEM(R.site); if (!nearBody() || nearBody().id !== 'mars') { const c = R.bpos.mars, B = BI.mars.r; R.ship.position.copy(c).add(new THREE.Vector3(B + 8, 4, B + 8)); R.vel.set(0, 0, 0); } landOrLaunch.go(); await wait(400); { const pk = R.root.querySelector('.pnl [data-s]'); if (pk) pk.click(); } await wait(5200); if (!DEMO.on) return;
     toast('🔴 Gale Crater, Mars · real NASA terrain', 2500); await wait(6000); if (!DEMO.on) return; landOrLaunch(); await wait(5000); if (!DEMO.on) return;
     CAM.photo = 1; R.root.classList.add('photo'); await wait(7000); CAM.photo = 0; R.root.classList.remove('photo');
     toast('🏁 Demo complete · the solar system is yours', 3000);

@@ -635,3 +635,10 @@ On phones, the game screen has been tidied so you can see the action and know wh
 - **🌑 Real eclipse shadows:** every moon now sits in its planet's shadow when it passes behind it. Each planet can also be crossed by the shadow of its biggest nearby moon, like Io's shadow on Jupiter or a solar eclipse on Earth. The shadow is worked out per pixel with a soft penumbra edge.
 - **🚨 Navigation lights:** spacecraft carry a red light on the left (port), a green light on the right (starboard) and a white strobe that double-flashes, like real spacecraft and aircraft. Planets, asteroids, storms and deep-sky objects don't get them.
 - **🌅 Sunrise ring:** from Earth's night side with the Sun behind it, sunlight shining through the atmosphere lights up a bright, warm ring around the whole planet, like astronaut photos of orbital sunrise.
+
+## v67 — Demo tour hardening
+
+- If Gale Crater's terrain can't load, the Demo tour now falls back to the first Mars landing site.
+- It moves into landing range if the autopilot stopped slightly short.
+- It picks a landing site automatically if the site menu still opens.
+- Before each showcase stop it closes any card left open, and it skips a stop whose spacecraft is missing instead of waiting.
