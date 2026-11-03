@@ -658,3 +658,9 @@ On phones, the game screen has been tidied so you can see the action and know wh
   - Flying close triggers a screen glitch, a radio whisper ("six doors") and mission control saying it isn't on any NASA chart.
   - Scanning it opens a story card that counts your clues. With all six, it reveals that a seventh door waits in the belt.
   - The first scan gives +15 🔧 and +150 XP. It's listed on the 🗺 Map under STORY and doesn't count toward the NASA codex.
+
+## v70 — Story Mode: voiced radio messages
+
+- In the main game, Mission Control and crew messages are now read aloud over the radio, with a radio chirp before each one. Mission Control has a low voice, and your crew has a brighter one. This covers story beats, mysterious transmissions, tips and crew chatter.
+- It respects the 🎬 Cutscenes and sound settings. Emojis and formatting are stripped before speaking, and a new message cuts off the previous one so voices never pile up.
+- I ran the headless regression sweep on worlds 1 and 3 with no errors.

@@ -870,6 +870,7 @@ function update(dt){if(!(dt>=0))dt=0;if(S.hs>0){S.hs-=dt;return}if(S.smo>0){S.sm
  S.ft.forEach(f=>{f.y-=18*dt;f.l-=dt});S.ft=S.ft.filter(f=>f.l>0);
  S.beams.forEach(b=>b.l-=dt);S.beams=S.beams.filter(b=>b.l>0);S.ring.forEach(r=>{r.r+=260*dt;r.l-=dt});S.ring=S.ring.filter(r=>r.l>0);
  S.emp=Math.max(0,S.emp-dt);S.shk=Math.max(0,S.shk-dt*30);S.hf-=dt;S.msgT-=dt;S.arm=Math.max(0,S.arm-dt);S.shel=Math.max(0,S.shel-dt);
+ if(S.ban&&S.ban!==LBAN){LBAN=S.ban;voiceBan(S.ban)}
  if(S.ban&&S.ban.k!=='tut'){S.ban.t-=dt;if(S.ban.t<=0)S.ban=null}}
 
 /* ---------- actions ---------- */
@@ -1659,6 +1660,14 @@ function misPanel(){const p=$('#misp');if(!S||!S.mis){p.hidden=true;return}p.inn
 
 /* ---------- event cutscenes ---------- */
 let CINE=LS.get('cine',1);
+/* v70: story banners are read aloud: Mission Control in a low radio voice, your crew in a brighter one (respects sound + cutscene settings) */
+let LBAN=null,VBT=0;
+function voiceBan(b){try{if(!CINE||!SFX||!window.speechSynthesis||!b||!b.txt||(b.k!=='earth'&&b.k!=='disc'))return;const now=performance.now();if(now<VBT)return;VBT=now+1500;
+ const txt=String(b.txt).replace(/<[^>]*>/g,' ').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,'').replace(/\s+/g,' ').trim();if(!txt)return;
+ const u=new SpeechSynthesisUtterance(txt),vs=speechSynthesis.getVoices(),mc=b.k==='earth',v=vs.find(x=>/^en/i.test(x.lang)&&(mc?/male|david|daniel|alex|guy/i:/female|samantha|zira|karen|victoria/i).test(x.name))||vs.find(x=>/^en/i.test(x.lang));
+ if(v)u.voice=v;u.lang='en-US';u.rate=mc?1.02:1.06;u.pitch=mc?.82:1.12;u.volume=Math.min(1,VOL.m*VOL.s*1.1);
+ try{const a=ac();if(a&&BUS){const t=a.currentTime,o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.setValueAtTime(mc?1850:1250,t);g.gain.setValueAtTime(.02,t);g.gain.exponentialRampToValueAtTime(.0001,t+.1);o.connect(g);g.connect(BUS.sfx);o.start(t);o.stop(t+.11)}}catch(e){}
+ speechSynthesis.cancel();setTimeout(()=>speechSynthesis.speak(u),130)}catch(e){}}
 Object.assign(SN,{
  cine:()=>{tone(98,1,'sawtooth',.045,40,0,.35,.4,1200);noise(.9,.045,600,0,'bandpass',.4,3200);tone(49,1.4,'sine',.16,-14,.85,.01,.5);noise(.7,.09,260,.85,'lowpass',.5,60)},
  whoosh:()=>{noise(1.1,.07,300,0,'bandpass',.35,2600);tone(300,.9,'sine',.03,-200,0,.2,.3)}});
