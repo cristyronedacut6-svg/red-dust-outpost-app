@@ -11,7 +11,7 @@ import { RenderPass } from './vendor/three/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './vendor/three/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './vendor/three/postprocessing/OutputPass.js';
 import { ShaderPass } from './vendor/three/postprocessing/ShaderPass.js';
-import { makeFX, makeRings, makeWarp, CineShader, SafeShader } from './adv_fx.js';
+import { makeFX, makeRings, makeWarp, CineShader, SafeShader, rockGeo } from './adv_fx.js';
 import { AUD } from './adv_audio.js';
 import { planetMaterial, atmosphereMaterial, cloudMaterial, ringMaterial, updatePlanetUniforms } from './adv_planet.js';
 // Every model ships as .glb (GitHub Pages / app). The preview host can't serve .glb, so each also exists as embedded glTF (.json).
@@ -174,7 +174,7 @@ const PRESETS = {
   max:    { n: 'Max',    dpr: 2,   msaa: 4, shadow: 4096, grass: 30000, rocks: 1,   tris: 14e6,  tex: 1400, full: 1.25, bloom: .45, seg: 420, fx: 1.5 } };
 const PHONE = matchMedia('(pointer:coarse)').matches;
 let GFX = G('adv_gfx', null); if (!PRESETS[GFX]) GFX = PHONE ? 'medium' : 'high'; const PRE = () => PRESETS[GFX];
-const SET = Object.assign({ cap: 60, scale: 100, fps: 0 }, G('adv_set', {}));
+const SET = Object.assign({ cap: 60, scale: 100, fps: 0, voice: 1 }, G('adv_set', {}));
 // compatibility: older code paths read Q
 let Q = GFX === 'max' ? 'ultra' : 'high'; const QL = { ultra: 'Max', high: 'High' };
 const ST = { on: false, scanned: new Set(G('adv_scan', [])), flags: new Set(G('adv_flags', [])), mi: G('adv_mis2', 0), seen: G('adv_seen', 0) };
@@ -262,7 +262,7 @@ function build() {
   { const n = 4000, p = new Float32Array(n * 3), c = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const u = Math.random() * 2 - 1, t = Math.random() * 6.283, r = 6000 + Math.random() * 3000, s = Math.sqrt(1 - u * u); p.set([Math.cos(t) * s * r, u * r, Math.sin(t) * s * r], i * 3); const w = .6 + Math.random() * .4; c.set([w, w, w * (.85 + Math.random() * .3)], i * 3); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('color', new THREE.BufferAttribute(c, 3)); scn.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 2, sizeAttenuation: false, vertexColors: true }))); }
   // NASA Tycho star map as the sky
-  { const sm = new THREE.Mesh(new THREE.SphereGeometry(9500, 48, 24), new THREE.MeshBasicMaterial({ side: THREE.BackSide, color: 0xb8b8b8, depthWrite: false })); sm.renderOrder = -1; scn.add(sm); TL.load('models/tex/stars.webp', t => { t.colorSpace = THREE.SRGBColorSpace; sm.material.map = t; sm.material.needsUpdate = true; R && (R.starTex = t); }); }
+  { const smat = new THREE.ShaderMaterial({ uniforms: { map: { value: null } }, side: THREE.BackSide, depthWrite: false, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }', fragmentShader: 'uniform sampler2D map; varying vec2 vUv; void main(){ vec3 c = texture2D(map, vUv).rgb; float l = max(c.r, max(c.g, c.b)); vec3 o = c * (.55 + 2.6 * smoothstep(.25, .9, l)) * smoothstep(.015, .06, l); gl_FragColor = vec4(o, 1.); }' }); const sm = new THREE.Mesh(new THREE.SphereGeometry(9500, 64, 32), smat); sm.renderOrder = -1; scn.add(sm); TL.load('models/tex/stars.webp', t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; smat.uniforms.map.value = t; R && (R.starTex = t); }); }
   // bodies
   const bpos = {}; BODIES.forEach(b => { if (!b.at) bpos[b.id] = new THREE.Vector3(Math.cos(b.a) * b.d, 0, Math.sin(b.a) * b.d); });
   BODIES.forEach(b => { if (b.at) bpos[b.id] = bpos[b.at].clone().add(new THREE.Vector3(...b.off)); });
@@ -285,9 +285,12 @@ function build() {
       const rg = new THREE.RingGeometry(b.r * 1.25, b.r * 2.3, 128, 1), pos = rg.attributes.position, uv = rg.attributes.uv, v = new THREE.Vector3(); for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); uv.setXY(i, (v.length() - b.r * 1.25) / (b.r * 1.05), .5); }
       const t2 = new THREE.CanvasTexture(cv2); t2.colorSpace = THREE.SRGBColorSpace; const rmat = ringMaterial(t2, b.r); PL.push({ mat: rmat, mesh: m }); const ring = new THREE.Mesh(rg, rmat); ring.rotation.x = -Math.PI / 2 + .45; m.add(ring); } });
   // asteroid belt
-  { const n = mob ? 260 : 500, g = new THREE.IcosahedronGeometry(1, 0), im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ color: 0x8a8378, roughness: 1, flatShading: true }), n), q = new THREE.Object3D();
-    for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, d = 880 + Math.random() * 110; q.position.set(Math.cos(a) * d, (Math.random() - .5) * 26, Math.sin(a) * d); q.rotation.set(Math.random() * 3, Math.random() * 3, 0); const s = .6 + Math.random() * 2.6; q.scale.set(s, s * (.6 + Math.random() * .6), s); q.updateMatrix(); im.setMatrixAt(i, q.matrix); }
-    scn.add(im); }
+  { const n = Math.round((mob ? 600 : 1500) * (GFX === 'low' ? .4 : GFX === 'max' ? 1.4 : 1) / 3), mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .96, metalness: .02 }), q = new THREE.Object3D(), c = new THREE.Color();
+    for (let k = 0; k < 3; k++) { const im = new THREE.InstancedMesh(rockGeo(k * 2.3 + .7), mat, n);
+      for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, d = 870 + Math.random() * 130 + Math.sin(a * 7) * 8; q.position.set(Math.cos(a) * d, (Math.random() - .5) * (18 + Math.random() * 16), Math.sin(a) * d); q.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+        const s = Math.random() < .04 ? 4 + Math.random() * 6 : .4 + Math.pow(Math.random(), 2.4) * 3; q.scale.set(s * (.7 + Math.random() * .6), s * (.5 + Math.random() * .4), s); q.updateMatrix(); im.setMatrixAt(i, q.matrix);
+        c.setHSL(.07 + Math.random() * .05, .12 + Math.random() * .14, .22 + Math.random() * .22); im.setColorAt(i, c); }
+      scn.add(im); } }
   // spacecraft anchors (a glowing marker + the NASA model, loaded when you come near)
 
   const mk = new THREE.SpriteMaterial({ map: glowTex('rgba(255,255,255,1)', 'rgba(255,207,74,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false });
@@ -392,7 +395,7 @@ function step(dt) {
     const dir = tp.clone().sub(ship.position).normalize(), ty = Math.atan2(-dir.x, -dir.z), tpch = Math.asin(THREE.MathUtils.clamp(dir.y, -1, 1));
     let dy = ty - R.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; R.yaw += dy * Math.min(1, dt * 2.5); R.pitch += (tpch - R.pitch) * Math.min(1, dt * 2.5);
     const sp = Math.min(R.ap.max, Math.max(8, (d - stop) * 1.4)); fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); R.vel.lerp(fwd.multiplyScalar(d > stop ? sp : 0), Math.min(1, dt * 2));
-    if (d <= stop + 1) { R.ap = null; R.vel.multiplyScalar(.2); toast(`Arrived: <b>${R.apName}</b> · tap 📡 SCAN`); } }
+    if (d <= stop + 1) { R.ap = null; R.vel.multiplyScalar(.2); toast(`Arrived: <b>${R.apName}</b> · tap 📡 SCAN`); say('Arriving at ' + R.apName.replace(/\(.*?\)/g, '') + '.'); } }
   else { const SS = R.shipStat || SHIPS[0]; R.yaw += yawIn * dt * 1.4 * SS.turn; R.pitch = THREE.MathUtils.clamp(R.pitch + pitIn * dt * 1.1 * SS.turn, -1.35, 1.35);
     fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); const ts = (thrust ? (boost ? 180 * SS.bst : 45 * SS.spd) : boost ? 180 * SS.bst : 0); R.vel.lerp(fwd.clone().multiplyScalar(ts), Math.min(1, dt * (ts ? 1.4 : brake ? 3 : .6))); }
   ship.position.addScaledVector(R.vel, dt);
@@ -448,7 +451,7 @@ function labels() {
 
 /* ---------------- cards, codex, map, missions ---------------- */
 function card(o, fresh) { const isNew = fresh && !ST.scanned.has(o.id);
-  if (isNew) { const was = new Set(SHIPS.filter(unlocked).map(x => x.id)); ST.scanned.add(o.id); save(); reward(5, 60); sfx('chime'); const nw = SHIPS.filter(x => unlocked(x) && !was.has(x.id)); if (nw.length) setTimeout(() => toast('🛠 New ship unlocked in the Hangar: <b>' + nw.map(x => x.n).join(', ') + '</b><br><small>Tap 🛠 Hangar to fly it</small>', 4500), 1200); const e = R.objs.find(x => x.o.id === o.id); if (e) e.sp.material = R.mkS; checkMissions(); milestone(); }
+  if (isNew) { say('New object identified. ' + o.n.replace(/\(.*?\)/g, '') + '.'); const was = new Set(SHIPS.filter(unlocked).map(x => x.id)); ST.scanned.add(o.id); save(); reward(5, 60); sfx('chime'); const nw = SHIPS.filter(x => unlocked(x) && !was.has(x.id)); if (nw.length) setTimeout(() => toast('🛠 New ship unlocked in the Hangar: <b>' + nw.map(x => x.n).join(', ') + '</b><br><small>Tap 🛠 Hangar to fly it</small>', 4500), 1200); const e = R.objs.find(x => x.o.id === o.id); if (e) e.sp.material = R.mkS; checkMissions(); milestone(); }
   const realTxt = o.r && RKM[o.id] ? `Real size: ${(RKM[o.id] * 2).toLocaleString()} km across${ORBIT[o.id] ? ` · ${ORBIT[o.id]} AU (${fmtKm(ORBIT[o.id] * AUKM)}) from the Sun · sunlight takes ${Math.round(ORBIT[o.id] * 499 / 60)} min to arrive` : ''}` : '';
   const loc = o.r ? (o.at ? 'Orbits ' + BI[o.at].n : 'Solar system') : o.land ? (o.land === 'earth' ? 'Kennedy Space Center, Earth' : 'On the surface of ' + BI[o.land].n) : o.far ? 'Deep sky, far beyond the solar system' : (o.surf ? 'On ' + BI[o.at].n : 'Near ' + BI[o.at].n);
   const p = document.createElement('div'); p.className = 'pnl'; p.innerHTML = `<div class="crd"><div class="ey">${o.r ? '🪐 ' : '🛰 '}${o.k.toUpperCase()}</div>${isNew ? '<div class="nw">NEW SCAN · +5 🔧 · +60 XP</div>' : ''}<h2>${o.n}</h2><canvas class="vw"></canvas>
@@ -528,9 +531,9 @@ function viewer(o, cv, panel) {
 }
 /* ---------------- landing, diving, launching ---------------- */
 function nearBody() { let best = null, bd = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = R.bpos[b.id].distanceTo(R.ship.position) - b.r, sc = d / (b.r + 6); if (d < b.r * 2 + 24 && sc < bd) { bd = sc; best = b; } } return best; }
-function landOrLaunch() { const S = R.surf.S; if (R.entry) return; if (S.on) { if (S.launch) return; if (S.mode === 'land') { R.root.classList.add('cine'); sfx('liftoff'); R.surf.launch(() => { R.root.classList.remove('cine'); landOrLaunch.done(); }); return; } return landOrLaunch.done(); }
+function landOrLaunch() { const S = R.surf.S; if (R.entry) return; if (S.on) { if (S.launch) return; if (S.mode === 'land') { R.root.classList.add('cine'); sfx('liftoff'); say('Main engine start. And lift-off!', 1); R.surf.launch(() => { R.root.classList.remove('cine'); landOrLaunch.done(); }); return; } return landOrLaunch.done(); }
   landOrLaunch.go(); }
-landOrLaunch.done = function () { const S = R.surf.S; { const b = S.body; R.surf.exit(); surfUI(null); const c = R.bpos[b.id]; R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); R.vel.set(0, 0, 0); toast('🚀 Back in orbit around <b>' + b.n + '</b>'); R.rings.add(R.ship.position, 0xffd27a, 8, .8, R.cam.position); } };
+landOrLaunch.done = function () { const S = R.surf.S; { const b = S.body; R.surf.exit(); surfUI(null); const c = R.bpos[b.id]; R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); R.vel.set(0, 0, 0); toast('🚀 Back in orbit around <b>' + b.n + '</b>'); say('Orbit achieved around ' + b.n + '.'); R.rings.add(R.ship.position, 0xffd27a, 8, .8, R.cam.position); } };
 landOrLaunch.go = function () {
   const b = nearBody(); if (!b) return; const kind = DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null; if (!kind) return; R.ap = null; R.vel.set(0, 0, 0);
   if (kind === 'land' && SITES[b.id] && !R.site) { sitePicker(b); return; }
@@ -540,7 +543,7 @@ landOrLaunch.go = function () {
 function startEntry(b, kind, st) { const W = WORLD[b.id], air = kind === 'dive' || !!(W && W.air && W.air !== 'None'), c = R.bpos[b.id].clone(), dir = R.ship.position.clone().sub(c).normalize();
   R.entry = { t: 0, T: air ? 3.4 : 2.6, b, kind, st, air, c, dir, r0: Math.max(R.ship.position.distanceTo(c), b.r + 6) }; R.ap = null; R.vel.set(0, 0, 0); R.root.classList.add('cine');
   let ov = R.root.querySelector('#aHeat'); if (!ov) { ov = document.createElement('div'); ov.id = 'aHeat'; R.root.appendChild(ov); } ov.style.opacity = 0;
-  toast(air ? `🔥 Entering the atmosphere of <b>${b.n}</b>` : `🛬 Powered descent to <b>${b.n}</b>`, 2200); sfx(kind === 'dive' ? 'whoosh' : air ? 'burst' : 'land'); }
+  toast(air ? `🔥 Entering the atmosphere of <b>${b.n}</b>` : `🛬 Powered descent to <b>${b.n}</b>`, 2200); say(kind === 'dive' ? 'Entering the clouds of ' + b.n + '. Hold on.' : air ? 'Entry interface. Heat shield is taking the load.' : 'Beginning powered descent to ' + b.n + '.', 1); sfx(kind === 'dive' ? 'whoosh' : air ? 'burst' : 'land'); }
 function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || SHIPS[0]).sz; C.t += dt; R.t += dt; const k = Math.min(1, C.t / C.T), e = k * k * (3 - 2 * k);
   const alt = C.b.r * 1.012 + (C.r0 - C.b.r * 1.012) * (1 - e); ship.position.copy(C.c).addScaledVector(C.dir, alt); ship.visible = true; ship.lookAt(tmpV.copy(ship.position).addScaledVector(C.dir, 10)); ship.rotateZ(Math.sin(C.t * 2.3) * .08);
   const heat = C.air ? Math.sin(Math.min(1, k * 1.15) * Math.PI) : 0, nose = new THREE.Vector3().copy(ship.position).addScaledVector(C.dir, -sz * 1.1);
@@ -552,7 +555,12 @@ function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || S
   R.cam.lookAt(tmpV.copy(ship.position).lerp(C.c, .02)); R.cam.fov += ((56 - heat * 6) - R.cam.fov) * Math.min(1, dt * 3); R.cam.updateProjectionMatrix();
   AUD.set({ eng: C.air ? .2 : .7, boost: 0, wind: C.air ? Math.min(1, heat * 1.2) : 0, dt }); const ov = R.root.querySelector('#aHeat'); ov.style.opacity = Math.min(1, (C.air ? heat * .85 : 0) + (k > .86 ? (k - .86) / .14 : 0)); ov.classList.toggle('w', k > .86);
   for (const e2 of R.objs) R.placeObj(e2, R.t); updatePlanetUniforms(R.PL, R.bpos.sun); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
-  if (k >= 1) { const { b, kind, st } = C; R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
+  if (C.air && heat > .92 && !C.pk) { C.pk = 1; say('Peak heating.'); }
+  if (k >= 1) { const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
+/* ---------------- mission-control voice callouts (speech synthesis behind a radio chirp) ---------------- */
+let VQ = 0; function say(text, prio) { if (!SET.voice || !window.speechSynthesis) return; const now = Date.now(); if (!prio && now < VQ) return; VQ = now + 2500;
+  try { const a = typeof ac === 'function' ? ac() : null; if (a && typeof BUS !== 'undefined' && BUS) { const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = 'square'; o.frequency.setValueAtTime(1850, t); o.frequency.setValueAtTime(1400, t + .05); g.gain.setValueAtTime(.025, t); g.gain.exponentialRampToValueAtTime(.0001, t + .11); o.connect(g); g.connect(BUS.sfx || a.destination); o.start(t); o.stop(t + .12); } } catch (e) {}
+  try { const u = new SpeechSynthesisUtterance(text), vs = speechSynthesis.getVoices(), v = vs.find(x => /en-US/i.test(x.lang) && /male|david|guy|daniel|alex/i.test(x.name)) || vs.find(x => /^en/i.test(x.lang)); if (v) u.voice = v; u.lang = 'en-US'; u.rate = 1.04; u.pitch = .85; u.volume = .9; if (prio) speechSynthesis.cancel(); setTimeout(() => speechSynthesis.speak(u), 140); } catch (e) {} }
 /* ---------------- real-world scale: show true sizes and altitudes ---------------- */
 // real radii (km); game distances are compressed, so altitude is shown in true km using the body's real radius
 const RKM = { sun: 696340, mercury: 2440, venus: 6052, earth: 6371, moon: 1737, mars: 3390, jupiter: 69911, saturn: 58232, uranus: 25362, neptune: 24622, pluto: 1188, ceres: 470, vesta: 263, phobos: 11, deimos: 6, io: 1822, europa: 1561, ganymede: 2634, callisto: 2410, titan: 2575, enceladus: 252, mimas: 198, tethys: 531, dione: 561, rhea: 764, iapetus: 735, miranda: 236, ariel: 579, umbriel: 585, titania: 789, oberon: 761, triton: 1353, charon: 606 };
@@ -577,7 +585,7 @@ function stepIntro(dt) { const I = R.intro; I.t += dt; R.t += dt; const k = Math
 /* ---------------- demo tour: flies itself through the best moments (any input takes control back) ---------------- */
 const DEMO = { on: false };
 const wait = ms => new Promise(r => setTimeout(r, ms));
-async function demoTour() { if (DEMO.on) { demoStop(); return; } DEMO.on = true; R.root.classList.add('demo'); toast('🎬 Demo tour · touch the joystick or any key to take control', 3000);
+async function demoTour() { if (DEMO.on) { demoStop(); return; } DEMO.on = true; R.root.classList.add('demo'); say('Demo tour starting. Sit back and enjoy the ride.', 1); toast('🎬 Demo tour · touch the joystick or any key to take control', 3000);
   const arrive = async (max = 40000) => { const t0 = Date.now(); while (DEMO.on && R.ap && Date.now() - t0 < max) await wait(250); };
   const showcase = async id => { if (!DEMO.on) return; goto(id); await arrive(); if (!DEMO.on) return; const e = R.objs.find(x => x.o.id === id); if (e) { R.scanning = { e, t: 0 }; sfx('beep'); await wait(1600); const p = R.root.querySelector('.pnl'); await wait(3800); if (p && p.isConnected) p.remove(); } };
   try {
@@ -644,12 +652,13 @@ function settings() { const p = document.createElement('div'); p.className = 'pn
   <h4 class="sh">FRAME RATE</h4><div class="seg">${[30, 45, 60].map(v => opt('cap', v, v + ' FPS')).join('')}</div>
   <h4 class="sh">RENDER RESOLUTION · <span id="rsV">${SET.scale}%</span></h4><input type="range" id="rs" min="50" max="100" step="5" value="${SET.scale}" style="width:100%">
   <h4 class="sh">SHOW FPS COUNTER</h4><div class="seg">${opt('fps', 0, 'Off')}${opt('fps', 1, 'On')}</div>
+  <h4 class="sh">MISSION CONTROL VOICE</h4><div class="seg">${opt('voice', 0, 'Off')}${opt('voice', 1, 'On')}</div>
   <div class="mt" style="margin-top:10px">${PRE().n}: up to ${(PRE().tris / 1e6).toFixed(1)} M full-detail triangles and ${PRE().tex} MB of model textures at once. Everything farther away uses light versions.</div>
   <div class="row"><button class="pr" id="stX">Done</button></div></div>`;
   R.root.appendChild(p); const save2 = () => P('adv_set', SET);
   p.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { setGfx(b.dataset.g); p.remove(); settings(); });
   p.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { SET.cap = +b.dataset.cap; save2(); p.remove(); settings(); });
-  p.querySelectorAll('[data-fps]').forEach(b => b.onclick = () => { SET.fps = +b.dataset.fps; save2(); p.remove(); settings(); });
+  p.querySelectorAll('[data-fps]').forEach(b => b.onclick = () => { SET.fps = +b.dataset.fps; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-voice]').forEach(b => b.onclick = () => { SET.voice = +b.dataset.voice; save2(); p.remove(); settings(); if (SET.voice) say('Voice callouts on.', 1); });
   p.querySelector('#rs').oninput = e => { SET.scale = +e.target.value; p.querySelector('#rsV').textContent = SET.scale + '%'; }; p.querySelector('#rs').onchange = () => { save2(); DR.s = 1; R.ren.setPixelRatio(dprCap()); resize(); };
   p.querySelector('#stX').onclick = () => p.remove(); }
 function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last < 1000 / SET.cap - 3) { requestAnimationFrame(loop); return; } const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); fpsUI(dt); R.ren.info.reset(); R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;

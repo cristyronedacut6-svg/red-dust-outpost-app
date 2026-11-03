@@ -56,7 +56,7 @@ export const CineShader = { uniforms: { tDiffuse: { value: null }, time: { value
     c *= 1. - vig * smoothstep(.12, .75, r2 * 2.); c += (h(vUv * 913.) - .5) * grain; gl_FragColor = vec4(max(c, 0.), 1.); }` };
 
 // scattered rocks: three lumpy rock shapes, instanced in the hundreds, following the terrain height
-function rockGeo(seed) { const g = new THREE.IcosahedronGeometry(1, 3), p = g.attributes.position, v = new THREE.Vector3();
+export function rockGeo(seed) { const g = new THREE.IcosahedronGeometry(1, 3), p = g.attributes.position, v = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = Math.sin(v.x * 3.1 + seed) * Math.cos(v.y * 2.7 + seed * 2) * .22 + Math.sin(v.z * 5.3 + seed * 3) * .1 + Math.sin((v.x + v.z) * 9 + seed) * .04; v.multiplyScalar(1 + n); v.y *= .62; p.setXYZ(i, v.x, v.y, v.z); }
   g.computeVertexNormals(); return g; }
 export function scatterRocks(scene, H, color, count, area, avoid) { const mat = new THREE.MeshStandardMaterial({ color, roughness: .93, metalness: .02, flatShading: false }), out = [], m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), p = new THREE.Vector3();

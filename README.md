@@ -580,3 +580,17 @@ On phones, the game screen has been tidied so you can see the action and know wh
 
   Touching the joystick or pressing any key hands control back.
 - **Cleaner sky:** the "unknown signal" markers are smaller, shrink with distance, and hide once a model is shown, so space looks less cluttered.
+
+## v62 — Realism pass 3: mission control, asteroid belt, star field
+
+- **🎙 Mission-control voice callouts** use the device's speech voice behind a radio chirp. You hear:
+  - "Arriving at …"
+  - "New object identified …"
+  - "Entry interface. Heat shield is taking the load." and "Peak heating."
+  - "Touchdown. Welcome to Gale Crater."
+  - "Main engine start. And lift-off!" and "Orbit achieved."
+  - "Demo tour starting."
+
+  Turn it on or off in ⚙ Settings, under Mission Control Voice.
+- **☄️ Real-looking asteroid belt:** up to 2,100 lumpy, irregular asteroids in three rock shapes, with mixed sizes (some large ones), stony brown-grey colours and a ragged thickness. The count scales with the graphics preset.
+- **✨ Star field:** a new star shader keeps the black between stars truly dark and pushes the brightest stars past white, so they glow and twinkle through the bloom like a real night sky.
