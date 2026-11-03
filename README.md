@@ -615,3 +615,17 @@ On phones, the game screen has been tidied so you can see the action and know wh
 - **🌊 Ocean at Kennedy Space Center:** four layers of moving waves reflect the sky (stronger at grazing angles, like real water), with sun glitter on the waves, fading into the haze at the horizon.
 - **🌪 Dust devils on Mars:** three swirling dust columns wander across the plains.
 - **🐛 Fix for the black square:** the flight-HUD target bracket was picking up a style from the main game that gave it a dark filled background. It showed up as a black square that flickered as targets changed. The HUD classes are renamed, so the bracket is only corner marks now. The HUD is also hidden on planet surfaces.
+
+## v65 — Astronaut fix + realism passes 6 and 7: ground detail and footprints
+
+- **🐛 Astronaut half in the ground (fixed):** the walking bounce reset the model's height every frame and cancelled the offset that keeps its feet on the ground. The model is now wrapped in its own group, so the bounce moves the wrapper instead. The stand-in capsule had the same fix.
+- **Realism pass 6: the ground.**
+  - Steep slopes turn rocky and darker.
+  - A seamless regolith normal map adds bumps under the sunlight: periodic ripples, about 420 stamped pebbles and fine grit.
+  - The large-scale brightness varies, so the ground never looks tiled.
+  - A ring of ground beyond the edge means the world never just ends; the haze hides the seam.
+  - Earth, Titan and Venus have a drifting cloud layer overhead that follows the day/night colours.
+- **Realism pass 7: astronauts.**
+  - **Bootprints:** each step leaves a print made from NASA's real Apollo 11 bootprint photo (AS11-40-5878, from NASA 3D Resources). Prints alternate left and right, follow your heading, and the last 220 stay on the ground. They appear on every world except grassy Earth.
+  - **Low-gravity walk:** a slower, bouncier gait on the Moon and Mars, scaled by each world's real gravity.
+  - **Helmet lamp:** a spotlight on the helmet turns on by itself as night falls.
