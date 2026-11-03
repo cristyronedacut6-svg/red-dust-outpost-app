@@ -231,13 +231,19 @@ function css() {
 @media (max-width:760px){#adv #aTop{flex-wrap:wrap;justify-content:flex-end;max-width:66vw;gap:4px}#adv #aTop .ab{padding:6px 8px;font-size:11px}}
 #adv #aFps{position:absolute;left:calc(10px + env(safe-area-inset-left));bottom:calc(6px + env(safe-area-inset-bottom));font:700 10px ui-monospace,monospace;color:#9dff9d;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:6px;display:none;pointer-events:none;z-index:4}
 #adv .seg{display:flex;gap:6px;flex-wrap:wrap}#adv .seg button.sel{border-color:#ffcf4a;background:rgba(255,207,74,.18)}#adv h4.sh{margin:12px 0 6px;font-size:10px;letter-spacing:.14em;color:#9fb3c8}
+#adv #aTitle{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;pointer-events:auto;transition:opacity 1.2s;opacity:0;background:linear-gradient(transparent 70%,rgba(0,0,0,.35))}#adv #aTitle.on{opacity:1}#adv #aTitle.off{opacity:0;pointer-events:none}
+#adv #aTitle .k{font:700 11px var(--disp,system-ui);letter-spacing:.5em;color:#cfe9ff;opacity:.85;animation:tIn 2s ease both}#adv #aTitle h1{margin:10px 0 6px;font:900 clamp(30px,7vw,72px)/1 var(--disp,system-ui);letter-spacing:.12em;text-shadow:0 0 30px rgba(125,249,255,.45),0 4px 20px #000;animation:tIn 2.4s .4s ease both}
+#adv #aTitle .s{font:700 clamp(11px,1.8vw,15px) var(--disp,system-ui);letter-spacing:.45em;color:#ffcf4a;animation:tIn 2s 1s ease both}#adv #aTitle .m{position:absolute;bottom:12vh;font:600 11px var(--disp,system-ui);letter-spacing:.12em;opacity:.6;animation:tIn 2s 2s ease both}
+@keyframes tIn{from{opacity:0;transform:translateY(10px);letter-spacing:.9em}to{opacity:1}}
+#adv.intro::before,#adv.intro::after{content:'';position:absolute;left:0;right:0;height:10vh;background:#000;z-index:8;pointer-events:none}#adv.intro::before{top:0}#adv.intro::after{bottom:0}
+#adv.demo #aDemo{background:#ffcf4a;color:#1a1200}
 @media (hover:hover) and (pointer:fine){#adv #aJoy,#adv #aThr,#adv #aBst{display:none}#adv #aScn{right:20px;bottom:20px}}`; document.head.appendChild(s);
 }
 
 /* ---------------- build the scene ---------------- */
 function build() {
   css(); try { MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1))); } catch (e) {} const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder); // geometry decoding runs on background threads, so loading doesn't stutter
-  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aCam" title="Camera (V)">🎥</button><button class="ab" id="aPhoto" title="Photo mode (P)">📷</button><button class="ab" id="aX">✕ Exit</button></div>
+  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aCam" title="Camera (V)">🎥</button><button class="ab" id="aPhoto" title="Photo mode (P)">📷</button><button class="ab" id="aDemo" title="Demo tour">🎬 Demo</button><button class="ab" id="aX">✕ Exit</button></div>
   <div id="labs"></div><div id="aJoy"><div class="k"><i></i></div></div><button class="rbtn" id="aBst">BOOST</button><button class="rbtn" id="aThr">🚀<br>THRUST</button><button class="rbtn" id="aScn">📡<br>SCAN</button><button class="ab" id="aLand"></button><button class="ab" id="aFly"></button><div id="aScan">SCANNING…</div><div id="aSpd"></div><div id="aToast"></div><div id="aLd"></div><div id="aFps"></div><div id="aHud"><div class="tb"><span></span><i></i><i></i><i></i><i></i></div><div class="pg">◎</div><div class="ck"><div class="cp top"></div><div class="cp l"></div><div class="cp r"></div><div class="cp dash"><div class="mfd" id="mfd1"></div><div class="mfd" id="mfd2"></div><div class="mfd" id="mfd3"></div></div><svg viewBox="0 0 200 120"><path d="M70 60h22M108 60h22M100 52v-10M100 68v10" stroke="#7df9ff" stroke-width="2" fill="none"/><circle cx="100" cy="60" r="3" fill="#7df9ff"/></svg></div></div><div id="aPh">📷 PHOTO MODE · tap to exit</div>`;
   document.body.appendChild(root);
   const cv = root.querySelector('canvas'), mob = matchMedia('(pointer:coarse)').matches;
@@ -286,7 +292,7 @@ function build() {
 
   const mk = new THREE.SpriteMaterial({ map: glowTex('rgba(255,255,255,1)', 'rgba(255,207,74,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false });
   const mkS = new THREE.SpriteMaterial({ map: glowTex('rgba(255,255,255,1)', 'rgba(125,249,255,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false });
-  const objs = OBJS.filter(o => !o.land).map(o => { const g = new THREE.Group(); scn.add(g); const sp = new THREE.Sprite(ST.scanned.has(o.id) ? mkS : mk); sp.scale.set(.035, .035, 1); g.add(sp); return { o, g, sp, model: null, loading: false }; });
+  const objs = OBJS.filter(o => !o.land).map(o => { const g = new THREE.Group(); scn.add(g); const sp = new THREE.Sprite(ST.scanned.has(o.id) ? mkS : mk); sp.scale.set(.016, .016, 1); g.add(sp); return { o, g, sp, model: null, loading: false }; });
   function placeObj(e, t) { const o = e.o, c = o.rel ? (R.byId[o.rel] ? R.byId[o.rel].g.position : bpos[o.at]) : bpos[o.at], B = BI[o.at];
     if (o.surf) { const la = o.surf[0] * Math.PI / 180, lo = o.surf[1] * Math.PI / 180 + t * .02, n = new THREE.Vector3(Math.cos(la) * Math.cos(lo), Math.sin(la), Math.cos(la) * Math.sin(lo)); e.g.position.copy(c).addScaledVector(n, B.r + o.sz * .45 + (o.hov ? o.hov + Math.sin(t * 2) * .3 : 0)); e.g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n); e.n = n; }
     else if (o.orb) { const [r, inc, ph] = o.orb, a = ph + t * (3 / Math.max(6, r)) * .6; e.g.position.set(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r * Math.sin(inc), c.z + Math.sin(a) * r * Math.cos(inc)); e.g.rotation.y = -a; }
@@ -351,21 +357,21 @@ function lookAtYP(p) { const d = p.clone().sub(R.ship.position).normalize(); R.y
 function controls() {
   const $ = s => R.root.querySelector(s), joy = $('#aJoy'), knob = joy.querySelector('.k'), ki = knob.querySelector('i');
   let jid = null, jx = 0, jy = 0;
-  joy.addEventListener('pointerdown', e => { jid = e.pointerId; jx = e.clientX; jy = e.clientY; knob.style.display = 'block'; knob.style.left = jx + 'px'; knob.style.top = (jy - joy.getBoundingClientRect().top) + 'px'; joy.setPointerCapture(e.pointerId); R.ap = null; });
+  joy.addEventListener('pointerdown', e => { if (DEMO.on) demoStop(); jid = e.pointerId; jx = e.clientX; jy = e.clientY; knob.style.display = 'block'; knob.style.left = jx + 'px'; knob.style.top = (jy - joy.getBoundingClientRect().top) + 'px'; joy.setPointerCapture(e.pointerId); R.ap = null; });
   joy.addEventListener('pointermove', e => { if (e.pointerId !== jid) return; let dx = e.clientX - jx, dy = e.clientY - jy; const l = Math.hypot(dx, dy), m = 50; if (l > m) { dx *= m / l; dy *= m / l; } R.joy.x = dx / m; R.joy.y = dy / m; ki.style.transform = `translate(${dx}px,${dy}px)`; });
   const jend = e => { if (e.pointerId !== jid) return; jid = null; R.joy.x = R.joy.y = 0; knob.style.display = 'none'; ki.style.transform = ''; };
   joy.addEventListener('pointerup', jend); joy.addEventListener('pointercancel', jend);
   const hold = (id, k) => { const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); R[k] = 1; if (k === 'thr') R.ap = null; }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(v => b.addEventListener(v, () => R[k] = 0)); };
   hold('#aThr', 'thr'); hold('#aBst', 'bst');
   $('#aScn').addEventListener('pointerdown', e => { e.preventDefault(); scan(); });
-  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aCam').onclick = () => camToggle(); $('#aPhoto').onclick = () => photoToggle(); $('#aPh').onclick = () => photoToggle(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
+  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aCam').onclick = () => camToggle(); $('#aDemo').onclick = () => demoTour(); $('#aPhoto').onclick = () => photoToggle(); $('#aPh').onclick = () => photoToggle(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
   // mouse look on desktop
   let drag = null; R.ren.domElement.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
   addEventListener('pointermove', e => { if (!drag || !ST.on || e.pointerId !== drag.id) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
     if (R.surf && R.surf.S.on) { R.surf.S.camYaw -= dx * .006; R.surf.S.camPitch = THREE.MathUtils.clamp(R.surf.S.camPitch + dy * .004, .05, 1.2); return; }
     R.yaw -= dx * .004; R.pitch = THREE.MathUtils.clamp(R.pitch - dy * .004, -1.4, 1.4); R.ap = null; });
   addEventListener('pointerup', e => { if (drag && e.pointerId === drag.id) drag = null; });
-  addEventListener('keydown', e => { if (!ST.on) return; const k = e.key.toLowerCase(); R.keys[k] = 1; if (k === 'e' || (k === ' ' && !(R.surf && R.surf.S.on))) { scan(); e.preventDefault(); } if (k === ' ' && R.surf && R.surf.S.on) e.preventDefault(); if (k === 'l') landOrLaunch(); if (k === 'm') mapPanel(); if (k === 'c') codex(); if (k === 'v' && !(R.surf && R.surf.S.on)) camToggle(); if (k === 'p' && !(R.surf && R.surf.S.on)) photoToggle(); if (k === 'h' && !(R.surf && R.surf.S.on)) hangar(); if (k === 'f' && R.surf && R.surf.S.on) flyToggle(); if (k === 'escape') { const p = R.root.querySelector('.pnl'); if (p) p.remove(); else close(); } if ('wasdqe'.includes(k) || k.startsWith('arrow')) R.ap = null; e.stopPropagation(); }, true);
+  addEventListener('keydown', e => { if (!ST.on) return; if (DEMO.on && e.key !== 'Escape') demoStop(); const k = e.key.toLowerCase(); R.keys[k] = 1; if (k === 'e' || (k === ' ' && !(R.surf && R.surf.S.on))) { scan(); e.preventDefault(); } if (k === ' ' && R.surf && R.surf.S.on) e.preventDefault(); if (k === 'l') landOrLaunch(); if (k === 'm') mapPanel(); if (k === 'c') codex(); if (k === 'v' && !(R.surf && R.surf.S.on)) camToggle(); if (k === 'p' && !(R.surf && R.surf.S.on)) photoToggle(); if (k === 'h' && !(R.surf && R.surf.S.on)) hangar(); if (k === 'f' && R.surf && R.surf.S.on) flyToggle(); if (k === 'escape') { const p = R.root.querySelector('.pnl'); if (p) p.remove(); else close(); } if ('wasdqe'.includes(k) || k.startsWith('arrow')) R.ap = null; e.stopPropagation(); }, true);
   addEventListener('keyup', e => { if (R) R.keys[e.key.toLowerCase()] = 0; }, true);
   addEventListener('resize', resize);
 }
@@ -414,7 +420,7 @@ function step(dt) {
     const showFull = !!e.model && (d < fullR * 1.8 || !e.lod), vis = d < (e.o.far ? 3000 : Math.max(260, e.o.sz * 150));
     if (e.model) { e.model.visible = vis && showFull; if (d > fullR * 3 && !e.o.far && e.lod) dropFull(e); }
     if (e.lod) { e.lod.visible = vis && !showFull; if (d > lodR * 2.2) { e.g.remove(e.lod); disposeTree(e.lod); e.lod = null; } }
-    e.sp.visible = !(e.model || e.lod) || d > e.o.sz * 6; }
+    e.sp.visible = !(e.model || e.lod) || d > e.o.sz * 40; if (e.sp.visible) { const k = d < 60 ? .02 : d < 200 ? .016 : .011; if (e.sp.scale.x !== k) e.sp.scale.set(k, k, 1); } }
   CF.sort((a, b) => a.dist - b.dist); CL.sort((a, b) => a.dist - b.dist); budget(CF); let fi = 0, li = 0; while (LQ.busy < LQ.max && (fi < CF.length || li < CL.length)) { if (li < CL.length && (fi >= CF.length || LQ.busy % 2)) R.loadModel(CL[li++], false); else R.loadModel(CF[fi++], true); }
   { let n = 0, k = 0; for (const e of R.objs) if (e.dist < (e.o.far ? 1500 : 520)) { n++; if (e.model || e.lod || e.failed >= 3) k++; } ldUI(k, n); }
   for (const b of BODIES) R.bmesh[b.id].rotation.y += dt * (b.id === 'sun' ? .02 : .05); if (R.bmesh.earth.userData.clouds) R.bmesh.earth.userData.clouds.rotation.y += dt * .012;
@@ -424,7 +430,8 @@ function step(dt) {
     if (Math.random() < .5) R.fx.emit(S2.e.g.position, tmpV.set(0, 0, 0), 0xffcf4a, 1.2, .6, 2, 3, { grow: 2 });
     if (S2.t > 1.1) { R.beam.visible = false; R.root.querySelector('#aScan').style.display = 'none'; R.scanning = null; R.rings.add(S2.e.g.position, 0x7df9ff, (S2.e.o.sz || 2) * 5, .9, R.cam.position); R.fx.emit(S2.e.g.position, tmpV.set(0, 0, 0), 0x7df9ff, 1.4, 1, 40, 18, { grow: 1.5, drag: .8 }); setTimeout(() => card(S2.e.o, true), 350); } }
   // speed + destination
-  R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
+  { const cb = BODIES.reduce((a, b) => { const d = R.bpos[b.id].distanceTo(ship.position); return d - b.r < a[1] ? [b, d - b.r, d] : a; }, [null, 1e9, 0]); R.altTxt = cb[0] && cb[1] < cb[0].r * 4 ? ' · ' + fmtKm(realAlt(cb[0], cb[2])) + ' above ' + cb[0].n : ''; }
+  R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.altTxt}${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
   updatePlanetUniforms(R.PL, R.bpos.sun); flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
   labels();
 }
@@ -442,9 +449,10 @@ function labels() {
 /* ---------------- cards, codex, map, missions ---------------- */
 function card(o, fresh) { const isNew = fresh && !ST.scanned.has(o.id);
   if (isNew) { const was = new Set(SHIPS.filter(unlocked).map(x => x.id)); ST.scanned.add(o.id); save(); reward(5, 60); sfx('chime'); const nw = SHIPS.filter(x => unlocked(x) && !was.has(x.id)); if (nw.length) setTimeout(() => toast('🛠 New ship unlocked in the Hangar: <b>' + nw.map(x => x.n).join(', ') + '</b><br><small>Tap 🛠 Hangar to fly it</small>', 4500), 1200); const e = R.objs.find(x => x.o.id === o.id); if (e) e.sp.material = R.mkS; checkMissions(); milestone(); }
+  const realTxt = o.r && RKM[o.id] ? `Real size: ${(RKM[o.id] * 2).toLocaleString()} km across${ORBIT[o.id] ? ` · ${ORBIT[o.id]} AU (${fmtKm(ORBIT[o.id] * AUKM)}) from the Sun · sunlight takes ${Math.round(ORBIT[o.id] * 499 / 60)} min to arrive` : ''}` : '';
   const loc = o.r ? (o.at ? 'Orbits ' + BI[o.at].n : 'Solar system') : o.land ? (o.land === 'earth' ? 'Kennedy Space Center, Earth' : 'On the surface of ' + BI[o.land].n) : o.far ? 'Deep sky, far beyond the solar system' : (o.surf ? 'On ' + BI[o.at].n : 'Near ' + BI[o.at].n);
   const p = document.createElement('div'); p.className = 'pnl'; p.innerHTML = `<div class="crd"><div class="ey">${o.r ? '🪐 ' : '🛰 '}${o.k.toUpperCase()}</div>${isNew ? '<div class="nw">NEW SCAN · +5 🔧 · +60 XP</div>' : ''}<h2>${o.n}</h2><canvas class="vw"></canvas>
-   <div class="mt">${[o.ag, o.yr ? 'Launched ' + o.yr : '', loc].filter(Boolean).join(' · ')}</div><ul>${o.facts.map(f => `<li>${f}</li>`).join('')}</ul>
+   <div class="mt">${[o.ag, o.yr ? 'Launched ' + o.yr : '', loc].filter(Boolean).join(' · ')}</div>${realTxt ? `<div class="mt" style="color:#7df9ff">📏 ${realTxt}</div>` : ''}<ul>${o.facts.map(f => `<li>${f}</li>`).join('')}</ul>
    ${o.r ? '' : '<div class="src">3D model: NASA 3D Resources (science.nasa.gov/3d-resources)</div>'}<div class="row"><button class="pr" id="cOk">Continue</button></div></div>`;
   R.root.appendChild(p); viewer(o, p.querySelector('.vw'), p); p.querySelector('#cOk').onclick = () => p.remove(); }
 function milestone() { const n = ST.scanned.size, got = G('adv_ms', 0), M = [[10, 30], [25, 60], [ALL.length, 150]]; M.forEach(([at, tp], i) => { if (n >= at && got <= i) { P('adv_ms', i + 1); reward(tp, 200); setTimeout(() => toast(`🏅 Codex ${at === ALL.length ? 'complete' : at + ' scans'}! +${tp} 🔧`, 3500), 600); } }); }
@@ -545,6 +553,42 @@ function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || S
   AUD.set({ eng: C.air ? .2 : .7, boost: 0, wind: C.air ? Math.min(1, heat * 1.2) : 0, dt }); const ov = R.root.querySelector('#aHeat'); ov.style.opacity = Math.min(1, (C.air ? heat * .85 : 0) + (k > .86 ? (k - .86) / .14 : 0)); ov.classList.toggle('w', k > .86);
   for (const e2 of R.objs) R.placeObj(e2, R.t); updatePlanetUniforms(R.PL, R.bpos.sun); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
   if (k >= 1) { const { b, kind, st } = C; R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
+/* ---------------- real-world scale: show true sizes and altitudes ---------------- */
+// real radii (km); game distances are compressed, so altitude is shown in true km using the body's real radius
+const RKM = { sun: 696340, mercury: 2440, venus: 6052, earth: 6371, moon: 1737, mars: 3390, jupiter: 69911, saturn: 58232, uranus: 25362, neptune: 24622, pluto: 1188, ceres: 470, vesta: 263, phobos: 11, deimos: 6, io: 1822, europa: 1561, ganymede: 2634, callisto: 2410, titan: 2575, enceladus: 252, mimas: 198, tethys: 531, dione: 561, rhea: 764, iapetus: 735, miranda: 236, ariel: 579, umbriel: 585, titania: 789, oberon: 761, triton: 1353, charon: 606 };
+const AUKM = 149597870.7, ORBIT = { mercury: .387, venus: .723, earth: 1, mars: 1.524, jupiter: 5.203, saturn: 9.537, uranus: 19.19, neptune: 30.07, pluto: 39.48, ceres: 2.77, vesta: 2.36 };
+function fmtKm(km) { return km >= 1e6 ? (km / 1e6).toFixed(2) + ' million km' : km >= 1e4 ? Math.round(km).toLocaleString() + ' km' : km >= 10 ? km.toFixed(0) + ' km' : km.toFixed(1) + ' km'; }
+function realAlt(b, d) { const r = RKM[b.id]; return r ? Math.max(0, (d - b.r) / b.r * r) : null; }
+/* ---------------- opening cinematic: a sweeping flyby that ends behind your ship ---------------- */
+function openingShot() { if (!R || R.intro) return; const e = R.bpos.earth, er = R.bmesh.earth.geometry.parameters.radius, s = R.bpos.sun.clone().sub(e).normalize(), side = new THREE.Vector3(-s.z, 0, s.x).normalize();
+  R.intro = { t: 0, T: 10, p0: e.clone().addScaledVector(s, er * 1.2).addScaledVector(side, -er * 5.5).add(new THREE.Vector3(0, er * 1.6, 0)), p1: e.clone().addScaledVector(side, er * 2.2).add(new THREE.Vector3(0, er * .35, 0)) };
+  R.root.classList.add('cine', 'intro'); let t = R.root.querySelector('#aTitle'); if (!t) { t = document.createElement('div'); t.id = 'aTitle'; R.root.appendChild(t); }
+  t.innerHTML = '<div class="k">MOON PRODUCTIONS PRESENTS</div><h1>RED DUST OUTPOST</h1><div class="s">ADVENTURE · THE GRAND TOUR</div><div class="m">Every spacecraft is a real NASA 3D model · tap to skip</div>'; t.className = 'on';
+  t.onclick = () => { if (R.intro) R.intro.t = R.intro.T; }; sfx('whoosh'); }
+function stepIntro(dt) { const I = R.intro; I.t += dt; R.t += dt; const k = Math.min(1, I.t / I.T), e = k * k * (3 - 2 * k), ship = R.ship;
+  for (const o of R.objs) R.placeObj(o, R.t); for (const b of BODIES) R.bmesh[b.id].rotation.y += dt * (b.id === 'sun' ? .02 : .05);
+  const chase = new THREE.Vector3(0, 2.4, 9).applyQuaternion(ship.quaternion).add(ship.position);
+  // first 70%: glide past Earth's terminator; last 30%: settle in behind the ship
+  const mid = I.p0.clone().lerp(I.p1, Math.min(1, e / .7)); R.cam.position.copy(k < .7 ? mid : I.p1.clone().lerp(chase, (k - .7) / .3 * ((k - .7) / .3) * (3 - 2 * (k - .7) / .3)));
+  const look = R.bpos.earth.clone().lerp(ship.position, Math.max(0, (k - .55) / .45)); R.cam.lookAt(look); R.cam.fov = 48 + 12 * e; R.cam.updateProjectionMatrix();
+  updatePlanetUniforms(R.PL, R.bpos.sun); flare(); R.fx.update(dt, R.cam);
+  const t = R.root.querySelector('#aTitle'); if (k > .78) t.className = 'off';
+  if (k >= 1) { R.intro = null; R.root.classList.remove('cine', 'intro'); t.className = 'off'; setTimeout(() => t.remove(), 900); if (!G('adv_seen', 0)) intro(); else toast('🗺 Map → pick a destination · 📡 scan signals · 🎬 Demo for a guided tour', 3500); } }
+/* ---------------- demo tour: flies itself through the best moments (any input takes control back) ---------------- */
+const DEMO = { on: false };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function demoTour() { if (DEMO.on) { demoStop(); return; } DEMO.on = true; R.root.classList.add('demo'); toast('🎬 Demo tour · touch the joystick or any key to take control', 3000);
+  const arrive = async (max = 40000) => { const t0 = Date.now(); while (DEMO.on && R.ap && Date.now() - t0 < max) await wait(250); };
+  const showcase = async id => { if (!DEMO.on) return; goto(id); await arrive(); if (!DEMO.on) return; const e = R.objs.find(x => x.o.id === id); if (e) { R.scanning = { e, t: 0 }; sfx('beep'); await wait(1600); const p = R.root.querySelector('.pnl'); await wait(3800); if (p && p.isConnected) p.remove(); } };
+  try {
+    await showcase('iss'); if (!DEMO.on) return; await showcase('hubble'); if (!DEMO.on) return;
+    CAM.mode = 'cockpit'; toast('🎥 Inside the Space Shuttle cockpit', 1800); await wait(4000); CAM.mode = 'chase'; if (!DEMO.on) return;
+    goto('mars'); await arrive(60000); if (!DEMO.on) return; R.site = (SITES.mars || []).find(s => s.id === 'gale') || null; if (R.site) await loadDEM(R.site); landOrLaunch.go(); await wait(5200); if (!DEMO.on) return;
+    toast('🔴 Gale Crater, Mars · real NASA terrain', 2500); await wait(6000); if (!DEMO.on) return; landOrLaunch(); await wait(5000); if (!DEMO.on) return;
+    CAM.photo = 1; R.root.classList.add('photo'); await wait(7000); CAM.photo = 0; R.root.classList.remove('photo');
+    toast('🏁 Demo complete · the solar system is yours', 3000);
+  } finally { demoStop(); } }
+function demoStop() { if (!DEMO.on) return; DEMO.on = false; R.root.classList.remove('demo'); R.ap = null; if (CAM.photo) { CAM.photo = 0; R.root.classList.remove('photo'); } }
 /* ---------------- camera modes, flight HUD and photo mode ---------------- */
 const CAM = { mode: 'chase', photo: 0, pa: 0 };
 function camUpdate(dt, spd) { const ship = R.ship, sz = (R.shipStat || SHIPS[0]).sz;
@@ -610,6 +654,7 @@ function settings() { const p = document.createElement('div'); p.className = 'pn
   p.querySelector('#stX').onclick = () => p.remove(); }
 function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last < 1000 / SET.cap - 3) { requestAnimationFrame(loop); return; } const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); fpsUI(dt); R.ren.info.reset(); R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
   if (sf) { if (!pnl) { if (R.surf.S.launch) { R.surf.step(dt, {}); } else surfStep(dt); draw(R.surf.S.scn); } }
+  else if (R.intro) { stepIntro(dt); draw(R.scn); }
   else if (R.entry) { stepEntry(dt); draw(R.scn); }
   else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) lb.textContent = k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase(); draw(R.scn); } }
   requestAnimationFrame(loop); }
@@ -644,7 +689,7 @@ function resPanel(done, fromGame) {
     $('#dF').onclick = () => run(full, 'full'); $('#dL').onclick = () => run(light, 'light');
   }).catch(() => { $('#dlT').textContent = 'Resources are built into this version, so no download is needed.'; $('#dlB').innerHTML = '<div class="row" style="margin-top:12px"><button class="pr" id="dGo">🚀 Launch</button></div>'; $('#dGo').onclick = () => { open.skipDL = 1; o.remove(); done && done(); }; });
 }
-function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); if (!G('adv_seen', 0)) intro(); else toast('🗺 Map → pick a destination · 📡 scan signals'); }
+function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); if (!open.shown) { open.shown = 1; openingShot(); } else if (!G('adv_seen', 0)) intro(); }
 function close() { try { AUD.stop(); } catch (e) {} ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
 window.ADV = { open, close, goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R };
 export { open, close };

@@ -562,3 +562,21 @@ On phones, the game screen has been tidied so you can see the action and know wh
   - wind and plasma roar during atmospheric entry and when flying aircraft
   - a quiet ambient space drone with reverb
   - soft cockpit beeps in cockpit view
+
+## v61 — Realism pass 2: opening cinematic, real-world scale, demo tour
+
+- **🎬 Opening cinematic:** Adventure Mode opens with a 10-second flyby. The camera glides past Earth's day/night line in cinematic letterbox while "MOON PRODUCTIONS PRESENTS · RED DUST OUTPOST · ADVENTURE · THE GRAND TOUR" fades in, then it settles in behind your ship. Tap to skip.
+- **📏 Real-world scale:**
+  - The speed bar shows your true altitude in km above the nearest planet or moon, using its real radius.
+  - Planet and moon cards show the real diameter, the distance from the Sun in AU and km, and how many minutes sunlight takes to arrive.
+  - Real radii are included for 33 bodies.
+- **🎬 Demo tour button:** flies itself through a showcase for judges:
+  1. autopilot to the ISS and scan it
+  2. autopilot to Hubble and scan it
+  3. cockpit view
+  4. autopilot to Mars, atmospheric entry, and landing on real NASA terrain at Gale Crater
+  5. lift-off
+  6. photo-mode orbit of your ship
+
+  Touching the joystick or pressing any key hands control back.
+- **Cleaner sky:** the "unknown signal" markers are smaller, shrink with distance, and hide once a model is shown, so space looks less cluttered.
