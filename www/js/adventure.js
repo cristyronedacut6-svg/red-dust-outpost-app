@@ -187,6 +187,8 @@ function css() {
 #adv .ab{position:absolute;border:1px solid rgba(255,255,255,.25);background:rgba(10,14,30,.65);color:#fff;border-radius:12px;font:700 12px var(--disp,system-ui);padding:7px 11px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 #adv #aTop{position:absolute;top:calc(8px + env(safe-area-inset-top));right:calc(8px + env(safe-area-inset-right));display:flex;gap:6px}#adv #aTop .ab{position:static}
 #adv #aMis{position:absolute;left:calc(10px + env(safe-area-inset-left));top:calc(8px + env(safe-area-inset-top));max-width:min(360px,52vw);background:rgba(10,14,30,.6);border:1px solid rgba(125,249,255,.35);border-radius:12px;padding:6px 10px;font-size:12px;line-height:1.3}
+#adv .cop{position:absolute;left:0;top:0;display:none;margin:-34px 0 0 -60px;width:120px;text-align:center;font:800 11px var(--disp,system-ui);color:#9dff9d;text-shadow:0 1px 3px #000;white-space:nowrap;pointer-events:none}#adv .cop::after{content:'';display:block;margin:4px auto 0;width:14px;height:14px;border:2px solid #66ff88;border-radius:50%;box-shadow:0 0 8px #66ff88}
+#adv #aMis{cursor:pointer;pointer-events:auto}#adv #aMis .dly{display:block;font-style:normal;margin-top:4px;padding-top:4px;border-top:1px solid rgba(125,249,255,.25);color:#ffcf4a;font-size:11px}
 #adv #aMis b{display:block;font-size:9.5px;letter-spacing:.14em;color:#7df9ff}
 #adv #aSpd{position:absolute;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);font:700 11px var(--disp,system-ui);color:#cfe6ff;background:rgba(10,14,30,.55);padding:4px 10px;border-radius:10px;white-space:nowrap}
 #adv .lab{position:absolute;transform:translate(-50%,-130%);font:700 11px var(--disp,system-ui);color:#fff;text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;pointer-events:none}
@@ -238,13 +240,21 @@ function css() {
 #adv.intro::before,#adv.intro::after{content:'';position:absolute;left:0;right:0;height:10vh;background:#000;z-index:8;pointer-events:none}#adv.intro::before{top:0}#adv.intro::after{bottom:0}
 #adv.demo #aDemo{background:#ffcf4a;color:#1a1200}
 #adv.glitch canvas{filter:hue-rotate(80deg) saturate(2) contrast(1.3);animation:gl .12s steps(2) 6}@keyframes gl{50%{transform:translate(4px,-2px) skewX(3deg)}}
+#adv .trophy{position:absolute;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translate(-50%,-20px);opacity:0;transition:all .45s cubic-bezier(.2,1.4,.4,1);z-index:9;display:flex;gap:10px;align-items:center;background:linear-gradient(180deg,#2a2208,#130f04);border:1.5px solid #ffcf4a;border-radius:14px;padding:8px 16px 8px 10px;box-shadow:0 0 30px rgba(255,207,74,.35);pointer-events:none}
+#adv .trophy.on{opacity:1;transform:translate(-50%,0)}#adv .trophy span{font-size:30px}#adv .trophy small{display:block;font:800 9px var(--disp,system-ui);letter-spacing:.18em;color:#ffcf4a}#adv .trophy b{display:block;font-size:15px}#adv .trophy i{display:block;font-style:normal;font-size:11px;opacity:.8}
+#adv .tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}#adv .tc{border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;font-size:11px;opacity:.5;display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center}#adv .tc span{font-size:22px;grid-row:span 2}#adv .tc small{opacity:.8}#adv .tc.g{opacity:1;border-color:#ffcf4a;background:rgba(255,207,74,.08)}
+#adv .bar1{height:8px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden;margin:4px 0 8px}#adv .bar1 i{display:block;height:100%;background:linear-gradient(90deg,#ffcf4a,#ff9a3a)}
+#adv #aEnd{position:absolute;inset:0;z-index:10;background:radial-gradient(ellipse at 50% 45%,#1b0b33,#04020a 70%);display:flex;align-items:center;justify-content:center;text-align:center;color:#f2e8ff;padding:24px}
+#adv #aEnd .eL{max-width:720px;opacity:0;transform:translateY(12px);transition:all 1.4s}#adv #aEnd .eL.in{opacity:1;transform:none}#adv #aEnd .eL p{font:600 clamp(17px,2.6vw,26px)/1.5 var(--disp,system-ui);margin:0 0 12px}#adv #aEnd .eL p.b{color:#c9a0ff}
+#adv #aEnd .roll{animation:roll 2.4s ease both}#adv #aEnd .roll h1{font:900 clamp(30px,6vw,64px) var(--disp,system-ui);letter-spacing:.12em;margin:0;text-shadow:0 0 30px rgba(176,112,255,.6)}#adv #aEnd .roll h2{font:800 clamp(20px,3.6vw,34px) var(--disp,system-ui);color:#ffcf4a;letter-spacing:.2em;margin:4px 0}#adv #aEnd .roll p{margin:4px 0;opacity:.85;letter-spacing:.08em}
+#adv #aEnd button{margin-top:18px;border:1px solid #c9a0ff;background:#7a3fd0;color:#fff;border-radius:12px;padding:12px 22px;font:800 15px var(--disp,system-ui)}@keyframes roll{from{opacity:0;transform:translateY(30px)}to{opacity:1}}
 @media (hover:hover) and (pointer:fine){#adv #aJoy,#adv #aThr,#adv #aBst{display:none}#adv #aScn{right:20px;bottom:20px}}`; document.head.appendChild(s);
 }
 
 /* ---------------- build the scene ---------------- */
 function build() {
   css(); try { MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1))); } catch (e) {} const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder); // geometry decoding runs on background threads, so loading doesn't stutter
-  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aCam" title="Camera (V)">🎥</button><button class="ab" id="aPhoto" title="Photo mode (P)">📷</button><button class="ab" id="aDemo" title="Demo tour">🎬 Demo</button><button class="ab" id="aX">✕ Exit</button></div>
+  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aTro" title="Trophies">🏆</button><button class="ab" id="aCo" title="Co-op: fly with a friend">👥</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aCam" title="Camera (V)">🎥</button><button class="ab" id="aPhoto" title="Photo mode (P)">📷</button><button class="ab" id="aDemo" title="Demo tour">🎬 Demo</button><button class="ab" id="aX">✕ Exit</button></div>
   <div id="labs"></div><div id="aJoy"><div class="k"><i></i></div></div><button class="rbtn" id="aBst">BOOST</button><button class="rbtn" id="aThr">🚀<br>THRUST</button><button class="rbtn" id="aScn">📡<br>SCAN</button><button class="ab" id="aLand"></button><button class="ab" id="aFly"></button><div id="aScan">SCANNING…</div><div id="aSpd"></div><div id="aToast"></div><div id="aLd"></div><div id="aFps"></div><div id="aHud"><div class="atb"><span></span><i></i><i></i><i></i><i></i></div><div class="apg">◎</div><div class="ack"><div class="cp top"></div><div class="cp l"></div><div class="cp r"></div><div class="cp dash"><div class="mfd" id="mfd1"></div><div class="mfd" id="mfd2"></div><div class="mfd" id="mfd3"></div></div><svg viewBox="0 0 200 120"><path d="M70 60h22M108 60h22M100 52v-10M100 68v10" stroke="#7df9ff" stroke-width="2" fill="none"/><circle cx="100" cy="60" r="3" fill="#7df9ff"/></svg></div></div><div id="aPh">📷 PHOTO MODE · tap to exit</div>`;
   document.body.appendChild(root);
   const cv = root.querySelector('canvas'), mob = matchMedia('(pointer:coarse)').matches;
@@ -299,7 +309,8 @@ function build() {
       g3.putImageData(id3, 0, 0); const ctex = new THREE.CanvasTexture(cv3); ctex.colorSpace = THREE.SRGBColorSpace; const cmat = cloudMaterial(ctex); PL.push({ mat: cmat }); const cl = new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.012, 64, 48), cmat); m.add(cl); m.userData.clouds = cl; }
     if (b.rings) { const cv2 = document.createElement('canvas'); cv2.width = 256; cv2.height = 4; const g2 = cv2.getContext('2d'); for (let i = 0; i < 256; i++) { const a = (i > 30 && i < 245) ? (.25 + .6 * vnoise(i * .15, 3)) * (i > 150 && i < 165 ? .1 : 1) : 0; g2.fillStyle = `rgba(230,215,180,${a})`; g2.fillRect(i, 0, 1, 4); }
       const rg = new THREE.RingGeometry(b.r * 1.25, b.r * 2.3, 128, 1), pos = rg.attributes.position, uv = rg.attributes.uv, v = new THREE.Vector3(); for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); uv.setXY(i, (v.length() - b.r * 1.25) / (b.r * 1.05), .5); }
-      const t2 = new THREE.CanvasTexture(cv2); t2.colorSpace = THREE.SRGBColorSpace; const rmat = ringMaterial(t2, b.r); PL.push({ mat: rmat, mesh: m }); const ring = new THREE.Mesh(rg, rmat); ring.rotation.x = -Math.PI / 2 + .45; m.add(ring); } });
+      const t2 = new THREE.CanvasTexture(cv2); t2.colorSpace = THREE.SRGBColorSpace; const rmat = ringMaterial(t2, b.r); PL.push({ mat: rmat, mesh: m }); const ring = new THREE.Mesh(rg, rmat); ring.rotation.x = -Math.PI / 2 + .45; m.add(ring);
+      if (m.material && m.material.uniforms && m.material.uniforms.hasRing) { const u = m.material.uniforms; u.ringMap.value = t2; u.hasRing.value = 1; u.ringR.value.set(b.r * 1.25, b.r * 2.3); PL.push({ mat: m.material, ring }); } } });
   // asteroid belt
   { const n = Math.round((mob ? 600 : 1500) * (GFX === 'low' ? .4 : GFX === 'max' ? 1.4 : 1) / 3), mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .96, metalness: .02 }), q = new THREE.Object3D(), c = new THREE.Color();
     for (let k = 0; k < 3; k++) { const im = new THREE.InstancedMesh(rockGeo(k * 2.3 + .7), mat, n);
@@ -357,7 +368,7 @@ function build() {
       return site.items.filter(i => OI[i]).map((i, k) => { const base = (SURF[id] || []).find(x => x.id === i); const a = k * 1.3 + .4, d = 16 + k * 7; const it = base && site.proc ? { ...base } : { id: i, at: [Math.cos(a) * d, Math.sin(a) * d - 14], s: SZ[i] || 3, rot: k }; if (i === 'm2020-wheel') it.at = [10, -12]; if (i === 'm2020-tube') it.at = [8, -16];
         const o = OI[i]; return { ...it, o: site.lm && i === 'lm' ? { ...o, n: 'Lunar Module ' + site.lm + ' (' + site.n.split(' ·')[0] + ')' } : o }; }); },
     sampleFacts: (id, site) => [...(site && site.facts ? site.facts : []), ...(SAMPLE_FACTS[id] || []), ...(BI[id] ? BI[id].facts : [])],
-    ui: (b, W, mode) => surfUI(b, W, mode), ship: () => R.shipStat || SHIPS[0], fixMat, craftUI: (on, cr) => { const b = R.root.querySelector('#aFly'); b.innerHTML = on ? '🧑‍🚀 LAND & WALK' : (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); R.root.querySelector('#aThr').innerHTML = on ? (cr.heli ? '⬆<br>CLIMB' : '⬆<br>PULL UP') : '⤒<br>JUMP'; R.root.querySelector('#aBst').innerHTML = on ? (cr.heli ? 'FAST' : 'THROTTLE') : 'RUN'; } });
+    ui: (b, W, mode) => surfUI(b, W, mode), trophy, ship: () => R.shipStat || SHIPS[0], fixMat, craftUI: (on, cr) => { const b = R.root.querySelector('#aFly'); b.innerHTML = on ? '🧑‍🚀 LAND & WALK' : (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); R.root.querySelector('#aThr').innerHTML = on ? (cr.heli ? '⬆<br>CLIMB' : '⬆<br>PULL UP') : '⤒<br>JUMP'; R.root.querySelector('#aBst').innerHTML = on ? (cr.heli ? 'FAST' : 'THROTTLE') : 'RUN'; } });
   root.querySelector('#aLand').onclick = () => landOrLaunch(); root.querySelector('#aQ').textContent = '⚙ ' + PRE().n; root.querySelector('#aQ').onclick = () => settings();
 }
 let R_HDR = true; const dprCap = () => Math.min(devicePixelRatio || 1, PRE().dpr) * SET.scale / 100; // blinking navigation lights (red port, green starboard, white strobe) on spacecraft, like real ones
@@ -387,6 +398,17 @@ function dynRes(dt) { DR.t += dt; DR.n++; DR.cool = Math.max(0, DR.cool - dt); i
   const max = dprCap(); let s = DR.s;
   if (DR.low >= 3 && s > .55) s = Math.max(.55, s - .15); else if (DR.high >= 8 && s < 1) s = Math.min(1, s + .15);
   if (s !== DR.s) { DR.s = s; DR.cool = 12; DR.low = DR.high = 0; DR.changes++; R.ren.setPixelRatio(max * s); resize(); } }
+// controller in Adventure Mode (window.PAD comes from js/gamepad.js; menus are handled there)
+let padStick = false; const padW = {}; function padSet(k, on) { if (on || padW[k]) R[k] = on ? 1 : 0; padW[k] = on; }  // only touch R.thr/R.bst while the controller is using them
+function padAdv(dt) { const P = window.PAD; if (!P || !P.on || R.root.querySelector('.pnl') || document.querySelector('#advDL')) return; const dz = v => Math.abs(v) < .18 ? 0 : (v - Math.sign(v) * .18) / .82, S = R.surf && R.surf.S;
+  const lx = dz(P.lx), ly = dz(P.ly), rx = dz(P.rx), ry = dz(P.ry); if (lx || ly) { R.joy.x = lx; R.joy.y = ly; padStick = true; if (DEMO.on) demoStop(); R.ap = R.ap && !(lx || ly) ? R.ap : null; } else if (padStick) { R.joy.x = R.joy.y = 0; padStick = false; }
+  if (S && S.on) { S.camYaw -= rx * dt * 2.4; S.camPitch = THREE.MathUtils.clamp(S.camPitch + ry * dt * 1.6, .05, 1.2);
+    padSet('thr', P.held(0)); padSet('bst', P.rt > .3 || P.held(5));
+    if (P.hit(2)) scan(); if (P.hit(3)) flyToggle(); if (P.hit(8)) landOrLaunch(); if (P.hit(9)) settings(); return; }
+  if (rx || ry) { R.yaw -= rx * dt * 1.6; R.pitch = THREE.MathUtils.clamp(R.pitch - ry * dt * 1.2, -1.35, 1.35); R.ap = null; }
+  padSet('thr', P.rt > .2 || P.held(5)); padSet('bst', P.lt > .3);
+  if (P.hit(0)) scan(); if (P.hit(2)) { const lb = R.root.querySelector('#aLand'); if (lb && lb.style.display !== 'none') landOrLaunch(); }
+  if (P.hit(3)) mapPanel(); if (P.hit(4)) camToggle(); if (P.hit(1)) codex(); if (P.hit(8)) hangar(); if (P.hit(9)) settings(); if (P.hit(11)) photoToggle(); if (P.hit(10)) demoTour(); }
 function fpsUI(dt) { const el = R.root.querySelector('#aFps'); if (!SET.fps) { if (el.style.display !== 'none') el.style.display = 'none'; return; } FP.n++; FP.t += dt; if (FP.t < .5) return; const f = FP.n / FP.t; FP.n = 0; FP.t = 0; el.style.display = 'block';
   const info = R.ren.info; el.textContent = `${Math.round(f)} FPS · ${(MEM.tris / 1e6).toFixed(2)} M tris · ${Math.round(MEM.tex)} MB tex · ${info.render.calls} draws · ${Math.round(dprCap() * DR.s * 100) / 100}x`; }
 const FP = { n: 0, t: 0 }, MEM = { tris: 0, tex: 0 };
@@ -406,7 +428,7 @@ function controls() {
   const hold = (id, k) => { const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); R[k] = 1; if (k === 'thr') R.ap = null; }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(v => b.addEventListener(v, () => R[k] = 0)); };
   hold('#aThr', 'thr'); hold('#aBst', 'bst');
   $('#aScn').addEventListener('pointerdown', e => { e.preventDefault(); scan(); });
-  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aCam').onclick = () => camToggle(); $('#aDemo').onclick = () => demoTour(); $('#aPhoto').onclick = () => photoToggle(); $('#aPh').onclick = () => photoToggle(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
+  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aTro').onclick = () => trophyRoom(); $('#aCo').onclick = () => coPanel(); $('#aMis').onclick = () => dailyCard(); apodFetch().then(() => { try { if (R) misUI(); } catch (e) {} }); $('#aCam').onclick = () => camToggle(); $('#aDemo').onclick = () => demoTour(); $('#aPhoto').onclick = () => photoToggle(); $('#aPh').onclick = () => photoToggle(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
   // mouse look on desktop
   let drag = null; R.ren.domElement.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
   addEventListener('pointermove', e => { if (!drag || !ST.on || e.pointerId !== drag.id) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
@@ -439,7 +461,7 @@ function step(dt) {
     fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); const ts = (thrust ? (boost ? 180 * SS.bst : 45 * SS.spd) : boost ? 180 * SS.bst : 0); R.vel.lerp(fwd.clone().multiplyScalar(ts), Math.min(1, dt * (ts ? 1.4 : brake ? 3 : .6))); }
   ship.position.addScaledVector(R.vel, dt);
   // never fly into a planet
-  for (const b of BODIES) { const c = R.bpos[b.id], d = ship.position.distanceTo(c), m = b.r + (b.id === 'sun' ? 25 : 1.6); if (d < m) { ship.position.copy(c).add(tmpV.copy(ship.position).sub(c).normalize().multiplyScalar(m)); R.vel.multiplyScalar(.3); if (b.id === 'sun' && !R.hotT) { R.hotT = 3; toast('☀️ Too hot! The Sun pushes you back'); } } }
+  for (const b of BODIES) { const c = R.bpos[b.id], d = ship.position.distanceTo(c), m = b.r + (b.id === 'sun' ? 25 : 1.6); if (d < m) { ship.position.copy(c).add(tmpV.copy(ship.position).sub(c).normalize().multiplyScalar(m)); R.vel.multiplyScalar(.3); if (b.id === 'sun' && !R.hotT) { R.hotT = 3; toast('☀️ Too hot! The Sun pushes you back'); trophy('a_sun'); } } }
   R.hotT = Math.max(0, (R.hotT || 0) - dt);
   ship.quaternion.setFromEuler(new THREE.Euler(R.pitch, R.yaw, -(yawIn || 0) * .35, 'YXZ'));
   const spd = R.vel.length(); R.flame.scale.setScalar(.5 + Math.min(3, spd / 40)); R.flame.material.opacity = Math.min(1, .25 + spd / 60);
@@ -495,8 +517,8 @@ function labels() {
 }
 
 /* ---------------- cards, codex, map, missions ---------------- */
-function card(o, fresh) { if (o.story) return storyCard(o, fresh); const isNew = fresh && !ST.scanned.has(o.id);
-  if (isNew) { say('New object identified. ' + o.n.replace(/\(.*?\)/g, '') + '.'); const was = new Set(SHIPS.filter(unlocked).map(x => x.id)); ST.scanned.add(o.id); save(); reward(5, 60); sfx('chime'); const nw = SHIPS.filter(x => unlocked(x) && !was.has(x.id)); if (nw.length) setTimeout(() => toast('🛠 New ship unlocked in the Hangar: <b>' + nw.map(x => x.n).join(', ') + '</b><br><small>Tap 🛠 Hangar to fly it</small>', 4500), 1200); const e = R.objs.find(x => x.o.id === o.id); if (e) e.sp.material = R.mkS; checkMissions(); milestone(); }
+function card(o, fresh) { if (o.story) return storyCard(o, fresh); if (fresh) dailyHit(o.id); const isNew = fresh && !ST.scanned.has(o.id);
+  if (isNew) { say('New object identified. ' + o.n.replace(/\(.*?\)/g, '') + '.'); const was = new Set(SHIPS.filter(unlocked).map(x => x.id)); ST.scanned.add(o.id); { const n = ST.scanned.size; trophy('a_scan1'); if (n >= 25) trophy('a_scan25'); if (n >= 100) trophy('a_scan100'); if (ALL.every(x => ST.scanned.has(x.id))) trophy('a_codex'); } save(); reward(5, 60); sfx('chime'); const nw = SHIPS.filter(x => unlocked(x) && !was.has(x.id)); if (nw.length) setTimeout(() => toast('🛠 New ship unlocked in the Hangar: <b>' + nw.map(x => x.n).join(', ') + '</b><br><small>Tap 🛠 Hangar to fly it</small>', 4500), 1200); const e = R.objs.find(x => x.o.id === o.id); if (e) e.sp.material = R.mkS; checkMissions(); milestone(); }
   const realTxt = o.r && RKM[o.id] ? `Real size: ${(RKM[o.id] * 2).toLocaleString()} km across${ORBIT[o.id] ? ` · ${ORBIT[o.id]} AU (${fmtKm(ORBIT[o.id] * AUKM)}) from the Sun · sunlight takes ${Math.round(ORBIT[o.id] * 499 / 60)} min to arrive` : ''}` : '';
   const loc = o.r ? (o.at ? 'Orbits ' + BI[o.at].n : 'Solar system') : o.land ? (o.land === 'earth' ? 'Kennedy Space Center, Earth' : 'On the surface of ' + BI[o.land].n) : o.far ? 'Deep sky, far beyond the solar system' : (o.surf ? 'On ' + BI[o.at].n : 'Near ' + BI[o.at].n);
   const p = document.createElement('div'); p.className = 'pnl'; p.innerHTML = `<div class="crd"><div class="ey">${o.r ? '🪐 ' : '🛰 '}${o.k.toUpperCase()}</div>${isNew ? '<div class="nw">NEW SCAN · +5 🔧 · +60 XP</div>' : ''}<h2>${o.n}</h2><canvas class="vw"></canvas>
@@ -504,15 +526,146 @@ function card(o, fresh) { if (o.story) return storyCard(o, fresh); const isNew =
    ${o.r ? '' : '<div class="src">3D model: NASA 3D Resources (science.nasa.gov/3d-resources)</div>'}<div class="row"><button class="pr" id="cOk">Continue</button></div></div>`;
   R.root.appendChild(p); viewer(o, p.querySelector('.vw'), p); p.querySelector('#cOk').onclick = () => p.remove(); }
 function storyCard(o, fresh) { const A = R.anomaly, n = A ? A.clues : 0, first = fresh && !ST.flags.has('anomaly');
-  if (first) { ST.flags.add('anomaly'); save(); reward(15, 150); sfx('chime'); }
+  if (first) { ST.flags.add('anomaly'); save(); reward(15, 150); sfx('chime'); trophy('a_signal'); }
   const lines = ['It hums at the same frequency as the purple crystal on the Moon.', `Your outposts have found ${n} of 6 clues. Each clue makes the signal stronger.`,
-    n >= 6 ? 'With all six clues, the signal finally answers: a seventh door is waiting, out here in the belt. Finish the campaign to open it.' : 'Find more clues in Story Mode: the signal still has something to say.', 'Mission Control says it is just space noise. Mission Control has said that before.'];
+    doorReady() ? 'The signal finally answers. A seventh door is waiting, right here. It will open for you.' : n >= 6 ? 'With all six clues, the signal finally answers: a seventh door is waiting, out here in the belt. Finish the campaign to open it.' : 'Find more clues in Story Mode: the signal still has something to say.', 'Mission Control says it is just space noise. Mission Control has said that before.'];
   const p = document.createElement('div'); p.className = 'pnl'; p.innerHTML = `<div class="crd" style="border-color:rgba(176,112,255,.6)"><div class="ey" style="color:#c9a0ff">🟣 STORY · ORIGIN UNKNOWN</div>${first ? '<div class="nw" style="background:#b070ff;color:#fff">FIRST CONTACT · +15 🔧 · +150 XP</div>' : ''}<h2>The Purple Signal</h2>
-    <div class="mt">Detected where all six outposts sent their message, the night every outpost flickered.</div><ul>${lines.map(f => `<li>${f}</li>`).join('')}</ul><div class="row"><button class="pr" id="cOk" style="background:#7a3fd0;border-color:#c9a0ff">Continue</button></div></div>`;
-  R.root.appendChild(p); p.querySelector('#cOk').onclick = () => p.remove(); if (first) { say(n >= 6 ? 'The signal is answering. Commander, it is calling you.' : 'Signal recorded. Mission Control… is not answering.', 1); } }
+    <div class="mt">Detected where all six outposts sent their message, the night every outpost flickered.</div><ul>${lines.map(f => `<li>${f}</li>`).join('')}</ul><div class="row">${doorReady() ? '<button class="pr" id="cDoor" style="background:#b070ff;border-color:#fff">🚪 Open the seventh door</button>' : ''}<button class="pr" id="cOk" style="background:#7a3fd0;border-color:#c9a0ff">Continue</button></div></div>`;
+  R.root.appendChild(p); p.querySelector('#cOk').onclick = () => p.remove(); const db = p.querySelector('#cDoor'); if (db) db.onclick = () => openDoor(); if (first) { say(n >= 6 ? 'The signal is answering. Commander, it is calling you.' : 'Signal recorded. Mission Control… is not answering.', 1); } }
+/* ---------------- trophies: shared with Story Mode's badge system (ach/ACH/ACHS in index.html) ---------------- */
+function trophy(id) { try { if (typeof ach === 'function') ach(id); } catch (e) {} }
+const hasT = id => { try { return typeof ACHS !== 'undefined' && ACHS.has(id); } catch (e) { return false; } };
+function trophyToast(a) { if (!R) return; const el = document.createElement('div'); el.className = 'trophy'; el.innerHTML = `<span>${a.ic}</span><div><small>🏆 TROPHY UNLOCKED</small><b>${a.n}</b><i>${a.d.replace(/^Adventure: /, '')}</i></div>`; R.root.appendChild(el); requestAnimationFrame(() => el.classList.add('on')); setTimeout(() => { el.classList.remove('on'); setTimeout(() => el.remove(), 600); }, 4200); say('Trophy unlocked. ' + a.n + '.'); }
+function trophyRoom() { const L = (typeof ACH !== 'undefined' ? ACH : []); const got = a => hasT(a.id), adv = L.filter(a => a.adv), sm = L.filter(a => !a.adv), n = L.filter(got).length;
+  const cell = a => `<div class="tc ${got(a) ? 'g' : ''}"><span>${got(a) ? a.ic : '🔒'}</span><b>${a.n}</b><small>${a.d.replace(/^Adventure: /, '')}</small></div>`;
+  const p = document.createElement('div'); p.className = 'pnl'; p.innerHTML = `<div class="crd"><div class="ey">🏆 TROPHY ROOM · BOTH MODES</div><h2>${n} / ${L.length} unlocked</h2><div class="bar1"><i style="width:${(n / Math.max(1, L.length) * 100).toFixed(0)}%"></i></div>
+    <h4 class="sh">🚀 ADVENTURE MODE · ${adv.filter(got).length}/${adv.length}</h4><div class="tg">${adv.map(cell).join('')}</div><h4 class="sh">🪐 STORY MODE · ${sm.filter(got).length}/${sm.length}</h4><div class="tg">${sm.map(cell).join('')}</div><div class="row"><button class="pr" id="tX">Close</button></div></div>`;
+  R.root.appendChild(p); p.querySelector('#tX').onclick = () => p.remove(); }
+/* ---------------- the true ending: the seventh door (Story Mode × Adventure Mode) ---------------- */
+// open when the campaign is finished (all six worlds secured, or the secret world won) or all six clues are found
+function doorReady() { try { return (typeof ACHS !== 'undefined' && ACHS.has('all')) || G('trueEnd', 0) || G('echoWon', 0) || (G('clues', []) || []).length >= 6; } catch (e) { return false; } }
+function openDoor() { const A = R.anomaly; if (!A || R.ending) return; const p = R.root.querySelector('.pnl'); if (p) p.remove(); demoStop();
+  // the door: a great ring of crystal with a swirling purple membrane, grown out of the signal
+  const g = new THREE.Group(); g.position.copy(A.g.position); g.lookAt(R.ship.position); R.scn.add(g);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(14, 1.1, 24, 96), new THREE.MeshStandardMaterial({ color: 0x5a2aa0, emissive: 0xa060ff, emissiveIntensity: 2.2, roughness: .25, metalness: .6 })); g.add(ring);
+  const memU = { time: { value: 0 }, open: { value: 0 } }, mem = new THREE.Mesh(new THREE.CircleGeometry(13.2, 96), new THREE.ShaderMaterial({ uniforms: memU, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+    fragmentShader: `uniform float time, open; varying vec2 vUv; void main(){ vec2 p = vUv - .5; float r = length(p) * 2., a = atan(p.y, p.x);
+      float sw = sin(a * 6. + r * 14. - time * 3.) * .5 + .5, core = smoothstep(.9, 0., r), rim = smoothstep(.55, 1., r);
+      vec3 c = mix(vec3(.45, .15, .9), vec3(1., .85, 1.), core * open) * (.35 + sw * .8) + vec3(1.) * core * core * open * 2.5;
+      gl_FragColor = vec4(c, (rim * .6 + core * .9) * min(1., open * 2.) * smoothstep(1., .96, r)); }` })); g.add(mem);
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, s = new THREE.Mesh(new THREE.OctahedronGeometry(1.4, 0), ring.material); s.position.set(Math.cos(a) * 17.5, Math.sin(a) * 17.5, 0); s.scale.y = 1.8; g.add(s); }   // the six doors, in a circle
+  g.scale.setScalar(.01); R.ending = { t: 0, g, ring, memU, start: R.ship.position.clone() }; R.root.classList.add('cine', 'intro'); CAM.mode = 'chase';
+  say('Commander. The door is opening.', 1); sfx('whoosh'); }
+function stepEnding(dt) { const E = R.ending, ship = R.ship, A = R.anomaly; E.t += dt; R.t += dt; const t = E.t, c = A.g.position;
+  for (const o of R.objs) R.placeObj(o, R.t); updatePlanetUniforms(R.PL, R.bpos.sun, R.t); flare(); R.fx.update(dt, R.cam); R.rings.update(dt);
+  E.memU.time.value = t; E.g.rotation.z += dt * .15; A.g.rotation.y += dt * (1 + t);
+  const grow = THREE.MathUtils.smoothstep(t, 2, 6); E.g.scale.setScalar(.01 + grow); E.memU.open.value = THREE.MathUtils.smoothstep(t, 5, 8);
+  if (t < 6) { A.cr.scale.set(1 + t * .15, 1.8 + t * .2, 1 + t * .15); if (Math.random() < .5) R.fx.emit(c, new THREE.Vector3((Math.random() - .5) * 30, (Math.random() - .5) * 30, (Math.random() - .5) * 30), 0xc080ff, 1.5, 1.5, 3, 4, { grow: 2, drag: .3 }); }
+  else A.g.visible = false;
+  if (t > 5.8 && !E.ring1) { E.ring1 = 1; R.rings.add(c, 0xc080ff, 60, 1.6, R.cam.position); sfx('burst'); }
+  // camera: orbit the door, then follow the ship through it
+  if (t < 8.5) { const a = t * .25, r = 46 - t * 2; R.cam.position.set(c.x + Math.cos(a) * r, c.y + 8, c.z + Math.sin(a) * r); R.cam.lookAt(c); ship.position.lerp(E.start, .02); }
+  else { const k = THREE.MathUtils.smoothstep(t, 8.5, 12), dir = c.clone().sub(E.start).normalize(); ship.position.copy(E.start).lerp(c.clone().addScaledVector(dir, 6), k); ship.lookAt(ship.position.clone().sub(dir)); ship.visible = true;
+    R.cam.position.copy(ship.position).addScaledVector(dir, -10).add(new THREE.Vector3(0, 2.5, 0)); R.cam.lookAt(c); R.engL.intensity = 40; R.flame.getWorldPosition(R.engL.position);
+    R.fx.emit(R.flame.getWorldPosition(tmpV), dir.clone().multiplyScalar(-14), 0xffc27a, .8, .5, 4, 2, { grow: 2.4 }); }
+  const ov = R.root.querySelector('#aHeat') || (() => { const d = document.createElement('div'); d.id = 'aHeat'; R.root.appendChild(d); return d; })(); ov.classList.toggle('w', t > 11.2); ov.style.opacity = t > 11.2 ? Math.min(1, (t - 11.2) / .8) : 0;
+  if (t > 12.4 && !E.done) { E.done = 1; endingScreen(); } }
+function endingScreen() { const L = [
+    ['The seventh door opens. Behind it there is no monster.', 'There is a memory.'],
+    ['Long ago, travellers built six doors across the solar system, to keep something asleep.', 'Every outpost you built woke one of them.'],
+    ['The bosses you fought were guardians.', `${(() => { try { return SPN(); } catch (e) { return 0; } })() ? 'The ones you spared told the others you were kind.' : 'They were only protecting their doors.'}`],
+    ['The Echo was never Mission Control.', 'It was them, learning our language, asking to be heard.'],
+    ['“Thank you for listening, Commander.”', '“Now the doors stay open, for both of us.”']];
+  const o = document.createElement('div'); o.id = 'aEnd'; o.innerHTML = '<div class="eL"></div><div class="eC"></div>'; R.root.appendChild(o); let i = 0;
+  const line = () => { if (i >= L.length) return credits(); const [a, b] = L[i++]; o.querySelector('.eL').innerHTML = `<p>${a}</p><p class="b">${b}</p>`; o.querySelector('.eL').classList.remove('in'); void o.offsetWidth; o.querySelector('.eL').classList.add('in'); say(a + ' ' + b.replace(/[“”]/g, ''), 1); setTimeout(line, 6200); };
+  const credits = () => { o.querySelector('.eL').innerHTML = ''; o.querySelector('.eC').innerHTML = `<div class="roll"><h1>RED DUST OUTPOST</h1><p>THE TRUE ENDING</p><br><p>A game by</p><h2>MOON PRODUCTIONS</h2><br><p>Built with real NASA 3D models, maps, terrain and science</p><p>NASA 3D Resources · NASA Earth Observatory Black Marble · three.js</p><br><p>Six worlds. Six doors.</p><p>Thank you for playing.</p><br><button id="eGo">🚀 Back to the stars</button></div>`;
+    say('Thank you for playing Red Dust Outpost.', 1); o.querySelector('#eGo').onclick = () => { o.remove(); const E = R.ending; R.ending = null; R.root.classList.remove('cine', 'intro'); const ov = R.root.querySelector('#aHeat'); if (ov) { ov.style.opacity = 0; ov.classList.remove('w'); }
+      R.ship.position.copy(E.start); R.vel.set(0, 0, 0); E.g.scale.setScalar(1); E.memU.open.value = 1; R.anomaly.g.visible = true; R.anomaly.cr.scale.set(1, 1.8, 1); ST.flags.add('door'); save(); toast('🚪 The seventh door stays open in the asteroid belt.', 4000); }; };
+  trophy('a_door'); reward(30, 400); setTimeout(line, 600); }
 function milestone() { const n = ST.scanned.size, got = G('adv_ms', 0), M = [[10, 30], [25, 60], [ALL.length, 150]]; M.forEach(([at, tp], i) => { if (n >= at && got <= i) { P('adv_ms', i + 1); reward(tp, 200); setTimeout(() => toast(`🏅 Codex ${at === ALL.length ? 'complete' : at + ' scans'}! +${tp} 🔧`, 3500), 600); } }); }
+/* ---------------- today's NASA mission: one new mission a day, shaped by live NASA data (DONKI space weather + Astronomy Picture of the Day) ---------------- */
+const DPOOL = [
+  { ic: '☀', t: 'Space weather watch', d: 'Scan SOHO and SDO, the two spacecraft that watch the Sun for NASA every second of every day.', need: ['soho', 'sdo'] },
+  { ic: '🛰', t: 'Crew check', d: 'Scan the ISS and the Orion capsule: today we check on the people who live and travel in space.', need: ['iss', 'orion'] },
+  { ic: '🌕', t: 'Artemis scouting', d: 'Scan the Lunar Reconnaissance Orbiter, then land on the Moon where Artemis astronauts will return.', need: ['lro', 'land:moon'] },
+  { ic: '🔴', t: 'Rover check-in', d: 'Land on Mars and scan Perseverance, still exploring Jezero Crater today.', need: ['land:mars', 'perseverance'] },
+  { ic: '🔭', t: 'Great observatories', d: 'Scan Hubble, Webb and Chandra, three telescopes that see the universe in different light.', need: ['hubble', 'jwst', 'chandra'] },
+  { ic: '🌀', t: 'Juno at Jupiter', d: 'Scan Juno, then dive into Jupiter’s clouds the way Galileo’s probe did in 1995.', need: ['juno', 'dive:jupiter'] },
+  { ic: '🪐', t: 'Planet hunters', d: 'Scan TESS and Kepler, the telescopes that found thousands of planets around other stars.', need: ['tess', 'kepler'] },
+  { ic: '📡', t: 'Deep Space Network', d: 'Find Voyager 1, the farthest human-made object, still talking to Earth after almost 50 years.', need: ['voyager'] },
+  { ic: '🔥', t: 'Touch the Sun', d: 'Scan the Parker Solar Probe, the fastest object people have ever built.', need: ['parker'] },
+  { ic: '❄', t: 'Ocean worlds', d: 'Land on Europa and on Titan, two moons that may hide oceans.', need: ['land:europa', 'land:titan'] },
+];
+const DBODY = { sun: /\bsun\b|solar/i, moon: /\bmoon\b|lunar/i, mars: /\bmars\b|martian/i, jupiter: /jupiter|jovian/i, saturn: /saturn/i, venus: /venus/i, mercury: /mercury/i, earth: /\bearth\b/i, neptune: /neptune/i, uranus: /uranus/i, pluto: /pluto/i, titan: /\btitan\b/i, europa: /europa/i, io: /\bio\b/i, ceres: /ceres/i, vesta: /vesta/i };
+const today = () => { const d = new Date(); return d.getFullYear() * 1e4 + (d.getMonth() + 1) * 100 + d.getDate(); };
+const ndata = () => { try { return typeof NASA !== 'undefined' ? NASA.data : null; } catch (e) { return null; } };
+const nkey = () => (window.RDO_CONFIG && RDO_CONFIG.nasaKey) || 'DEMO_KEY';
+async function apodFetch() { const a = G('apod', null); if (a && a.day === today()) return a; try { if (typeof NASA !== 'undefined' && !NASA.on) return a; } catch (e) {}
+  try { const r = await fetch('https://api.nasa.gov/planetary/apod?thumbs=true&api_key=' + nkey()); if (!r.ok) return a; const j = await r.json(); const v = { day: today(), title: j.title || '', date: j.date || '', img: j.media_type === 'image' ? j.url : (j.thumbnail_url || ''), link: 'https://apod.nasa.gov/apod/ap' + String(j.date || '').slice(2).replace(/-/g, '') + '.html' }; P('apod', v); return v; } catch (e) { return a; } }
+function dailyPick() { const day = today(), have = id => id.includes(':') || (R && R.byId[id]), pool = DPOOL.filter(m => m.need.every(have)), n = ndata(), a = G('apod', null);
+  // live NASA data first: a real solar flare or geomagnetic storm this week, then today's Astronomy Picture of the Day
+  if (n && Date.now() - n.at < 3 * 864e5) { const cls = n.top && n.top.cls || ''; if (/^[MX]/.test(cls)) return { ...pool[0], live: `NASA’s DONKI database recorded a real <b>${cls}</b> solar flare on ${n.top.date}.`, t: 'Solar flare alert', ic: '☀' };
+    if (n.kp >= 5) return { ...DPOOL[1], live: `A real geomagnetic storm reached <b>Kp ${n.kp}</b> at Earth this week (NASA DONKI).`, t: 'Storm check on the crew' }; }
+  if (a && a.day === day) for (const id in DBODY) if (DBODY[id].test(a.title) && BI[id]) return { ic: '🖼', t: 'Picture of the Day', d: `Fly to ${BI[id].n} and scan it.`, need: [id], live: `Today’s NASA Astronomy Picture of the Day is <b>“${a.title}”</b>.`, apod: a };
+  const m = pool[(day * 7 + Math.floor(day / 100)) % pool.length]; return a && a.day === day ? { ...m, apod: a } : m; }
+const DS = () => { const s = G('adv_day', null); return s && s.day === today() ? s : { day: today(), got: [], done: 0 }; };
+function dailyHit(id) { const D = dailyPick(), s = DS(); if (s.done || !D.need.includes(id) || s.got.includes(id)) return; s.got.push(id);
+  if (D.need.every(x => s.got.includes(x))) { s.done = 1; P('adv_day', s); trophy('a_daily'); reward(25, 300); sfx('fanfare'); P('adv_dstreak', (G('adv_dlast', 0) === today() - 1 ? G('adv_dstreak', 0) : 0) + 1); P('adv_dlast', today());
+    setTimeout(() => { toast(`🛰 <b>Today’s NASA mission complete!</b> +25 🔧 · +300 XP · streak ${G('adv_dstreak', 1)} 🔥`, 4500); say('Daily mission complete. Nice flying, Commander.'); }, 1200); }
+  else { P('adv_day', s); toast(`🛰 Today’s mission: ${s.got.length}/${D.need.length}`, 1800); } misUI(); }
+function dailyCard() { const D = dailyPick(), s = DS(), lab = id => id.includes(':') ? { land: '🛬 Land on ', dive: '🌀 Dive into ' }[id.split(':')[0]] + BI[id.split(':')[1]].n : '📡 Scan ' + (R.byId[id] ? R.byId[id].o.n : BI[id] ? BI[id].n : id);
+  const p = document.createElement('div'); p.className = 'pnl'; p.innerHTML = `<div class="crd"><div class="ey">🛰 TODAY’S NASA MISSION · ${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div><h2>${D.ic} ${D.t}</h2>
+    ${D.live ? `<div class="mt" style="color:#ffcf4a">🔴 LIVE · ${D.live}</div>` : ''}${D.apod && D.apod.img ? `<a href="${D.apod.link}" target="_blank" rel="noopener"><img src="${D.apod.img}" alt="" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin:6px 0"></a><div class="mt">NASA Astronomy Picture of the Day: “${D.apod.title}”</div>` : ''}
+    <div class="mt">${D.d}</div><ul>${D.need.map(id => `<li>${s.got.includes(id) ? '✅' : '⬜'} ${lab(id)}</li>`).join('')}</ul><div class="mt">${s.done ? '✅ Done for today. A new mission arrives tomorrow.' : 'Reward: +25 🔧 · +300 XP'} · Streak: ${G('adv_dstreak', 0)} 🔥</div>
+    <div class="row">${D.need.find(id => !id.includes(':') && !s.got.includes(id)) ? '<button class="pr" id="dGo">🚀 Autopilot to target</button>' : ''}<button id="dX">Close</button></div></div>`;
+  R.root.appendChild(p); p.querySelector('#dX').onclick = () => p.remove(); const g = p.querySelector('#dGo'); if (g) g.onclick = () => { p.remove(); const id = D.need.find(x => !x.includes(':') && !s.got.includes(x)); goto(id); }; }
+/* ---------------- co-op: fly the solar system together (Supabase Realtime room, same system as Story Mode co-op) ---------------- */
+const CO = { ch: null, code: '', on: false, peer: null, tx: 0, near: 0, name: '' };
+const myName = () => { try { return (window.NET && NET.name) || 'Commander'; } catch (e) { return 'Commander'; } };
+function coPanel() { const p = document.createElement('div'); p.className = 'pnl'; const online = !!(window.NET && NET.on);
+  p.innerHTML = `<div class="crd"><div class="ey">👥 CO-OP · FLY TOGETHER</div><h2>${CO.on ? 'Room ' + CO.code : 'Explore with a friend'}</h2>
+    ${!online ? '<div class="mt">Co-op needs the game’s online features (Supabase in config.js). Story Mode co-op uses the same setup.</div><div class="row"><button id="kX">Close</button></div>' :
+    CO.on ? `<div class="mt">${CO.peer ? `🟢 <b>${esc1(CO.peer.n)}</b> is flying the ${esc1((SHIPS.find(s => s.id === CO.peer.s) || SHIPS[0]).n)}${CO.peer.surf ? ' · on ' + BI[CO.peer.surf].n : ''}` : '⏳ Waiting for your friend to join with code <b style="letter-spacing:.2em">' + CO.code + '</b>…'}</div>
+      <div class="row">${CO.peer && !CO.peer.surf ? '<button class="pr" id="kGo">🚀 Fly to friend</button>' : ''}<button id="kL">Leave room</button><button id="kX">Close</button></div>` :
+    `<div class="mt">Both players open Adventure Mode. One makes a room, the other types its code. You see each other’s ship live, anywhere in the solar system.</div>
+      <div class="row"><button class="pr" id="kH">🛰 Make a room</button></div><div class="row"><input id="kC" maxlength="4" placeholder="CODE" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800;width:110px;padding:10px;border-radius:10px;border:1px solid #7df9ff;background:#0a0f20;color:#fff;text-align:center"><button id="kJ">Join</button><button id="kX">Close</button></div>`}</div>`;
+  R.root.appendChild(p); const q = s => p.querySelector(s), x = q('#kX'); x.onclick = () => p.remove();
+  if (q('#kH')) q('#kH').onclick = () => { const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; coJoin(Array.from({ length: 4 }, () => L[Math.random() * L.length | 0]).join('')); p.remove(); coPanel(); };
+  if (q('#kJ')) q('#kJ').onclick = () => { const c = q('#kC').value.toUpperCase().replace(/[^A-Z]/g, ''); if (c.length === 4) { coJoin(c); p.remove(); coPanel(); } };
+  if (q('#kL')) q('#kL').onclick = () => { coLeave(); p.remove(); };
+  if (q('#kGo')) q('#kGo').onclick = () => { p.remove(); const P2 = CO.peer.g.position; R.ship.position.copy(P2).add(new THREE.Vector3(8, 2, 8)); R.vel.set(0, 0, 0); R.ap = null; const d = P2.clone().sub(R.ship.position).normalize(); R.yaw = Math.atan2(-d.x, -d.z); R.pitch = Math.asin(d.y); R.warp && R.warp.kick && R.warp.kick(); toast('🚀 Warped next to <b>' + esc1(CO.peer.n) + '</b>'); }; }
+const esc1 = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+function coJoin(code) { coLeave(true); if (!window.NET || !NET.on) return; CO.code = code; CO.on = true; CO.name = myName();
+  const go = () => { CO.ch = NET.channel('rdo-adv-' + code, { open: () => { toast('👥 In room <b>' + code + '</b>. Share the code with your friend!', 3500); coSend(true); }, msg: coMsg, error: m => { toast('⚠ Co-op: ' + m, 3500); coLeave(true); }, close: () => { if (CO.on) toast('⚠ Co-op room closed', 2500); coLeave(true); } }); };
+  try { NET.boot().catch(() => {}).finally(go); } catch (e) { go(); } }
+function coLeave(silent) { if (CO.ch) { try { CO.ch.send('bye', {}); CO.ch.close(); } catch (e) {} } CO.ch = null; CO.on = false; coDrop(); if (!silent) toast('👥 Left the co-op room', 1500); }
+function coDrop() { if (CO.peer) { R.scn.remove(CO.peer.g); if (CO.peer.lab) CO.peer.lab.remove(); } CO.peer = null; }
+function coSend(hi) { if (!CO.ch) return; const s = R.ship, r = v => Math.round(v * 100) / 100, sf = R.surf && R.surf.S && R.surf.S.on && R.surf.S.body;
+  CO.ch.send(hi ? 'hi' : 'st', { p: [r(s.position.x), r(s.position.y), r(s.position.z)], q: [r(s.quaternion.x), r(s.quaternion.y), r(s.quaternion.z), r(s.quaternion.w)], v: [r(R.vel.x), r(R.vel.y), r(R.vel.z)], s: (R.shipStat || SHIPS[0]).id, n: CO.name, b: R.burn > .3 ? 1 : 0, surf: sf ? sf.id : null }); }
+function coMsg(ev, d) { if (ev === 'bye') { if (CO.peer) toast('👋 <b>' + esc1(CO.peer.n) + '</b> left the room', 2500); coDrop(); return; }
+  if ((ev !== 'st' && ev !== 'hi') || !d || !Array.isArray(d.p) || d.p.length !== 3 || !d.p.every(Number.isFinite)) return;
+  let P2 = CO.peer; const fresh = !P2; if (!P2) { P2 = CO.peer = coShip(d); toast(`👥 <b>${esc1(P2.n)}</b> joined! Look for the green marker.`, 3500); sfx('chime'); say(String(d.n || 'Your friend').slice(0, 16) + ' has joined your flight.'); coSend(true); }
+  if (d.s !== P2.s && SHIPS.some(x => x.id === d.s)) { P2.s = d.s; coModel(P2); }
+  P2.n = String(d.n || 'Friend').slice(0, 16); P2.tp.fromArray(d.p); P2.tv.fromArray(Array.isArray(d.v) && d.v.every(Number.isFinite) ? d.v : [0, 0, 0]); if (Array.isArray(d.q) && d.q.length === 4 && d.q.every(Number.isFinite)) P2.tq.fromArray(d.q).normalize(); P2.rx = performance.now(); P2.b = d.b ? 1 : 0;
+  const sf = d.surf && BI[d.surf] ? d.surf : null; if (sf !== P2.surf) { P2.surf = sf; if (sf) toast(`👥 <b>${esc1(P2.n)}</b> landed on ${BI[sf].n}`, 2500); } if (fresh) P2.g.position.copy(P2.tp); }
+function coShip(d) { const g = new THREE.Group(), fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.flame.material && R.flame.material.map || null, color: 0x9dff9d, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); fl.scale.setScalar(1.2); g.add(fl);
+  const nv = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new THREE.MeshBasicMaterial({ color: 0x66ff88 })); nv.position.y = .9; g.add(nv); R.scn.add(g);
+  const lab = document.createElement('div'); lab.className = 'cop'; R.root.querySelector('#aHud') ? R.root.querySelector('#aHud').appendChild(lab) : R.root.appendChild(lab);
+  const P2 = { g, fl, nv, lab, s: d.s, n: String(d.n || 'Friend'), tp: new THREE.Vector3(), tv: new THREE.Vector3(), tq: new THREE.Quaternion(), rx: performance.now(), surf: null, b: 0, mdl: null }; coModel(P2); return P2; }
+function coModel(P2) { const sh = SHIPS.find(x => x.id === P2.s) || SHIPS[0]; R.ship.userData.loader.load('models/nasa/' + sh.m + '.glb', gl => { if (!CO.peer || CO.peer !== P2 || P2.s !== sh.id) return; const m = gl.scene; fixMat(m); if (sh.r) m.rotation.set(sh.r[0], sh.r[1], sh.r[2], 'YXZ'); const w = new THREE.Group(); w.add(m); m.updateMatrixWorld(true); const sph = new THREE.Box3().setFromObject(w).getBoundingSphere(new THREE.Sphere()), k = sh.sz / sph.radius;
+    w.scale.setScalar(k); w.position.copy(sph.center).multiplyScalar(-k); if (P2.mdl) P2.g.remove(P2.mdl); P2.g.add(w); P2.mdl = w; P2.fl.position.set(0, 0, sh.sz * 1.05); P2.nv.position.y = sh.sz * .7; }); }
+function coStep(dt) { if (!CO.on) return; CO.tx -= dt; if (CO.tx <= 0) { CO.tx = .1; coSend(); } const P2 = CO.peer; if (!P2) return;
+  if (performance.now() - P2.rx > 15000) { toast('⚠ Lost contact with <b>' + esc1(P2.n) + '</b>', 2500); coDrop(); return; }
+  // smooth: extrapolate along the last velocity, then ease toward it (no rubber-banding at 10 updates a second)
+  const age = Math.min(.5, (performance.now() - P2.rx) / 1000); tmpV.copy(P2.tp).addScaledVector(P2.tv, age); if (P2.g.position.distanceToSquared(tmpV) > 400) P2.g.position.copy(tmpV); else P2.g.position.lerp(tmpV, Math.min(1, dt * 10));
+  P2.g.quaternion.slerp(P2.tq, Math.min(1, dt * 8)); P2.g.visible = !P2.surf && !(R.surf && R.surf.S && R.surf.S.on); P2.fl.material.opacity = P2.b ? .9 : .25 + Math.sin(R.t * 9) * .05; P2.nv.material.color.setHex(Math.sin(R.t * 4) > .6 ? 0xffffff : 0x33cc55);
+  const d = P2.g.position.distanceTo(R.ship.position); if (d < 40 && !P2.surf) { CO.near += dt; if (CO.near > 10) trophy('a_coop'); } else CO.near = 0;
+  const L = P2.lab; if (!P2.g.visible || CAM.photo) { L.style.display = 'none'; return; } const p = tmpV.copy(P2.g.position).project(R.cam), W = innerWidth, H = innerHeight, on = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1;
+  const sx = p.z < 1 ? p.x : -p.x, sy = p.z < 1 ? p.y : -p.y, x = on ? (p.x + 1) / 2 * W : (sx > 0 ? W - 90 : 90), y = on ? (1 - p.y) / 2 * H : Math.max(70, Math.min(H - 70, (1 - Math.max(-1, Math.min(1, sy))) / 2 * H));
+  L.style.display = 'block'; L.style.transform = `translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`; const t = `👥 ${P2.n} · ${d < 1000 ? d.toFixed(0) : (d / 1000).toFixed(1) + 'k'} u${on ? '' : ' ◀▶'}`; if (L._t !== t) { L.textContent = t; L._t = t; } }
 function checkMissions() { while (ST.mi < MISSIONS.length && MISSIONS[ST.mi].need.every(done)) { ST.mi++; save(); reward(20, 150); sfx('fanfare'); setTimeout(() => toast('✅ Mission complete! +20 🔧' + (ST.mi < MISSIONS.length ? '<br><small>Next: ' + MISSIONS[ST.mi].t + '</small>' : '<br><small>You finished the Grand Tour!</small>'), 4000), 300); } misUI(); }
-function misUI() { const m = R.root.querySelector('#aMis'); if (ST.mi >= MISSIONS.length) { m.innerHTML = '<b>GRAND TOUR COMPLETE</b>Keep scanning to fill your codex'; return; } const M = MISSIONS[ST.mi]; m.innerHTML = `<b>MISSION ${ST.mi + 1}/${MISSIONS.length}</b>${M.t} <span style="opacity:.75">(${M.need.filter(done).length}/${M.need.length})</span>`; }
+function misUI() { const m = R.root.querySelector('#aMis'), D = dailyPick(), ds = DS(), dl = `<i class="dly">🛰 TODAY: ${D.ic} ${D.t} ${ds.done ? '✅' : `(${ds.got.length}/${D.need.length})`}${D.live ? ' 🔴' : ''}</i>`; if (ST.mi >= MISSIONS.length) { m.innerHTML = '<b>GRAND TOUR COMPLETE</b>Keep scanning to fill your codex' + dl; return; } const M = MISSIONS[ST.mi]; m.innerHTML = `<b>MISSION ${ST.mi + 1}/${MISSIONS.length}</b>${M.t} <span style="opacity:.75">(${M.need.filter(done).length}/${M.need.length})</span>${dl}`; }
 function goto(id) { if (OI[id] && OI[id].land) id = OI[id].land; const e = R.objs.find(x => x.o.id === id) || (BI[id] ? { o: BI[id], g: { position: R.bpos[id] } } : null); if (!e) return; const d = e.g.position.distanceTo(R.ship.position); R.ap = { e, max: Math.max(60, Math.min(900, d * .8)) }; R.apName = e.o.n; toast('🧭 Autopilot engaged → <b>' + e.o.n + '</b>'); }
 function mapPanel() { const p = document.createElement('div'); p.className = 'pnl'; const grp = {}; OBJS.forEach(o => (grp[o.at] = grp[o.at] || []).push(o));
   OBJS.filter(o => o.land).forEach(o => { (grp[o.land] = grp[o.land] || []); });
@@ -565,8 +718,8 @@ function hangar() { const p = document.createElement('div'); p.className = 'pnl'
   const show = id => { const s = SHIPS.find(x => x.id === id); sel = id; p.querySelectorAll('[data-h]').forEach(b => b.classList.toggle('sel', b.dataset.h === id)); p.querySelector('#hInf').innerHTML = `<b>${s.n}</b> · ${s.k}<br>${s.facts.join(' ')}`; viewer({ id: s.m, model: s.m }, cv, p); p.querySelector('#hGo').disabled = !unlocked(s); p.querySelector('#hGo').textContent = unlocked(s) ? (id === cur ? 'Keep flying this' : 'Fly this ship') : '🔒 Locked'; };
   show(cur); p.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { show(b.dataset.h); sfx('beep'); });
   p.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { P('adv_air', b.dataset.a); p.querySelectorAll('[data-a]').forEach(x => x.classList.toggle('sel', x === b)); sfx('beep'); });
-  p.querySelector('#hX').onclick = () => p.remove(); p.querySelector('#hGo').onclick = () => { const s = SHIPS.find(x => x.id === sel); if (!unlocked(s)) { sfx('no'); return; } p.remove(); if (sel !== cur) { setShip(sel); sfx('liftoff'); } }; }
-function flyToggle() { const S = R.surf.S; if (!S.on || S.mode !== 'land') return; const cr = craftFor(S.body.id); if (!cr) return; R.surf.fly(S.fly ? null : cr); sfx(S.fly ? 'liftoff' : 'lnd'); }
+  p.querySelector('#hX').onclick = () => p.remove(); p.querySelector('#hGo').onclick = () => { const s = SHIPS.find(x => x.id === sel); if (!unlocked(s)) { sfx('no'); return; } p.remove(); if (sel !== cur) { setShip(sel); sfx('liftoff'); if (sel !== 'orion') trophy('a_ship'); } }; }
+function flyToggle() { const S = R.surf.S; if (!S.on || S.mode !== 'land') return; const cr = craftFor(S.body.id); if (!cr) return; if (!S.fly) trophy(cr.heli ? 'a_heli' : 'a_fly'); R.surf.fly(S.fly ? null : cr); sfx(S.fly ? 'liftoff' : 'lnd'); }
 /* ---------------- 3D viewer on every card ---------------- */
 let VW = null;
 function viewer(o, cv, panel) {
@@ -589,10 +742,10 @@ landOrLaunch.done = function () { const S = R.surf.S; { const b = S.body; R.surf
 landOrLaunch.go = function () {
   const b = nearBody(); if (!b) return; const kind = DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null; if (!kind) return; R.ap = null; R.vel.set(0, 0, 0);
   if (kind === 'land' && SITES[b.id] && !R.site) { sitePicker(b); return; }
-  const fl = (kind === 'dive' ? 'dive:' : 'land:') + b.id; if (R.site) { const sf = 'site:' + b.id + ':' + R.site.id; if (!ST.flags.has(sf)) { ST.flags.add(sf); save(); reward(3, 30); } } if (!ST.flags.has(fl)) { ST.flags.add(fl); save(); reward(5, 50); setTimeout(checkMissions, 4800); }
+  const fl = (kind === 'dive' ? 'dive:' : 'land:') + b.id; dailyHit(fl); if (R.site) { const sf = 'site:' + b.id + ':' + R.site.id; if (!ST.flags.has(sf)) { ST.flags.add(sf); save(); reward(3, 30); } } if (!ST.flags.has(fl)) { ST.flags.add(fl); save(); reward(5, 50); setTimeout(checkMissions, 4800); }
   const st = R.site || null; R.site = null; startEntry(b, kind, st); };
 /* ---------------- cinematic atmospheric entry: plasma, shake and heat glow, then touchdown ---------------- */
-function startEntry(b, kind, st) { const W = WORLD[b.id], air = kind === 'dive' || !!(W && W.air && W.air !== 'None'), c = R.bpos[b.id].clone(), dir = R.ship.position.clone().sub(c).normalize();
+function startEntry(b, kind, st) { if (kind === 'dive') trophy('a_dive'); else { trophy('a_land'); if ([...ST.flags].filter(f => f.startsWith('land:')).length >= 5) trophy('a_land5'); } const W = WORLD[b.id], air = kind === 'dive' || !!(W && W.air && W.air !== 'None'), c = R.bpos[b.id].clone(), dir = R.ship.position.clone().sub(c).normalize();
   R.entry = { t: 0, T: air ? 3.4 : 2.6, b, kind, st, air, c, dir, r0: Math.max(R.ship.position.distanceTo(c), b.r + 6) }; R.ap = null; R.vel.set(0, 0, 0); R.root.classList.add('cine');
   let ov = R.root.querySelector('#aHeat'); if (!ov) { ov = document.createElement('div'); ov.id = 'aHeat'; R.root.appendChild(ov); } ov.style.opacity = 0;
   toast(air ? `🔥 Entering the atmosphere of <b>${b.n}</b>` : `🛬 Powered descent to <b>${b.n}</b>`, 2200); say(kind === 'dive' ? 'Entering the clouds of ' + b.n + '. Hold on.' : air ? 'Entry interface. Heat shield is taking the load.' : 'Beginning powered descent to ' + b.n + '.', 1); sfx(kind === 'dive' ? 'whoosh' : air ? 'burst' : 'land'); }
@@ -646,7 +799,7 @@ async function demoTour() { if (DEMO.on) { demoStop(); return; } DEMO.on = true;
     goto('mars'); await arrive(60000); if (!DEMO.on) return; R.site = (SITES.mars || []).find(s => s.id === 'gale') || (SITES.mars || [])[0] || null; if (R.site) await loadDEM(R.site); if (!nearBody() || nearBody().id !== 'mars') { const c = R.bpos.mars, B = BI.mars.r; R.ship.position.copy(c).add(new THREE.Vector3(B + 8, 4, B + 8)); R.vel.set(0, 0, 0); } landOrLaunch.go(); await wait(400); { const pk = R.root.querySelector('.pnl [data-s]'); if (pk) pk.click(); } await wait(5200); if (!DEMO.on) return;
     toast('🔴 Gale Crater, Mars · real NASA terrain', 2500); await wait(6000); if (!DEMO.on) return; landOrLaunch(); await wait(5000); if (!DEMO.on) return;
     CAM.photo = 1; R.root.classList.add('photo'); await wait(7000); CAM.photo = 0; R.root.classList.remove('photo');
-    toast('🏁 Demo complete · the solar system is yours', 3000);
+    trophy('a_demo'); toast('🏁 Demo complete · the solar system is yours', 3000);
   } finally { demoStop(); } }
 function demoStop() { if (!DEMO.on) return; DEMO.on = false; R.root.classList.remove('demo'); R.ap = null; if (CAM.photo) { CAM.photo = 0; R.root.classList.remove('photo'); } }
 /* ---------------- camera modes, flight HUD and photo mode ---------------- */
@@ -673,8 +826,8 @@ function hud(spd) { const el = R.root.querySelector('#aHud'); if (!el) return; c
     set('#mfd1', `<b>VEL</b>${Math.round(spd * 1000).toLocaleString()} km/h<br><b>THR</b>${Math.round((R.burn || 0) * 100)}%<br><b>SHIP</b>${(R.shipStat || SHIPS[0]).n}`);
     set('#mfd2', `<b>NEAREST</b>${cb[0] ? cb[0].n : '-'}<br><b>ALT</b>${cb[0] ? Math.max(0, cb[1]).toFixed(1) + ' u' : '-'}<br>${nb ? '<b>READY</b>' + (DIVE[nb.id] ? 'DIVE' : 'LAND') : '<b>ORBIT</b>FREE'}`);
     set('#mfd3', `<b>TARGET</b>${nr.e && !nr.e.body && nr.d < 140 ? (ST.scanned.has(nr.e.o.id) ? nr.e.o.n : 'UNKNOWN') : '-'}<br><b>SCANS</b>${ST.scanned.size}/${ALL.length}<br><b>MISSION</b>${Math.min(ST.mi + 1, MISSIONS.length)}/${MISSIONS.length}`); } }
-function camToggle() { CAM.mode = CAM.mode === 'chase' ? 'cockpit' : 'chase'; toast(CAM.mode === 'cockpit' ? '🎥 Cockpit view' : '🎥 Chase view', 1200); }
-function photoToggle() { CAM.photo = !CAM.photo; R.root.classList.toggle('photo', !!CAM.photo); if (CAM.photo) { CAM.pa = Math.atan2(R.cam.position.z - R.ship.position.z, R.cam.position.x - R.ship.position.x); toast('📷 Photo mode · tap anywhere to exit', 1800); } }
+function camToggle() { CAM.mode = CAM.mode === 'chase' ? 'cockpit' : 'chase'; if (CAM.mode === 'cockpit' && (R.shipStat || SHIPS[0]).id.startsWith('shuttle')) trophy('a_cockpit'); toast(CAM.mode === 'cockpit' ? '🎥 Cockpit view' : '🎥 Chase view', 1200); }
+function photoToggle() { CAM.photo = !CAM.photo; if (CAM.photo) trophy('a_photo'); R.root.classList.toggle('photo', !!CAM.photo); if (CAM.photo) { CAM.pa = Math.atan2(R.cam.position.z - R.ship.position.z, R.cam.position.x - R.ship.position.x); toast('📷 Photo mode · tap anywhere to exit', 1800); } }
 
 function loadDEM(site) { return new Promise(res => { if (!site || !site.dem || site.hm) return res(); const im = new Image(); im.onload = () => { const N = 256, cv = document.createElement('canvas'); cv.width = cv.height = N; const g = cv.getContext('2d'); g.drawImage(im, 0, 0, N, N); const d = g.getImageData(0, 0, N, N).data, hm = new Float32Array(N * N); for (let i = 0; i < N * N; i++) hm[i] = d[i * 4] / 255; site.hm = hm; site.N = N; site.relief = (DEM[site.dem] || {}).relief || .06; res(); }; im.onerror = () => res(); im.src = 'models/dem/' + site.dem + '.png'; }); }
 function sitePicker(b) { const p = document.createElement('div'); p.className = 'pnl'; const L = SITES[b.id];
@@ -696,6 +849,13 @@ function surfStep(dt) { const k = R.keys, S = R.surf.S, jump = !!(R.thr || k[' '
   for (const [p, t, up, u] of L) { const d = p.distanceTo(P_); if (d > 400) continue; v.copy(p); v.y += up; v.project(R.cam); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) continue; let el = R.lab[i]; if (!el) { el = R.lab[i] = document.createElement('div'); R.labs.appendChild(el); } i++; if (el._m !== 'g') { el._m = 'g'; el.style.transform = ''; } el._c = el._h = el._d = null; el.className = 'lab' + (u ? ' u' : ''); el.innerHTML = t + `<small>${Math.round(d)} m</small>`; el.style.left = ((v.x + 1) / 2 * W_) + 'px'; el.style.top = ((1 - v.y) / 2 * H_) + 'px'; el.style.display = 'block'; }
   for (; i < R.lab.length; i++) R.lab[i].style.display = 'none'; }
 /* ---------------- open / close ---------------- */
+/* eye adaptation: like a real camera or a real eye, exposure drops when the Sun fills the view and opens up in a planet's shadow,
+   where the stars and the Milky Way come out. Cheap: one ray test against each body per frame. */
+const EXP = { v: 1.05, f: new THREE.Vector3(), s: new THREE.Vector3(), oc: new THREE.Vector3() };
+function adapt(dt, sf) { let tg = 1.05; if (!sf && R.bpos && R.bpos.sun) { const cam = R.cam, f = EXP.f.set(0, 0, -1).applyQuaternion(cam.quaternion), s = EXP.s.copy(R.bpos.sun).sub(cam.position), ds = s.length(); s.divideScalar(ds); let vis = 1;
+    for (const b of BODIES) { if (b.id === 'sun') continue; const oc = EXP.oc.copy(R.bpos[b.id]).sub(cam.position), t = oc.dot(s); if (t > 0 && t < ds && oc.lengthSq() - t * t < b.r * b.r * .96) { vis = 0; break; } }
+    const glare = THREE.MathUtils.smoothstep(f.dot(s), .86, .995) * vis * Math.min(1, 900 / ds); tg = 1.05 * (1 - .4 * glare) * (vis ? 1 : 1.3); }
+  EXP.v += (tg - EXP.v) * (1 - Math.exp(-dt * (tg < EXP.v ? 2.4 : .8))); R.ren.toneMappingExposure = EXP.v; }
 function draw(sc) { R.rp.scene = sc; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
 function setGfx(g) { GFX = g; P('adv_gfx', g); Q = g === 'max' ? 'ultra' : 'high'; DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(dprCap()); [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? PRE().msaa : 0; t.dispose(); }); R.bloom.strength = PRE().bloom; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + PRE().n; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
 function settings() { const p = document.createElement('div'); p.className = 'pnl'; const opt = (k, v, l) => `<button data-${k}="${v}" class="${String((k === 'g' ? GFX : SET[k])) === String(v) ? 'sel' : ''}">${l}</button>`;
@@ -713,12 +873,13 @@ function settings() { const p = document.createElement('div'); p.className = 'pn
   p.querySelectorAll('[data-fps]').forEach(b => b.onclick = () => { SET.fps = +b.dataset.fps; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-voice]').forEach(b => b.onclick = () => { SET.voice = +b.dataset.voice; save2(); p.remove(); settings(); if (SET.voice) say('Voice callouts on.', 1); });
   p.querySelector('#rs').oninput = e => { SET.scale = +e.target.value; p.querySelector('#rsV').textContent = SET.scale + '%'; }; p.querySelector('#rs').onchange = () => { save2(); DR.s = 1; R.ren.setPixelRatio(dprCap()); resize(); };
   p.querySelector('#stX').onclick = () => p.remove(); }
-function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last < 1000 / SET.cap - 3) { requestAnimationFrame(loop); return; } const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); fpsUI(dt); R.ren.info.reset(); R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
+function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last < 1000 / SET.cap - 3) { requestAnimationFrame(loop); return; } const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); fpsUI(dt); R.ren.info.reset(); padAdv(dt); try { coStep(dt); } catch (e) {} R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
   if (sf) { if (!pnl) { if (R.surf.S.launch) { R.surf.step(dt, {}); } else surfStep(dt); draw(R.surf.S.scn); } }
+  else if (R.ending) { stepEnding(dt); draw(R.scn); }
   else if (R.intro) { stepIntro(dt); draw(R.scn); }
   else if (R.entry) { stepEntry(dt); draw(R.scn); }
   else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) lb.textContent = k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase(); draw(R.scn); } }
-  requestAnimationFrame(loop); }
+  try { adapt(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
 const MC = 'rdo-models-2', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
 function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== 59; }
@@ -751,6 +912,6 @@ function resPanel(done, fromGame) {
   }).catch(() => { $('#dlT').textContent = 'Resources are built into this version, so no download is needed.'; $('#dlB').innerHTML = '<div class="row" style="margin-top:12px"><button class="pr" id="dGo">🚀 Launch</button></div>'; $('#dGo').onclick = () => { open.skipDL = 1; o.remove(); done && done(); }; });
 }
 function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); if (!open.shown) { open.shown = 1; openingShot(); } else if (!G('adv_seen', 0)) intro(); }
-function close() { try { AUD.stop(); } catch (e) {} ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
-window.ADV = { open, close, goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R };
+function close() { try { AUD.stop(); } catch (e) {} try { coLeave(true); } catch (e) {} ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
+window.ADV = { open, close, goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R, _CO: () => CO, toast: (m) => R && toast(m), trophyToast };
 export { open, close };

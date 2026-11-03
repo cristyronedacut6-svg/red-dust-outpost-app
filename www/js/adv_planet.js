@@ -12,9 +12,13 @@ void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vWP = w.xyz; vW
 export function planetMaterial(map, o = {}) {
   const m = new THREE.ShaderMaterial({
     uniforms: { map: { value: map }, night: { value: null }, hasNight: { value: 0 }, sunPos: { value: new THREE.Vector3() }, sunCol: { value: SUN.clone().multiplyScalar(o.sun || 1.55) },
-      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, occ: { value: new THREE.Vector4(0, 0, 0, 0) }, occ2: { value: new THREE.Vector4(0, 0, 0, 0) }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
+      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, occ: { value: new THREE.Vector4(0, 0, 0, 0) }, occ2: { value: new THREE.Vector4(0, 0, 0, 0) }, ringMap: { value: null }, hasRing: { value: 0 }, ringN: { value: new THREE.Vector3(0, 1, 0) }, ringC: { value: new THREE.Vector3() }, ringR: { value: new THREE.Vector2(1, 2) }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
     vertexShader: COMMON_VS,
     fragmentShader: `uniform sampler2D map; uniform sampler2D night; uniform float hasNight, atmoK, ocean, amb, rough, flow, time; uniform vec4 occ, occ2;
+    uniform sampler2D ringMap; uniform float hasRing; uniform vec3 ringN, ringC; uniform vec2 ringR;
+    // the rings' own shadow on the planet: follow the ray toward the Sun to the ring plane and read how opaque the ring is there
+    float ringShadow(vec3 p, vec3 L){ if (hasRing < .5) return 1.; float dn = dot(L, ringN); if (abs(dn) < 1e-4) return 1.; float t = dot(ringC - p, ringN) / dn; if (t <= 0.) return 1.;
+      float r = length(p + L * t - ringC), u = (r - ringR.x) / (ringR.y - ringR.x); if (u < 0. || u > 1.) return 1.; return 1. - texture2D(ringMap, vec2(u, .5)).a * .88; }
     float eclipse(vec4 o, vec3 p, vec3 L){ if (o.w <= 0.) return 1.; vec3 oc = o.xyz - p; float tca = dot(oc, L); if (tca < 0.) return 1.; float d2 = dot(oc, oc) - tca * tca, r2 = o.w * o.w; return smoothstep(r2 * .78, r2 * 1.18, d2); } uniform vec3 sunPos, sunCol, atmo; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
     void main(){ vec3 N = normalize(vWN), L = normalize(sunPos - vWP), V = normalize(cameraPosition - vWP); float ndl = dot(N, L);
       vec3 alb;
@@ -23,7 +27,7 @@ export function planetMaterial(map, o = {}) {
         vec3 a1 = texture2D(map, vec2(vUv.x + sp * f1 * T, vUv.y)).rgb, a2 = texture2D(map, vec2(vUv.x + sp * f2 * T, vUv.y)).rgb; alb = mix(a1, a2, w); }
       else alb = texture2D(map, vUv).rgb;
       // soft terminator (light wraps a little through the atmosphere), true dark night side
-      float sh = eclipse(occ, vWP, L) * eclipse(occ2, vWP, L);   // a planet's shadow on its moons, a moon's shadow on its planet
+      float sh = eclipse(occ, vWP, L) * eclipse(occ2, vWP, L) * ringShadow(vWP, L);   // a planet's shadow on its moons, a moon's shadow on its planet
       float lit = clamp(ndl * .92 + .08 * smoothstep(-.18, .12, ndl), 0., 1.) * sh; float day = smoothstep(-.1, .2, ndl) * sh;
       // reddened light near the terminator: sunlight crosses more air at sunrise/sunset
       vec3 sc = mix(sunCol * vec3(1., .55, .32), sunCol, smoothstep(-.02, .35, ndl));
@@ -74,7 +78,7 @@ export function ringMaterial(map, planetR) {
     transparent: true, side: THREE.DoubleSide, depthWrite: false });
 }
 // keep every planet shader's sun/planet positions current (call once per frame)
-export function updatePlanetUniforms(list, sunPos, time = 0) { for (const it of list) { const u = it.mat.uniforms; if (u.time) u.time.value = time; if (u.sunPos) u.sunPos.value.copy(sunPos); if (u.pc && it.mesh) it.mesh.getWorldPosition(u.pc.value); } }
+export function updatePlanetUniforms(list, sunPos, time = 0) { for (const it of list) { const u = it.mat.uniforms; if (u.time) u.time.value = time; if (u.sunPos) u.sunPos.value.copy(sunPos); if (u.pc && it.mesh) it.mesh.getWorldPosition(u.pc.value); if (it.ring) { it.ring.getWorldPosition(u.ringC.value); u.ringN.value.set(0, 0, 1).transformDirection(it.ring.matrixWorld); } } }
 
 // the Sun: boiling granulation, dark sunspots, limb darkening and an HDR core that drives the bloom
 const NOISE3 = `vec3 hash3(vec3 p){ p = vec3(dot(p,vec3(127.1,311.7,74.7)), dot(p,vec3(269.5,183.3,246.1)), dot(p,vec3(113.5,271.9,124.6))); return -1. + 2. * fract(sin(p) * 43758.5453); }

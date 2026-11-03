@@ -1,6 +1,19 @@
 // Red Dust Outpost · Adventure VFX: GPU particles, warp streaks, shockwave rings, rocks and wind-swept grass
 import * as THREE from 'three';
 
+/* aerial perspective with forward scattering: distant terrain fades into the sky colour, and toward the Sun the haze glows
+   (Mie scattering in dust and air). Patches three's fog chunks once, so every lit material picks it up; strength 0 = off (space, airless worlds). */
+export const FOGSUN = { value: new THREE.Vector4(0, 1, 0, 0) }, FOGSUNC = { value: new THREE.Color(1, .8, .6) };
+export const fogHook = sh => { sh.uniforms.fogSun = FOGSUN; sh.uniforms.fogSunC = FOGSUNC; };
+if (!THREE.ShaderChunk.fog_fragment.includes('fogSun')) {
+  THREE.ShaderChunk.fog_pars_vertex = THREE.ShaderChunk.fog_pars_vertex.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\tvarying vec3 vFogVP;');
+  THREE.ShaderChunk.fog_vertex = THREE.ShaderChunk.fog_vertex.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\tvFogVP = mvPosition.xyz;');
+  THREE.ShaderChunk.fog_pars_fragment = THREE.ShaderChunk.fog_pars_fragment.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\tvarying vec3 vFogVP; uniform vec4 fogSun; uniform vec3 fogSunC;');
+  THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
+    'vec3 fogWD = normalize( ( vec4( vFogVP, 0.0 ) * viewMatrix ).xyz ); float fogMie = fogSun.w * ( pow( max( dot( fogWD, fogSun.xyz ), 0.0 ), 7.0 ) * .85 + pow( max( dot( fogWD, fogSun.xyz ), 0.0 ), 60.0 ) * .9 );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor + fogSunC * fogMie, fogFactor );');
+  const ob = THREE.Material.prototype.onBeforeCompile; THREE.Material.prototype.onBeforeCompile = function (sh, r) { fogHook(sh); if (ob) ob.call(this, sh, r); };
+}
+
 // soft round particle sprite drawn on a canvas
 let SOFT = null;
 function soft() { if (SOFT) return SOFT; const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -70,7 +83,7 @@ export function scatterRocks(scene, H, color, count, area, avoid) { const mat = 
 // wind-swept grass: thousands of tapered blades, swaying in a vertex shader; clustered around the player so it always surrounds you
 export function makeGrass(scene, H, n = 26000, R = 70, avoid) { const blade = new THREE.PlaneGeometry(.09, .7, 1, 4); blade.translate(0, .35, 0); const bp = blade.attributes.position; for (let i = 0; i < bp.count; i++) { const y = bp.getY(i) / .7; bp.setX(i, bp.getX(i) * (1 - y * .9)); } blade.computeVertexNormals();
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .9, side: THREE.DoubleSide }); const U = { time: { value: 0 } };
-  mat.onBeforeCompile = sh => { sh.uniforms.time = U.time; sh.vertexShader = 'uniform float time;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  mat.onBeforeCompile = sh => { fogHook(sh); sh.uniforms.time = U.time; sh.vertexShader = 'uniform float time;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
     float hgt = position.y / .7; vec4 wp = instanceMatrix * vec4(0.,0.,0.,1.); float w = sin(time*1.7 + wp.x*.35 + wp.z*.21) * .5 + sin(time*3.1 + wp.x*.9) * .2; transformed.x += w * hgt * hgt * .35; transformed.z += w * hgt * hgt * .18;`);
   };
   const im = new THREE.InstancedMesh(blade, mat, n); im.receiveShadow = true; im.frustumCulled = false; scene.add(im);

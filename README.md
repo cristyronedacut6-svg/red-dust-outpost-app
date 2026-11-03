@@ -664,3 +664,74 @@ On phones, the game screen has been tidied so you can see the action and know wh
 - In the main game, Mission Control and crew messages are now read aloud over the radio, with a radio chirp before each one. Mission Control has a low voice, and your crew has a brighter one. This covers story beats, mysterious transmissions, tips and crew chatter.
 - It respects the 🎬 Cutscenes and sound settings. Emojis and formatting are stripped before speaking, and a new message cuts off the previous one so voices never pile up.
 - I ran the headless regression sweep on worlds 1 and 3 with no errors.
+
+## v71 — True ending, trophies, NASA daily missions, Adventure co-op, controllers, realism passes 9 and 10
+
+- **🚪 The true ending: the seventh door.** Once you've finished the campaign (all six worlds secured, the secret world won, or all six clues found), scanning the Purple Signal in Adventure Mode offers **🚪 Open the seventh door**.
+  - **The cinematic:** a 3D sequence where the crystal shatters and a great ring with six crystal shards grows out of the signal. Its purple membrane swirls open, your ship flies through, and the screen flashes white.
+  - **What follows:** five voiced story cards reveal what the doors were, who the bosses really were (the text changes if you spared them), and what the Echo wanted. Then come the Moon Productions credits.
+  - **Afterwards:** the door stays open in the asteroid belt as a landmark. Opening it unlocks the *Seventh door* trophy.
+- **🏆 Trophies across both modes.** There are 20 new Adventure trophies, including first scan, 25 and 100 scans, full codex, landing, landing on 5 worlds, gas-giant dive, flying an aircraft, Ingenuity, a new ship and getting close to the Sun. Others cover 100 bootprints on the Moon, a blue Mars sunset, cockpit view, photo mode, the demo tour, a daily mission, co-op, the Purple Signal and the seventh door.
+  - The new 🏆 button opens a trophy room showing Story Mode and Adventure Mode badges with a progress bar.
+  - Unlocking one in Adventure shows a gold animated banner and is spoken aloud. The Story Mode badge screen is now grouped by mode.
+- **🛰 Today's NASA mission.** There's a new mission every day, shown under the campaign mission. Tap it for details and autopilot.
+  - **Live data:** it uses real NASA data first. A real M or X class solar flare this week (from the DONKI feed the game already reads) gives a *Solar flare alert* mission. A geomagnetic storm at Kp 5 or higher gives a crew check.
+  - **Picture of the Day:** if today's NASA Astronomy Picture of the Day is about a planet or moon, the mission sends you there. The card shows the picture and links to it.
+  - **Other days:** it picks from ten themed missions, such as Great Observatories, Rover check-in, Juno at Jupiter, Planet hunters and Ocean worlds.
+  - **Rewards:** +25 🔧, +300 XP and a daily streak. If NASA can't be reached, the missions still work from the built-in list.
+- **👥 Co-op in Adventure Mode.** The new 👥 button lets one player make a room and the other type its 4-letter code. It uses the same Supabase Realtime system as Story Mode co-op.
+  - You see your friend's real ship (the one they picked in the Hangar), smoothly interpolated, with a green name marker and distance. The marker sticks to the screen edge when they're off-screen.
+  - You get toasts when they land, and a **Fly to friend** button. Flying near each other for 10 seconds unlocks *Wingmate*.
+- **🎮 Controller support.** Xbox, PlayStation and other standard controllers work everywhere.
+  - **Menus:** the D-pad or stick moves a gold focus ring, A selects and B goes back.
+  - **Story Mode:**
+
+    | Control | Action |
+    |---|---|
+    | Stick | Move |
+    | A or RT | Fire |
+    | X | Dodge |
+    | B | EMP |
+    | Y | Build |
+    | LB | Swap weapon |
+    | RB | Call Earth |
+    | Back | Shop |
+    | Start | Pause |
+    | Right stick | Look in 3D |
+
+  - **Adventure, in space:**
+
+    | Control | Action |
+    | --- | --- |
+    | Left stick | Steer |
+    | Right stick | Look |
+    | RT | Thrust |
+    | LT | Boost |
+    | A | Scan |
+    | X | Land |
+    | Y | Map |
+    | LB | Camera |
+    | B | Codex |
+    | Back | Hangar |
+    | Start | Settings |
+    | R3 | Photo mode |
+    | L3 | Demo |
+
+  - **Adventure, on the surface:**
+
+    | Control | Action |
+    | --- | --- |
+    | Left stick | Walk |
+    | Right stick | Look |
+    | A | Jump |
+    | RT | Run |
+    | X | Scan |
+    | Y | Fly |
+    | Back | Launch |
+
+- **Realism pass 9 (space):**
+  - **Saturn's rings cast their shadow on the planet.** The shader follows each pixel's ray toward the Sun to the ring plane and darkens it by the ring's real opacity there, so the Cassini Division shows up as a light gap in the shadow.
+  - **Eye adaptation:** exposure dims when the Sun fills the view and opens up when you're in a planet's shadow, so the stars and the Milky Way come out on the night side. It costs one ray test per body per frame.
+- **Realism pass 10 (surfaces):**
+  - **Sun haze (forward scattering):** distant terrain on worlds with air glows toward the Sun, warm and orange at low sun. It's strongest in Mars dust, gentler on Earth, Titan and Venus. Airless worlds stay crisp, the way they really look.
+  - **Ballistic regolith:** on airless worlds (the Moon, Vesta, Ceres, Europa, Pluto…), footsteps and landings kick up dust grains that fly in clean parabolas under the world's gravity and drop straight back down, like in the Apollo footage. Worlds with air still get billowing dust.
