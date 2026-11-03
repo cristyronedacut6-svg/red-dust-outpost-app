@@ -647,3 +647,14 @@ On phones, the game screen has been tidied so you can see the action and know wh
 
 - The opening shot now starts on Earth's night side. The city lights glow, the atmosphere blazes into a sunrise ring, and the Sun peeks over the edge as the title fades in. Then the camera sweeps round the day/night line to the day side and settles in behind your ship. It lasts 11 seconds; tap to skip.
 - I checked all four graphics presets (Low, Medium, High and Max) by switching between them live with no errors. Anti-aliasing per preset: none, 2×, 2× and 4×.
+
+## v69 — The feeling of space, and a Story Mode bridge
+
+- **🌌 Milky Way and nebulae:** the sky shader adds a soft, warm Milky Way band with dark dust lanes and a brighter galactic core, plus faint purple, teal and amber nebula clouds, all on top of NASA's star map. It's lighter on the Low preset.
+- **✨ Space dust:** hundreds of faint motes drift past the camera, wrapping around you, so you feel your speed and the depth of space even far from planets.
+- **🔆 Anamorphic sun streak:** a long horizontal blue-white streak through the Sun, like a cinema lens.
+- **🟣 The Purple Signal (Story Mode bridge):** once you've found at least one mystery clue in the campaign, Adventure Mode picks up a strange purple signal in the asteroid belt. This is where all six outposts beamed their message in the story.
+  - It's a pulsing crystal cluster with a purple glow, light and drifting sparks.
+  - Flying close triggers a screen glitch, a radio whisper ("six doors") and mission control saying it isn't on any NASA chart.
+  - Scanning it opens a story card that counts your clues. With all six, it reveals that a seventh door waits in the belt.
+  - The first scan gives +15 🔧 and +150 XP. It's listed on the 🗺 Map under STORY and doesn't count toward the NASA codex.

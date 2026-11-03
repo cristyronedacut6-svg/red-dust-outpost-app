@@ -237,6 +237,7 @@ function css() {
 @keyframes tIn{from{opacity:0;transform:translateY(10px);letter-spacing:.9em}to{opacity:1}}
 #adv.intro::before,#adv.intro::after{content:'';position:absolute;left:0;right:0;height:10vh;background:#000;z-index:8;pointer-events:none}#adv.intro::before{top:0}#adv.intro::after{bottom:0}
 #adv.demo #aDemo{background:#ffcf4a;color:#1a1200}
+#adv.glitch canvas{filter:hue-rotate(80deg) saturate(2) contrast(1.3);animation:gl .12s steps(2) 6}@keyframes gl{50%{transform:translate(4px,-2px) skewX(3deg)}}
 @media (hover:hover) and (pointer:fine){#adv #aJoy,#adv #aThr,#adv #aBst{display:none}#adv #aScn{right:20px;bottom:20px}}`; document.head.appendChild(s);
 }
 
@@ -262,7 +263,21 @@ function build() {
   { const n = 4000, p = new Float32Array(n * 3), c = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const u = Math.random() * 2 - 1, t = Math.random() * 6.283, r = 6000 + Math.random() * 3000, s = Math.sqrt(1 - u * u); p.set([Math.cos(t) * s * r, u * r, Math.sin(t) * s * r], i * 3); const w = .6 + Math.random() * .4; c.set([w, w, w * (.85 + Math.random() * .3)], i * 3); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('color', new THREE.BufferAttribute(c, 3)); scn.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 2, sizeAttenuation: false, vertexColors: true }))); }
   // NASA Tycho star map as the sky
-  { const smat = new THREE.ShaderMaterial({ uniforms: { map: { value: null } }, side: THREE.BackSide, depthWrite: false, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }', fragmentShader: 'uniform sampler2D map; varying vec2 vUv; void main(){ vec3 c = texture2D(map, vUv).rgb; float l = max(c.r, max(c.g, c.b)); vec3 o = c * (.55 + 2.6 * smoothstep(.25, .9, l)) * smoothstep(.015, .06, l); gl_FragColor = vec4(o, 1.); }' }); const sm = new THREE.Mesh(new THREE.SphereGeometry(9500, 64, 32), smat); sm.renderOrder = -1; scn.add(sm); TL.load('models/tex/stars.webp', t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; smat.uniforms.map.value = t; R && (R.starTex = t); }); }
+  { const smat = new THREE.ShaderMaterial({ uniforms: { map: { value: null }, neb: { value: GFX === 'low' ? .5 : 1 } }, side: THREE.BackSide, depthWrite: false,
+    vertexShader: 'varying vec2 vUv; varying vec3 vD; void main(){ vUv = uv; vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+    fragmentShader: `uniform sampler2D map; uniform float neb; varying vec2 vUv; varying vec3 vD;
+      vec3 h3(vec3 p){ p = vec3(dot(p,vec3(127.1,311.7,74.7)), dot(p,vec3(269.5,183.3,246.1)), dot(p,vec3(113.5,271.9,124.6))); return fract(sin(p) * 43758.5453) * 2. - 1.; }
+      float n3(vec3 p){ vec3 i = floor(p), f = fract(p), u = f * f * (3. - 2. * f); return mix(mix(mix(dot(h3(i), f), dot(h3(i + vec3(1,0,0)), f - vec3(1,0,0)), u.x), mix(dot(h3(i + vec3(0,1,0)), f - vec3(0,1,0)), dot(h3(i + vec3(1,1,0)), f - vec3(1,1,0)), u.x), u.y), mix(mix(dot(h3(i + vec3(0,0,1)), f - vec3(0,0,1)), dot(h3(i + vec3(1,0,1)), f - vec3(1,0,1)), u.x), mix(dot(h3(i + vec3(0,1,1)), f - vec3(0,1,1)), dot(h3(i + vec3(1,1,1)), f - vec3(1,1,1)), u.x), u.y), u.z); }
+      float fb(vec3 p){ float s = 0., a = .5; for (int i = 0; i < 5; i++) { s += a * n3(p); p *= 2.03; a *= .5; } return s; }
+      void main(){ vec3 c = texture2D(map, vUv).rgb; float l = max(c.r, max(c.g, c.b)); vec3 o = c * (.55 + 2.6 * smoothstep(.25, .9, l)) * smoothstep(.015, .06, l);
+        vec3 d = normalize(vD); float g = dot(d, normalize(vec3(.32, .88, .35))), band = exp(-g * g / .045);
+        float dust = smoothstep(.05, .35, fb(d * 6. + 3.)) * exp(-g * g / .006);                         // dark lanes through the galactic core
+        float core = pow(max(dot(d, normalize(vec3(-.6, .3, .74))), 0.), 6.);                           // bright galactic centre
+        vec3 mw = vec3(.95, .82, .7) * band * (.035 + core * .11) * (.6 + .8 * fb(d * 9.)) * (1. - dust * .85);
+        float n1 = fb(d * 2.2 + 11.), n2 = fb(d * 3.1 - 7.), n4 = fb(d * 5. + 2.);
+        vec3 nb = vec3(.55, .2, .75) * smoothstep(.12, .5, n1) * .05 + vec3(.15, .45, .7) * smoothstep(.18, .55, n2) * .04 + vec3(.8, .35, .2) * smoothstep(.25, .6, n4) * .025;
+        gl_FragColor = vec4(o + (mw + nb * (.4 + band)) * neb, 1.); }` });
+    const sm = new THREE.Mesh(new THREE.SphereGeometry(9500, 64, 32), smat); sm.renderOrder = -1; scn.add(sm); TL.load('models/tex/stars.webp', t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; smat.uniforms.map.value = t; R && (R.starTex = t); }); }
   // bodies
   const bpos = {}; BODIES.forEach(b => { if (!b.at) bpos[b.id] = new THREE.Vector3(Math.cos(b.a) * b.d, 0, Math.sin(b.a) * b.d); });
   BODIES.forEach(b => { if (b.at) bpos[b.id] = bpos[b.at].clone().add(new THREE.Vector3(...b.off)); });
@@ -274,7 +289,7 @@ function build() {
     if (b.model) loader.load('models/nasa/' + b.model + '.glb', gl => { const sm = gl.scene, bx = new THREE.Box3().setFromObject(sm), sp = bx.getBoundingSphere(new THREE.Sphere()), k = b.r * 1.15 / sp.radius; sm.position.sub(sp.center).multiplyScalar(k); sm.scale.setScalar(k); m.add(sm); mat.visible = false; });
     if (b.id === 'sun') { // screen-space lens flare made of sprites (no framebuffer reads, so no flicker with anti-aliasing)
       const ft = glowTex('rgba(255,255,255,1)', 'rgba(255,200,120,.35)'), rt = glowTex('rgba(255,255,255,.0)', 'rgba(160,200,255,.25)'); FLARE.length = 0;
-      [[.16, 0, ft, 0xfff2d8], [.03, .6, rt, 0xffffff], [.05, .7, rt, 0xcfe0ff], [.08, .9, rt, 0xbfd4ff], [.03, 1, rt, 0xffe0c0]].forEach(([sz, d, t, c]) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, color: c, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true })); sp.renderOrder = 20; sp.userData = { sz, d }; sp.visible = false; scn.add(sp); FLARE.push(sp); });
+      [[.16, 0, ft, 0xfff2d8], [.18, 0, ft, 0xbfd8ff, 1], [.03, .6, rt, 0xffffff], [.05, .7, rt, 0xcfe0ff], [.08, .9, rt, 0xbfd4ff], [.03, 1, rt, 0xffe0c0]].forEach(([sz, d, t, c, ana]) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, color: c, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true })); sp.renderOrder = 20; sp.userData = { sz, d, ana }; sp.visible = false; scn.add(sp); FLARE.push(sp); });
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex('rgba(255,240,200,1)', 'rgba(255,170,60,.45)'), blending: THREE.AdditiveBlending, depthWrite: false, opacity: .55 })); s.scale.set(320, 320, 1); m.add(s);
       const cm = coronaMaterial(); PL.push({ mat: cm }); m.add(new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.35, 64, 48), cm)); }
     const AC = { earth: 0x5fa8ff, venus: 0xffd28a, mars: 0xff9a6a, titan: 0xffb05a, jupiter: 0xffe2b0, saturn: 0xfff0c8, uranus: 0xa8f0ff, neptune: 0x7aa0ff, pluto: 0x9ab4ff }[b.id];
@@ -297,7 +312,7 @@ function build() {
   const mk = new THREE.SpriteMaterial({ map: glowTex('rgba(255,255,255,1)', 'rgba(255,207,74,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false });
   const mkS = new THREE.SpriteMaterial({ map: glowTex('rgba(255,255,255,1)', 'rgba(125,249,255,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false });
   const objs = OBJS.filter(o => !o.land).map(o => { const g = new THREE.Group(); scn.add(g); const sp = new THREE.Sprite(ST.scanned.has(o.id) ? mkS : mk); sp.scale.set(.016, .016, 1); g.add(sp); return { o, g, sp, model: null, loading: false }; });
-  function placeObj(e, t) { const o = e.o, c = o.rel ? (R.byId[o.rel] ? R.byId[o.rel].g.position : bpos[o.at]) : bpos[o.at], B = BI[o.at];
+  function placeObj(e, t) { if (e.o.story) return; const o = e.o, c = o.rel ? (R.byId[o.rel] ? R.byId[o.rel].g.position : bpos[o.at]) : bpos[o.at], B = BI[o.at];
     if (o.surf) { const la = o.surf[0] * Math.PI / 180, lo = o.surf[1] * Math.PI / 180 + t * .02, n = new THREE.Vector3(Math.cos(la) * Math.cos(lo), Math.sin(la), Math.cos(la) * Math.sin(lo)); e.g.position.copy(c).addScaledVector(n, B.r + o.sz * .45 + (o.hov ? o.hov + Math.sin(t * 2) * .3 : 0)); e.g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n); e.n = n; }
     else if (o.orb) { const [r, inc, ph] = o.orb, a = ph + t * (3 / Math.max(6, r)) * .6; e.g.position.set(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r * Math.sin(inc), c.z + Math.sin(a) * r * Math.cos(inc)); e.g.rotation.y = -a; }
     else if (o.l) { e.g.position.set(c.x + o.l[0], c.y + o.l[1] + Math.sin(t * .4 + o.l[2]) * (o.rel ? .25 : .6), c.z + o.l[2]); e.g.rotation.y = t * (o.rel ? .3 : .05); if (o.rel) e.g.rotation.x = t * .2; } }
@@ -318,7 +333,19 @@ function build() {
   BODIES.forEach(b => { const m = bmesh[b.id]; if (!m || !m.material.uniforms || !m.material.uniforms.occ) return; const u = m.material.uniforms;
     if (b.at && BI[b.at] && b.at !== 'sun') u.occ.value.set(bpos[b.at].x, bpos[b.at].y, bpos[b.at].z, BI[b.at].r);
     const kids = BODIES.filter(x => x.at === b.id).sort((a, c) => c.r / bpos[c.id].distanceTo(bpos[b.id]) - a.r / bpos[a.id].distanceTo(bpos[b.id])); if (kids[0]) u.occ2.value.set(bpos[kids[0].id].x, bpos[kids[0].id].y, bpos[kids[0].id].z, kids[0].r); });
-  R = { engL, PL, comp, rp, bloom, cine, fx: makeFX(scn, 2600), rings: makeRings(scn), warp: makeWarp(scn), yi: 0, pi: 0, envTex, byId: Object.fromEntries(objs.map(e => [e.o.id, e])), mkS, root, ren, scn, cam, bpos, bmesh, objs, ship, flame, beam, placeObj, loadModel, mob, vel: new THREE.Vector3(), yaw: 0, pitch: 0, t: 0, labs: root.querySelector('#labs'), lab: [], keys: {}, joy: { x: 0, y: 0 }, thr: 0, bst: 0, ap: null, scanning: null, last: 0 };
+  const DUSTN = mob ? 500 : 900, dpos = new Float32Array(DUSTN * 3); for (let i = 0; i < DUSTN * 3; i++) dpos[i] = (Math.random() - .5) * 80;
+  const dgeo = new THREE.BufferGeometry(); dgeo.setAttribute('position', new THREE.BufferAttribute(dpos, 3)); const dmat = new THREE.PointsMaterial({ color: 0xbfd0ff, size: .14, transparent: true, opacity: .55, depthWrite: false, blending: THREE.AdditiveBlending, map: glowTex('rgba(255,255,255,1)', 'rgba(255,255,255,0)') });
+  const spaceDust = new THREE.Points(dgeo, dmat); spaceDust.frustumCulled = false; scn.add(spaceDust);
+  // ---- story bridge: the purple signal the six outposts sent toward the asteroid belt (Story Mode's mystery) ----
+  let anomaly = null; { const clues = (G('clues', []) || []).length; if (clues > 0) { const g = new THREE.Group(), a = 2.05, d = 935; g.position.set(Math.cos(a) * d, 6, Math.sin(a) * d); scn.add(g);
+      const cm = new THREE.MeshStandardMaterial({ color: 0x8a40ff, emissive: 0x9a50ff, emissiveIntensity: 2.4, roughness: .15, metalness: .4, transparent: true, opacity: .92 }); const cr = new THREE.Mesh(new THREE.OctahedronGeometry(2.2, 0), cm); cr.scale.set(1, 1.8, 1); g.add(cr);
+      [[1.1, .8], [-1.2, 1.4], [.4, -1.6]].forEach(([x, z], i) => { const sh = new THREE.Mesh(new THREE.OctahedronGeometry(.7 + i * .15, 0), cm); sh.position.set(x * 2.4, (i - 1) * 1.2, z * 2.4); sh.scale.y = 1.7; g.add(sh); });
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex('rgba(255,255,255,1)', 'rgba(170,90,255,.5)'), blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(22); g.add(halo);
+      const pl = new THREE.PointLight(0xa060ff, 40, 80, 2); g.add(pl);
+      const sp = new THREE.Sprite(mk); sp.scale.set(.02, .02, 1); g.add(sp);
+      const o = { id: 'anomaly', n: 'The Purple Signal', k: 'Origin unknown', sz: 3, story: 1, ag: '???', facts: [] };
+      anomaly = { o, g, sp, model: cr, lod: null, loading: false, cr, halo, clues }; objs.push(anomaly); } }
+  R = { anomaly, spaceDust, engL, PL, comp, rp, bloom, cine, fx: makeFX(scn, 2600), rings: makeRings(scn), warp: makeWarp(scn), yi: 0, pi: 0, envTex, byId: Object.fromEntries(objs.map(e => [e.o.id, e])), mkS, root, ren, scn, cam, bpos, bmesh, objs, ship, flame, beam, placeObj, loadModel, mob, vel: new THREE.Vector3(), yaw: 0, pitch: 0, t: 0, labs: root.querySelector('#labs'), lab: [], keys: {}, joy: { x: 0, y: 0 }, thr: 0, bst: 0, ap: null, scanning: null, last: 0 };
   setShip(G('adv_ship', 'orion'), true);
   // start near Earth, looking at it
   const e = bpos.earth; ship.position.set(e.x - 40, e.y + 6, e.z + 30); lookAtYP(e);
@@ -345,7 +372,7 @@ function flare() { if (!FLARE.length) return; const sp = R.bpos.sun, v = tmpV.co
   // hidden when a planet blocks the Sun
   let occ = 0; if (on) { const o = R.cam.position, dir = new THREE.Vector3().subVectors(sp, o), L = dir.length(); dir.divideScalar(L); for (const b of BODIES) { if (b.id === 'sun') continue; const c = R.bpos[b.id], t = new THREE.Vector3().subVectors(c, o).dot(dir); if (t < 0 || t > L) continue; const dd = new THREE.Vector3().subVectors(c, o).addScaledVector(dir, -t).length(); if (dd < b.r) { occ = 1; break; } } }
   const a = on && !occ ? Math.max(0, 1 - Math.hypot(v.x, v.y) * .55) : 0;
-  for (const s of FLARE) { const k = 1 - 2 * s.userData.d, p = new THREE.Vector3(v.x * k, v.y * k, .2).unproject(R.cam), dist = p.distanceTo(R.cam.position); s.position.copy(p); s.scale.setScalar(s.userData.sz * dist * (s.userData.d ? 1 : 1.4)); s.material.opacity = a * (s.userData.d ? .55 : .9); s.visible = a > .01; } }
+  for (const s of FLARE) { const k = 1 - 2 * s.userData.d, p = new THREE.Vector3(v.x * k, v.y * k, .2).unproject(R.cam), dist = p.distanceTo(R.cam.position); s.position.copy(p); if (s.userData.ana) s.scale.set(s.userData.sz * dist * 9, s.userData.sz * dist * .09, 1); else s.scale.setScalar(s.userData.sz * dist * (s.userData.d ? 1 : 1.4)); s.material.opacity = a * (s.userData.d ? .55 : .9); s.visible = a > .01; } }
 function dropFull(e) { if (!e.model) return; e.g.remove(e.model); disposeTree(e.model); e.model = null; if (e.cost) { MEM.tris = Math.max(0, MEM.tris - e.cost.tris); MEM.tex = Math.max(0, MEM.tex - e.cost.tex); } }
 // memory budget: keep the nearest full-detail models within the preset's triangle/texture budget; farther ones fall back to their light version
 function budget(CF) { const B = PRE(); let tris = 0, tex = 0; const L = R.objs.filter(e => e.model && e.cost).sort((a, b) => a.dist - b.dist);
@@ -448,6 +475,11 @@ function step(dt) {
   // speed + destination
   { const cb = BODIES.reduce((a, b) => { const d = R.bpos[b.id].distanceTo(ship.position); return d - b.r < a[1] ? [b, d - b.r, d] : a; }, [null, 1e9, 0]); R.altTxt = cb[0] && cb[1] < cb[0].r * 4 ? ' · ' + fmtKm(realAlt(cb[0], cb[2])) + ' above ' + cb[0].n : ''; }
   R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.altTxt}${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
+  { const D = R.spaceDust, a = D.geometry.attributes.position, c = R.cam.position; for (let i = 0; i < a.count; i++) { let x = a.getX(i), y = a.getY(i), z = a.getZ(i);
+      const w = (v, o) => o + ((((v - o + 40) % 80) + 80) % 80) - 40; a.setXYZ(i, w(x, c.x), w(y, c.y), w(z, c.z)); } a.needsUpdate = true; D.material.opacity = CAM.photo ? .3 : .55; }
+  if (R.anomaly) { const A = R.anomaly, d = A.g.position.distanceTo(ship.position); A.g.rotation.y += dt * .4; A.cr.rotation.x = Math.sin(R.t * .7) * .2; const pu = 1 + Math.sin(R.t * 2.2) * .12; A.halo.scale.setScalar(22 * pu); A.cr.material.emissiveIntensity = 2 + Math.sin(R.t * 3.1) * .8;
+    if (Math.random() < dt * 8) R.fx.emit(A.g.position, new THREE.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2), 0xb070ff, .8, 2.4, 1, 3, { grow: 2, drag: .1, jit: 4 });
+    if (d < 70 && !A.met) { A.met = 1; R.root.classList.add('glitch'); setTimeout(() => R.root.classList.remove('glitch'), 900); sfx('whoosh'); say('Commander… that signal is not on any NASA chart.', 1); try { if (typeof speakCreepy === 'function') setTimeout(() => speakCreepy('six doors', 0, .3), 3200); } catch (e) {} toast('📻 <b>Unknown signal</b><br><small>The same purple glow as the crystal on the Moon… Fly closer and scan it.</small>', 5000); } }
   updatePlanetUniforms(R.PL, R.bpos.sun, R.t); navBlink(R.t); flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
   labels();
 }
@@ -463,7 +495,7 @@ function labels() {
 }
 
 /* ---------------- cards, codex, map, missions ---------------- */
-function card(o, fresh) { const isNew = fresh && !ST.scanned.has(o.id);
+function card(o, fresh) { if (o.story) return storyCard(o, fresh); const isNew = fresh && !ST.scanned.has(o.id);
   if (isNew) { say('New object identified. ' + o.n.replace(/\(.*?\)/g, '') + '.'); const was = new Set(SHIPS.filter(unlocked).map(x => x.id)); ST.scanned.add(o.id); save(); reward(5, 60); sfx('chime'); const nw = SHIPS.filter(x => unlocked(x) && !was.has(x.id)); if (nw.length) setTimeout(() => toast('🛠 New ship unlocked in the Hangar: <b>' + nw.map(x => x.n).join(', ') + '</b><br><small>Tap 🛠 Hangar to fly it</small>', 4500), 1200); const e = R.objs.find(x => x.o.id === o.id); if (e) e.sp.material = R.mkS; checkMissions(); milestone(); }
   const realTxt = o.r && RKM[o.id] ? `Real size: ${(RKM[o.id] * 2).toLocaleString()} km across${ORBIT[o.id] ? ` · ${ORBIT[o.id]} AU (${fmtKm(ORBIT[o.id] * AUKM)}) from the Sun · sunlight takes ${Math.round(ORBIT[o.id] * 499 / 60)} min to arrive` : ''}` : '';
   const loc = o.r ? (o.at ? 'Orbits ' + BI[o.at].n : 'Solar system') : o.land ? (o.land === 'earth' ? 'Kennedy Space Center, Earth' : 'On the surface of ' + BI[o.land].n) : o.far ? 'Deep sky, far beyond the solar system' : (o.surf ? 'On ' + BI[o.at].n : 'Near ' + BI[o.at].n);
@@ -471,13 +503,20 @@ function card(o, fresh) { const isNew = fresh && !ST.scanned.has(o.id);
    <div class="mt">${[o.ag, o.yr ? 'Launched ' + o.yr : '', loc].filter(Boolean).join(' · ')}</div>${realTxt ? `<div class="mt" style="color:#7df9ff">📏 ${realTxt}</div>` : ''}<ul>${o.facts.map(f => `<li>${f}</li>`).join('')}</ul>
    ${o.r ? '' : '<div class="src">3D model: NASA 3D Resources (science.nasa.gov/3d-resources)</div>'}<div class="row"><button class="pr" id="cOk">Continue</button></div></div>`;
   R.root.appendChild(p); viewer(o, p.querySelector('.vw'), p); p.querySelector('#cOk').onclick = () => p.remove(); }
+function storyCard(o, fresh) { const A = R.anomaly, n = A ? A.clues : 0, first = fresh && !ST.flags.has('anomaly');
+  if (first) { ST.flags.add('anomaly'); save(); reward(15, 150); sfx('chime'); }
+  const lines = ['It hums at the same frequency as the purple crystal on the Moon.', `Your outposts have found ${n} of 6 clues. Each clue makes the signal stronger.`,
+    n >= 6 ? 'With all six clues, the signal finally answers: a seventh door is waiting, out here in the belt. Finish the campaign to open it.' : 'Find more clues in Story Mode: the signal still has something to say.', 'Mission Control says it is just space noise. Mission Control has said that before.'];
+  const p = document.createElement('div'); p.className = 'pnl'; p.innerHTML = `<div class="crd" style="border-color:rgba(176,112,255,.6)"><div class="ey" style="color:#c9a0ff">🟣 STORY · ORIGIN UNKNOWN</div>${first ? '<div class="nw" style="background:#b070ff;color:#fff">FIRST CONTACT · +15 🔧 · +150 XP</div>' : ''}<h2>The Purple Signal</h2>
+    <div class="mt">Detected where all six outposts sent their message, the night every outpost flickered.</div><ul>${lines.map(f => `<li>${f}</li>`).join('')}</ul><div class="row"><button class="pr" id="cOk" style="background:#7a3fd0;border-color:#c9a0ff">Continue</button></div></div>`;
+  R.root.appendChild(p); p.querySelector('#cOk').onclick = () => p.remove(); if (first) { say(n >= 6 ? 'The signal is answering. Commander, it is calling you.' : 'Signal recorded. Mission Control… is not answering.', 1); } }
 function milestone() { const n = ST.scanned.size, got = G('adv_ms', 0), M = [[10, 30], [25, 60], [ALL.length, 150]]; M.forEach(([at, tp], i) => { if (n >= at && got <= i) { P('adv_ms', i + 1); reward(tp, 200); setTimeout(() => toast(`🏅 Codex ${at === ALL.length ? 'complete' : at + ' scans'}! +${tp} 🔧`, 3500), 600); } }); }
 function checkMissions() { while (ST.mi < MISSIONS.length && MISSIONS[ST.mi].need.every(done)) { ST.mi++; save(); reward(20, 150); sfx('fanfare'); setTimeout(() => toast('✅ Mission complete! +20 🔧' + (ST.mi < MISSIONS.length ? '<br><small>Next: ' + MISSIONS[ST.mi].t + '</small>' : '<br><small>You finished the Grand Tour!</small>'), 4000), 300); } misUI(); }
 function misUI() { const m = R.root.querySelector('#aMis'); if (ST.mi >= MISSIONS.length) { m.innerHTML = '<b>GRAND TOUR COMPLETE</b>Keep scanning to fill your codex'; return; } const M = MISSIONS[ST.mi]; m.innerHTML = `<b>MISSION ${ST.mi + 1}/${MISSIONS.length}</b>${M.t} <span style="opacity:.75">(${M.need.filter(done).length}/${M.need.length})</span>`; }
 function goto(id) { if (OI[id] && OI[id].land) id = OI[id].land; const e = R.objs.find(x => x.o.id === id) || (BI[id] ? { o: BI[id], g: { position: R.bpos[id] } } : null); if (!e) return; const d = e.g.position.distanceTo(R.ship.position); R.ap = { e, max: Math.max(60, Math.min(900, d * .8)) }; R.apName = e.o.n; toast('🧭 Autopilot engaged → <b>' + e.o.n + '</b>'); }
 function mapPanel() { const p = document.createElement('div'); p.className = 'pnl'; const grp = {}; OBJS.forEach(o => (grp[o.at] = grp[o.at] || []).push(o));
   OBJS.filter(o => o.land).forEach(o => { (grp[o.land] = grp[o.land] || []); });
-  p.innerHTML = `<div class="crd"><div class="ey">🗺 SOLAR SYSTEM MAP</div><h2>Where to?</h2><div class="mt">Pick a destination and autopilot flies you there. Joystick or keys take back control.</div><div class="grid">${BODIES.map(b => `<h4>${b.n.toUpperCase()}</h4><button data-g="${b.id}">🪐 ${b.n}${WORLD[b.id] ? ' · 🛬' : DIVE[b.id] ? ' · 🌀' : ''}</button>` + (grp[b.id] || []).filter(o => !o.land).map(o => `<button data-g="${o.id}" class="${ST.scanned.has(o.id) ? '' : 'no'}">${ST.scanned.has(o.id) ? '🛰 ' + o.n : '📡 Unknown signal'}</button>`).join('')).join('')}</div><div class="row"><button id="mX">Close</button></div></div>`;
+  p.innerHTML = `<div class="crd"><div class="ey">🗺 SOLAR SYSTEM MAP</div><h2>Where to?</h2><div class="mt">Pick a destination and autopilot flies you there. Joystick or keys take back control.</div><div class="grid">${BODIES.map(b => `<h4>${b.n.toUpperCase()}</h4><button data-g="${b.id}">🪐 ${b.n}${WORLD[b.id] ? ' · 🛬' : DIVE[b.id] ? ' · 🌀' : ''}</button>` + (grp[b.id] || []).filter(o => !o.land).map(o => `<button data-g="${o.id}" class="${ST.scanned.has(o.id) ? '' : 'no'}">${ST.scanned.has(o.id) ? '🛰 ' + o.n : '📡 Unknown signal'}</button>`).join('')).join('')}</div>${R.anomaly ? '<h4 style="color:#c9a0ff">🟣 STORY</h4><button data-g="anomaly" style="border-color:#b070ff">🟣 Purple Signal (asteroid belt)</button>' : ''}<div class="row"><button id="mX">Close</button></div></div>`;
   R.root.appendChild(p); p.querySelector('#mX').onclick = () => p.remove(); p.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { p.remove(); goto(b.dataset.g); }); }
 function grpOf(o) { if (o.r) return '🪐 Planets, moons and the Sun'; if (o.far) return '🌌 Deep sky (exploded stars and young stars)'; if (o.z === 'suit' || o.z === 'item') return '🧑‍🚀 Spacesuits and tools'; if (o.land === 'earth') return '🚀 Kennedy Space Center (land on Earth)';
   if (o.land === 'mars' || o.at === 'mars') return '🔴 Mars'; if (o.at === 'moon') return '🌙 The Moon'; if (o.at === 'earth') return '🌍 Around Earth'; return '☄️ Deep space and the outer planets'; }
@@ -594,7 +633,7 @@ function stepIntro(dt) { const I = R.intro; I.t += dt; R.t += dt; const k = Math
   const look = R.bpos.earth.clone().lerp(ship.position, Math.max(0, (k - .55) / .45)); R.cam.lookAt(look); R.cam.fov = 48 + 12 * e; R.cam.updateProjectionMatrix();
   updatePlanetUniforms(R.PL, R.bpos.sun, R.t); flare(); R.fx.update(dt, R.cam);
   const t = R.root.querySelector('#aTitle'); if (k > .78) t.className = 'off';
-  if (k >= 1) { R.intro = null; R.root.classList.remove('cine', 'intro'); t.className = 'off'; setTimeout(() => t.remove(), 900); if (!G('adv_seen', 0)) intro(); else toast('🗺 Map → pick a destination · 📡 scan signals · 🎬 Demo for a guided tour', 3500); } }
+  if (k >= 1) { R.intro = null; R.root.classList.remove('cine', 'intro'); t.className = 'off'; setTimeout(() => t.remove(), 900); if (!G('adv_seen', 0)) intro(); else toast(R.anomaly && !ST.flags.has('anomaly') ? '📻 Mission Control: a strange <b>purple signal</b> is coming from the asteroid belt…' : '🗺 Map → pick a destination · 📡 scan signals · 🎬 Demo for a guided tour', 4500); } }
 /* ---------------- demo tour: flies itself through the best moments (any input takes control back) ---------------- */
 const DEMO = { on: false };
 const wait = ms => new Promise(r => setTimeout(r, ms));
