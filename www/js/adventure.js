@@ -11,7 +11,7 @@ import { RenderPass } from './vendor/three/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './vendor/three/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './vendor/three/postprocessing/OutputPass.js';
 import { ShaderPass } from './vendor/three/postprocessing/ShaderPass.js';
-import { makeFX, makeRings, makeWarp, CineShader } from './adv_fx.js';
+import { makeFX, makeRings, makeWarp, CineShader, SafeShader } from './adv_fx.js';
 // Every model ships as .glb (GitHub Pages / app). The preview host can't serve .glb, so each also exists as embedded glTF (.json).
 // Try .glb first; if it fails (404, or an HTML page instead of a model) use .json, and remember which works so later loads go straight there.
 const PA = { 'international-space-station-iss-d-igoal': 'iss', 'cassiopeia-a-supernova-b-2023': 'cassiopeia-a-supernova', 'cassiopeia-a-supernova-c-2025': 'cassiopeia-a-supernova' };
@@ -205,25 +205,36 @@ function css() {
 #adv .hg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}#adv .hg button{text-align:left;padding:8px;font-size:11px;line-height:1.25;position:relative}#adv .hg button.sel{border-color:#ffcf4a;box-shadow:0 0 0 2px rgba(255,207,74,.5) inset}#adv .hg button.lk{opacity:.5}
 #adv .hg .bar{display:flex;gap:4px;align-items:center;font-size:9px;opacity:.85;margin-top:2px}#adv .hg .bar i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}#adv .hg .bar i b{display:block;height:100%;background:#7df9ff}
 #adv #aLd{position:absolute;left:50%;top:calc(52px + env(safe-area-inset-top));transform:translateX(-50%);font:700 11px var(--disp,system-ui);color:#cfe9ff;background:rgba(5,10,24,.6);border:1px solid rgba(125,249,255,.3);border-radius:20px;padding:4px 12px;display:none;pointer-events:none}
+#adv #aHud{position:absolute;inset:0;pointer-events:none;display:none}#adv #aHud .tb{position:absolute;left:0;top:0;display:none}#adv #aHud .tb i{position:absolute;width:12px;height:12px;border:2px solid #7df9ff;filter:drop-shadow(0 0 4px rgba(125,249,255,.8))}
+#adv #aHud .tb i:nth-child(2){left:0;top:0;border-right:0;border-bottom:0}#adv #aHud .tb i:nth-child(3){right:0;top:0;border-left:0;border-bottom:0}#adv #aHud .tb i:nth-child(4){left:0;bottom:0;border-right:0;border-top:0}#adv #aHud .tb i:nth-child(5){right:0;bottom:0;border-left:0;border-top:0}
+#adv #aHud .tb.u i{border-color:#ffcf4a;filter:drop-shadow(0 0 4px rgba(255,207,74,.8))}#adv #aHud .tb span{position:absolute;left:50%;top:100%;transform:translate(-50%,6px);font:800 10px var(--disp,system-ui);letter-spacing:.08em;color:#cfefff;white-space:nowrap;text-shadow:0 1px 3px #000}
+#adv #aHud .pg{position:absolute;left:0;top:0;width:26px;height:26px;display:none;color:#9dff9d;font:700 22px/26px system-ui;text-align:center;text-shadow:0 0 6px rgba(120,255,120,.8)}
+#adv #aHud .ck{position:absolute;inset:0;display:none;background:radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(0,10,20,.55) 100%)}#adv #aHud .ck svg{position:absolute;left:50%;top:50%;width:200px;transform:translate(-50%,-50%)}
+#adv #aHeat{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:6;background:radial-gradient(ellipse at 50% 60%,rgba(255,170,80,0) 25%,rgba(255,110,30,.45) 70%,rgba(255,60,10,.75) 100%)}#adv #aHeat.w{background:#fff}
+#adv.cine #aTop,#adv.cine #aJoy,#adv.cine .rbtn,#adv.cine #aLand,#adv.cine #aFly,#adv.cine #aMis,#adv.cine #aSpd,#adv.cine #labs,#adv.cine #aHud,#adv.cine #aLd{display:none!important}
+#adv.photo #aTop,#adv.photo #aJoy,#adv.photo .rbtn,#adv.photo #aLand,#adv.photo #aMis,#adv.photo #aSpd,#adv.photo #labs,#adv.photo #aLd,#adv.photo #aToast{display:none!important}
+#adv.photo::before,#adv.photo::after{content:'';position:absolute;left:0;right:0;height:9vh;background:#000;z-index:7;pointer-events:none}#adv.photo::before{top:0}#adv.photo::after{bottom:0}
+#adv #aPh{position:absolute;inset:0;z-index:8;display:none;align-items:flex-end;justify-content:center;padding-bottom:3vh;font:700 11px var(--disp,system-ui);letter-spacing:.2em;color:rgba(255,255,255,.6)}#adv.photo #aPh{display:flex}
+@media (max-width:760px){#adv #aTop{flex-wrap:wrap;justify-content:flex-end;max-width:66vw;gap:4px}#adv #aTop .ab{padding:6px 8px;font-size:11px}}
 @media (hover:hover) and (pointer:fine){#adv #aJoy,#adv #aThr,#adv #aBst{display:none}#adv #aScn{right:20px;bottom:20px}}`; document.head.appendChild(s);
 }
 
 /* ---------------- build the scene ---------------- */
 function build() {
   css(); try { MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1))); } catch (e) {} const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder); // geometry decoding runs on background threads, so loading doesn't stutter
-  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aX">✕ Exit</button></div>
-  <div id="labs"></div><div id="aJoy"><div class="k"><i></i></div></div><button class="rbtn" id="aBst">BOOST</button><button class="rbtn" id="aThr">🚀<br>THRUST</button><button class="rbtn" id="aScn">📡<br>SCAN</button><button class="ab" id="aLand"></button><button class="ab" id="aFly"></button><div id="aScan">SCANNING…</div><div id="aSpd"></div><div id="aToast"></div><div id="aLd"></div>`;
+  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aCam" title="Camera (V)">🎥</button><button class="ab" id="aPhoto" title="Photo mode (P)">📷</button><button class="ab" id="aX">✕ Exit</button></div>
+  <div id="labs"></div><div id="aJoy"><div class="k"><i></i></div></div><button class="rbtn" id="aBst">BOOST</button><button class="rbtn" id="aThr">🚀<br>THRUST</button><button class="rbtn" id="aScn">📡<br>SCAN</button><button class="ab" id="aLand"></button><button class="ab" id="aFly"></button><div id="aScan">SCANNING…</div><div id="aSpd"></div><div id="aToast"></div><div id="aLd"></div><div id="aHud"><div class="tb"><span></span><i></i><i></i><i></i><i></i></div><div class="pg">◎</div><div class="ck"><svg viewBox="0 0 200 120"><path d="M70 60h22M108 60h22M100 52v-10M100 68v10" stroke="#7df9ff" stroke-width="2" fill="none"/><circle cx="100" cy="60" r="3" fill="#7df9ff"/></svg></div></div><div id="aPh">📷 PHOTO MODE · tap to exit</div>`;
   document.body.appendChild(root);
   const cv = root.querySelector('canvas'), mob = matchMedia('(pointer:coarse)').matches;
   const ren = new THREE.WebGLRenderer({ canvas: cv, antialias: false, powerPreference: 'high-performance' });
-  ren.setPixelRatio(Math.min(devicePixelRatio || 1, Q === 'ultra' ? 2 : Q === 'high' ? 1.5 : 1)); ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.05;
+  ren.setPixelRatio(dprCap()); ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.05;
   cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); if (R) { R.lost = true; toast('⚠ Graphics memory full: recovering…', 3000); } });
   cv.addEventListener('webglcontextrestored', () => { if (!R) return; R.lost = false; DR.s = .7; R.ren.setPixelRatio(Math.min(devicePixelRatio || 1, 2) * .7); resize(); LQ.max = 2; toast('✅ Graphics recovered', 1800); });
   const scn = new THREE.Scene(), cam = new THREE.PerspectiveCamera(60, 1, .1, 12000);
   // realistic reflections on the NASA models: a studio environment map, plus bloom for glowing things
   const pm = new THREE.PMREMGenerator(ren), envTex = pm.fromScene(new RoomEnvironment(), .04).texture; scn.environment = envTex; scn.environmentIntensity = .45;
   const hdrOK = ren.capabilities.isWebGL2 && (ren.extensions.has('EXT_color_buffer_float') || ren.extensions.has('EXT_color_buffer_half_float')); R_HDR = hdrOK;
-  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? (Q === 'ultra' ? 4 : 2) : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), .45, .4, .95), cine = new ShaderPass(CineShader); comp.addPass(rp); comp.addPass(bloom); comp.addPass(new OutputPass()); comp.addPass(cine);
+  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? (Q === 'ultra' ? 4 : 2) : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), .45, .4, .95), cine = new ShaderPass(CineShader); comp.addPass(rp); comp.addPass(new ShaderPass(SafeShader)); comp.addPass(bloom); comp.addPass(new OutputPass()); comp.addPass(cine);
   scn.add(new THREE.AmbientLight(0x8090b0, .75)); const sunL = new THREE.PointLight(0xfff2dd, 3.2, 0, 0); scn.add(sunL);
   const hem = new THREE.HemisphereLight(0xbfd8ff, 0x201810, .35); scn.add(hem);
   // stars
@@ -293,7 +304,7 @@ function build() {
     ui: (b, W, mode) => surfUI(b, W, mode), ship: () => R.shipStat || SHIPS[0], fixMat, craftUI: (on, cr) => { const b = R.root.querySelector('#aFly'); b.innerHTML = on ? '🧑‍🚀 LAND & WALK' : (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); R.root.querySelector('#aThr').innerHTML = on ? (cr.heli ? '⬆<br>CLIMB' : '⬆<br>PULL UP') : '⤒<br>JUMP'; R.root.querySelector('#aBst').innerHTML = on ? (cr.heli ? 'FAST' : 'THROTTLE') : 'RUN'; } });
   root.querySelector('#aLand').onclick = () => landOrLaunch(); root.querySelector('#aQ').textContent = '⚙ ' + QL[Q]; root.querySelector('#aQ').onclick = () => { setQ(QN[(QN.indexOf(Q) + 1) % 2]); toast('Graphics: <b>' + QL[Q] + '</b>' + (Q === 'ultra' ? ' (max detail, 4× anti-aliasing, 2× resolution)' : ' (max effects, a little lighter for phones)')); };
 }
-let R_HDR = true; const LQ = { busy: 0, max: (navigator.hardwareConcurrency || 4) >= 8 ? 6 : 4 }, FLARE = [];
+let R_HDR = true; const PHONE = matchMedia('(pointer:coarse)').matches; const dprCap = () => Math.min(devicePixelRatio || 1, Q === 'ultra' ? (PHONE ? 1.6 : 2) : (PHONE ? 1.3 : 1.5)); const LQ = { busy: 0, max: (navigator.hardwareConcurrency || 4) >= 8 ? 6 : 4 }, FLARE = [];
 function flare() { if (!FLARE.length) return; const sp = R.bpos.sun, v = tmpV.copy(sp).project(R.cam), on = v.z < 1 && Math.abs(v.x) < 1.3 && Math.abs(v.y) < 1.3;
   // hidden when a planet blocks the Sun
   let occ = 0; if (on) { const o = R.cam.position, dir = new THREE.Vector3().subVectors(sp, o), L = dir.length(); dir.divideScalar(L); for (const b of BODIES) { if (b.id === 'sun') continue; const c = R.bpos[b.id], t = new THREE.Vector3().subVectors(c, o).dot(dir); if (t < 0 || t > L) continue; const dd = new THREE.Vector3().subVectors(c, o).addScaledVector(dir, -t).length(); if (dd < b.r) { occ = 1; break; } } }
@@ -305,7 +316,7 @@ const DR = { t: 0, n: 0, s: 1, cool: 4, low: 0, high: 0, changes: 0 };
 // Each resolution change reallocates the render buffers (one blank frame), so it changes rarely and only after a sustained slowdown.
 function dynRes(dt) { DR.t += dt; DR.n++; DR.cool = Math.max(0, DR.cool - dt); if (DR.t < 2) return; const fps = DR.n / DR.t; DR.t = 0; DR.n = 0;
   DR.low = fps < 32 ? DR.low + 1 : 0; DR.high = fps > 58 ? DR.high + 1 : 0; if (DR.cool > 0 || DR.changes >= 6) return;
-  const max = Math.min(devicePixelRatio || 1, Q === 'ultra' ? 2 : 1.5); let s = DR.s;
+  const max = dprCap(); let s = DR.s;
   if (DR.low >= 3 && s > .55) s = Math.max(.55, s - .15); else if (DR.high >= 8 && s < 1) s = Math.min(1, s + .15);
   if (s !== DR.s) { DR.s = s; DR.cool = 12; DR.low = DR.high = 0; DR.changes++; R.ren.setPixelRatio(max * s); resize(); } }
 function ldUI(k, n) { const el = R.root.querySelector('#aLd'), on = n > 0 && k < n; el.style.display = on ? 'block' : 'none'; if (on) el.textContent = '⏳ Loading NASA 3D models ' + k + ' / ' + n; }
@@ -322,14 +333,14 @@ function controls() {
   const hold = (id, k) => { const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); R[k] = 1; if (k === 'thr') R.ap = null; }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(v => b.addEventListener(v, () => R[k] = 0)); };
   hold('#aThr', 'thr'); hold('#aBst', 'bst');
   $('#aScn').addEventListener('pointerdown', e => { e.preventDefault(); scan(); });
-  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
+  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aCam').onclick = () => camToggle(); $('#aPhoto').onclick = () => photoToggle(); $('#aPh').onclick = () => photoToggle(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
   // mouse look on desktop
   let drag = null; R.ren.domElement.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
   addEventListener('pointermove', e => { if (!drag || !ST.on || e.pointerId !== drag.id) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
     if (R.surf && R.surf.S.on) { R.surf.S.camYaw -= dx * .006; R.surf.S.camPitch = THREE.MathUtils.clamp(R.surf.S.camPitch + dy * .004, .05, 1.2); return; }
     R.yaw -= dx * .004; R.pitch = THREE.MathUtils.clamp(R.pitch - dy * .004, -1.4, 1.4); R.ap = null; });
   addEventListener('pointerup', e => { if (drag && e.pointerId === drag.id) drag = null; });
-  addEventListener('keydown', e => { if (!ST.on) return; const k = e.key.toLowerCase(); R.keys[k] = 1; if (k === 'e' || (k === ' ' && !(R.surf && R.surf.S.on))) { scan(); e.preventDefault(); } if (k === ' ' && R.surf && R.surf.S.on) e.preventDefault(); if (k === 'l') landOrLaunch(); if (k === 'm') mapPanel(); if (k === 'c') codex(); if (k === 'h' && !(R.surf && R.surf.S.on)) hangar(); if (k === 'f' && R.surf && R.surf.S.on) flyToggle(); if (k === 'escape') { const p = R.root.querySelector('.pnl'); if (p) p.remove(); else close(); } if ('wasdqe'.includes(k) || k.startsWith('arrow')) R.ap = null; e.stopPropagation(); }, true);
+  addEventListener('keydown', e => { if (!ST.on) return; const k = e.key.toLowerCase(); R.keys[k] = 1; if (k === 'e' || (k === ' ' && !(R.surf && R.surf.S.on))) { scan(); e.preventDefault(); } if (k === ' ' && R.surf && R.surf.S.on) e.preventDefault(); if (k === 'l') landOrLaunch(); if (k === 'm') mapPanel(); if (k === 'c') codex(); if (k === 'v' && !(R.surf && R.surf.S.on)) camToggle(); if (k === 'p' && !(R.surf && R.surf.S.on)) photoToggle(); if (k === 'h' && !(R.surf && R.surf.S.on)) hangar(); if (k === 'f' && R.surf && R.surf.S.on) flyToggle(); if (k === 'escape') { const p = R.root.querySelector('.pnl'); if (p) p.remove(); else close(); } if ('wasdqe'.includes(k) || k.startsWith('arrow')) R.ap = null; e.stopPropagation(); }, true);
   addEventListener('keyup', e => { if (R) R.keys[e.key.toLowerCase()] = 0; }, true);
   addEventListener('resize', resize);
 }
@@ -367,15 +378,14 @@ function step(dt) {
       R.fx.emit(ep, v, 0xffffff, sz * .22, .18, 2, .4, { grow: 1.5 }); } }
   R.cam.fov += ((60 + Math.min(14, Math.max(0, spd - 50) / 12)) - R.cam.fov) * Math.min(1, dt * 3); R.cam.updateProjectionMatrix();
   // chase camera
-  const back = new THREE.Vector3(0, 2.4, 9 + Math.min(6, spd / 30)).applyQuaternion(ship.quaternion); R.cam.position.lerp(ship.position.clone().add(back), Math.min(1, dt * 6));
-  R.cam.lookAt(ship.position.clone().add(new THREE.Vector3(0, .6, -6).applyQuaternion(ship.quaternion)));
+  camUpdate(dt, spd);
   // objects: move, load nearby models, rotate planets
   // stream models in, nearest first, a few at a time; unload far ones so memory stays steady
   const CF = [], CL = [];
   for (const e of R.objs) { R.placeObj(e, R.t); const d = e.g.position.distanceTo(ship.position); e.dist = d;
     const lodR = e.o.far ? 1500 : 520, fullR = e.o.far ? 1400 : Math.max(30, e.o.sz * 16), canFull = !e.failed || (e.failed < 3 && R.t > e.retryT);
     if (!e.loading) { if (!e.model && canFull && (d < fullR || (e.noLod && d < lodR))) CF.push(e); else if (!e.lod && !e.noLod && d < lodR) { if (!LODS.has(e.o.model || e.o.id)) e.noLod = 1; else CL.push(e); } }
-    const showFull = !!e.model && (d < fullR * 1.8 || !e.lod), vis = d < (e.o.far ? 3000 : Math.max(700, e.o.sz * 200));
+    const showFull = !!e.model && (d < fullR * 1.8 || !e.lod), vis = d < (e.o.far ? 3000 : Math.max(260, e.o.sz * 150));
     if (e.model) { e.model.visible = vis && showFull; if (d > fullR * 3 && !e.o.far && e.lod) { e.g.remove(e.model); disposeTree(e.model); e.model = null; } }
     if (e.lod) { e.lod.visible = vis && !showFull; if (d > lodR * 2.2) { e.g.remove(e.lod); disposeTree(e.lod); e.lod = null; } }
     e.sp.visible = !(e.model || e.lod) || d > e.o.sz * 6; }
@@ -389,7 +399,7 @@ function step(dt) {
     if (S2.t > 1.1) { R.beam.visible = false; R.root.querySelector('#aScan').style.display = 'none'; R.scanning = null; R.rings.add(S2.e.g.position, 0x7df9ff, (S2.e.o.sz || 2) * 5, .9, R.cam.position); R.fx.emit(S2.e.g.position, tmpV.set(0, 0, 0), 0x7df9ff, 1.4, 1, 40, 18, { grow: 1.5, drag: .8 }); setTimeout(() => card(S2.e.o, true), 350); } }
   // speed + destination
   R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
-  flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, spd);
+  flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
   labels();
 }
 function labels() {
@@ -399,8 +409,8 @@ function labels() {
   let i = 0; for (const [p, o, isB, d] of list) { if (!isB) { if (d > 160 || nObj >= 6) continue; nObj++; } else if (d - o.r > 650 && !(R.ap && R.ap.e.o === o)) continue; tmpV.copy(p); if (isB) tmpV.y += o.r * 1.15; tmpV.project(R.cam); if (tmpV.z > 1 || Math.abs(tmpV.x) > 1.1 || Math.abs(tmpV.y) > 1.1) continue;
     let el = R.lab[i]; if (!el) { el = R.lab[i] = document.createElement('div'); el.className = 'lab'; R.labs.appendChild(el); } i++;
     const known = ST.scanned.has(o.id), dist = d > 99 ? Math.round(d) + ' u' : Math.round(d) + ' u';
-    el.className = 'lab' + (isB ? ' b' : known ? '' : ' u'); el.innerHTML = (isB ? o.n : known ? o.n : '📡 Unknown signal') + `<small>${dist}</small>`; el.style.left = ((tmpV.x + 1) / 2 * W) + 'px'; el.style.top = ((1 - tmpV.y) / 2 * H) + 'px'; el.style.display = 'block'; }
-  for (; i < R.lab.length; i++) R.lab[i].style.display = 'none';
+    if (el._m !== 's') { el._m = 's'; el.style.left = el.style.top = '0px'; el._c = el._h = el._d = null; } const cls = 'lab' + (isB ? ' b' : known ? '' : ' u'), html = (isB ? o.n : known ? o.n : '📡 Unknown signal') + `<small>${dist}</small>`; if (el._c !== cls) { el.className = cls; el._c = cls; } if (el._h !== html) { el.innerHTML = html; el._h = html; } el.style.transform = `translate(${((tmpV.x + 1) / 2 * W).toFixed(1)}px,${((1 - tmpV.y) / 2 * H).toFixed(1)}px) translate(-50%,-100%)`; if (el._d !== 1) { el.style.display = 'block'; el._d = 1; } }
+  for (; i < R.lab.length; i++) if (R.lab[i]._d !== 0) { R.lab[i].style.display = 'none'; R.lab[i]._d = 0; }
 }
 
 /* ---------------- cards, codex, map, missions ---------------- */
@@ -484,12 +494,53 @@ function viewer(o, cv, panel) {
 }
 /* ---------------- landing, diving, launching ---------------- */
 function nearBody() { let best = null, bd = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = R.bpos[b.id].distanceTo(R.ship.position) - b.r, sc = d / (b.r + 6); if (d < b.r * 2 + 24 && sc < bd) { bd = sc; best = b; } } return best; }
-function landOrLaunch() { const S = R.surf.S; if (S.on) { const b = S.body; R.surf.exit(); surfUI(null); const c = R.bpos[b.id]; R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); R.vel.set(0, 0, 0); toast('🚀 Back in orbit around <b>' + b.n + '</b>'); sfx('liftoff'); return; }
+function landOrLaunch() { const S = R.surf.S; if (R.entry) return; if (S.on) { if (S.launch) return; if (S.mode === 'land') { R.root.classList.add('cine'); sfx('liftoff'); R.surf.launch(() => { R.root.classList.remove('cine'); landOrLaunch.done(); }); return; } return landOrLaunch.done(); }
+  landOrLaunch.go(); }
+landOrLaunch.done = function () { const S = R.surf.S; { const b = S.body; R.surf.exit(); surfUI(null); const c = R.bpos[b.id]; R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); R.vel.set(0, 0, 0); toast('🚀 Back in orbit around <b>' + b.n + '</b>'); R.rings.add(R.ship.position, 0xffd27a, 8, .8, R.cam.position); } };
+landOrLaunch.go = function () {
   const b = nearBody(); if (!b) return; const kind = DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null; if (!kind) return; R.ap = null; R.vel.set(0, 0, 0);
   if (kind === 'land' && SITES[b.id] && !R.site) { sitePicker(b); return; }
   const fl = (kind === 'dive' ? 'dive:' : 'land:') + b.id; if (R.site) { const sf = 'site:' + b.id + ':' + R.site.id; if (!ST.flags.has(sf)) { ST.flags.add(sf); save(); reward(3, 30); } } if (!ST.flags.has(fl)) { ST.flags.add(fl); save(); reward(5, 50); setTimeout(checkMissions, 4800); }
-  const f = document.createElement('div'); f.style.cssText = 'position:absolute;inset:0;background:#000;opacity:0;transition:opacity .5s;z-index:8;pointer-events:none'; R.root.appendChild(f); requestAnimationFrame(() => f.style.opacity = 1); sfx(kind === 'dive' ? 'whoosh' : 'land');
-  const st = R.site || null; R.site = null; setTimeout(() => { R.surf.enter(b, kind, st); f.style.opacity = 0; setTimeout(() => f.remove(), 600); }, 550); }
+  const st = R.site || null; R.site = null; startEntry(b, kind, st); };
+/* ---------------- cinematic atmospheric entry: plasma, shake and heat glow, then touchdown ---------------- */
+function startEntry(b, kind, st) { const W = WORLD[b.id], air = kind === 'dive' || !!(W && W.air && W.air !== 'None'), c = R.bpos[b.id].clone(), dir = R.ship.position.clone().sub(c).normalize();
+  R.entry = { t: 0, T: air ? 3.4 : 2.6, b, kind, st, air, c, dir, r0: Math.max(R.ship.position.distanceTo(c), b.r + 6) }; R.ap = null; R.vel.set(0, 0, 0); R.root.classList.add('cine');
+  let ov = R.root.querySelector('#aHeat'); if (!ov) { ov = document.createElement('div'); ov.id = 'aHeat'; R.root.appendChild(ov); } ov.style.opacity = 0;
+  toast(air ? `🔥 Entering the atmosphere of <b>${b.n}</b>` : `🛬 Powered descent to <b>${b.n}</b>`, 2200); sfx(kind === 'dive' ? 'whoosh' : air ? 'burst' : 'land'); }
+function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || SHIPS[0]).sz; C.t += dt; R.t += dt; const k = Math.min(1, C.t / C.T), e = k * k * (3 - 2 * k);
+  const alt = C.b.r * 1.012 + (C.r0 - C.b.r * 1.012) * (1 - e); ship.position.copy(C.c).addScaledVector(C.dir, alt); ship.visible = true; ship.lookAt(tmpV.copy(ship.position).addScaledVector(C.dir, 10)); ship.rotateZ(Math.sin(C.t * 2.3) * .08);
+  const heat = C.air ? Math.sin(Math.min(1, k * 1.15) * Math.PI) : 0, nose = new THREE.Vector3().copy(ship.position).addScaledVector(C.dir, -sz * 1.1);
+  if (C.air) { const back = C.dir.clone().multiplyScalar(18 + heat * 30); R.fx.emit(nose, back, 0xd8742c, sz * (.22 + .3 * heat), .4, Math.ceil(4 * heat) + 1, 4 * sz, { grow: 2.2, drag: .2, jit: sz * .45, a: .7 }); R.fx.emit(nose, back, 0xffe0b0, sz * .18, .2, Math.ceil(3 * heat), 2 * sz, { grow: 1.4, jit: sz * .3, a: .8 }); if (heat > .4) R.fx.emit(nose, back.multiplyScalar(1.6), 0xff5a20, sz * .12, .35, 2, 6 * sz, { grow: 1, jit: sz * .8 }); }
+  else R.fx.emit(nose, C.dir.clone().multiplyScalar(-14), 0x9fd8ff, sz * .5, .5, 4, 1.5 * sz, { grow: 2.4 });
+  // camera: high and behind, looking down past the ship toward the planet, shaking with the heat
+  const side = new THREE.Vector3(0, 1, 0).cross(C.dir); if (side.lengthSq() < 1e-4) side.set(1, 0, 0); side.normalize(); const sh = (C.air ? heat * .35 : .05) * sz;
+  R.cam.position.copy(ship.position).addScaledVector(C.dir, sz * 7).addScaledVector(side, sz * 3.2).add(tmpV.set((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh));
+  R.cam.lookAt(tmpV.copy(ship.position).lerp(C.c, .02)); R.cam.fov += ((56 - heat * 6) - R.cam.fov) * Math.min(1, dt * 3); R.cam.updateProjectionMatrix();
+  const ov = R.root.querySelector('#aHeat'); ov.style.opacity = Math.min(1, (C.air ? heat * .85 : 0) + (k > .86 ? (k - .86) / .14 : 0)); ov.classList.toggle('w', k > .86);
+  for (const e2 of R.objs) R.placeObj(e2, R.t); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
+  if (k >= 1) { const { b, kind, st } = C; R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
+/* ---------------- camera modes, flight HUD and photo mode ---------------- */
+const CAM = { mode: 'chase', photo: 0, pa: 0 };
+function camUpdate(dt, spd) { const ship = R.ship, sz = (R.shipStat || SHIPS[0]).sz;
+  if (CAM.photo) { CAM.pa += dt * .18; const r = sz * 7.5; R.cam.position.lerp(tmpV.set(Math.cos(CAM.pa) * r, sz * 1.6 + Math.sin(CAM.pa * .5) * sz, Math.sin(CAM.pa) * r).add(ship.position), Math.min(1, dt * 2)); R.cam.lookAt(ship.position); ship.visible = true; return; }
+  if (CAM.mode === 'cockpit') { ship.visible = false; R.cam.position.copy(ship.position).add(tmpV.set(0, sz * .25, -sz * .9).applyQuaternion(ship.quaternion)); R.cam.quaternion.copy(ship.quaternion); return; }
+  ship.visible = true; const k = sz / 1.3, back = tmpV.set(0, 2.4 * k, (9 + Math.min(6, spd / 30)) * k).applyQuaternion(ship.quaternion); R.cam.position.lerp(back.add(ship.position), Math.min(1, dt * 6));
+  R.cam.lookAt(tmpV.set(0, .6, -6).applyQuaternion(ship.quaternion).add(ship.position)); }
+function hud(spd) { const el = R.root.querySelector('#aHud'); if (!el) return; const W = innerWidth, H = innerHeight;
+  if (CAM.photo) { el.style.display = 'none'; return; } el.style.display = 'block';
+  // target bracket on the nearest object, with distance and closing speed
+  const nr = nearest(), tb = el.querySelector('.tb'); let shown = false;
+  if (nr.e && !nr.e.body && nr.d < 140) { const p = tmpV.copy(nr.e.g.position).project(R.cam);
+    if (p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) { shown = true; const d = nr.e.g.position.distanceTo(R.ship.position), px = Math.max(26, Math.min(160, nr.e.o.sz / Math.max(.5, d) * H * 1.1)), cl = R.lastTD != null && R.lastTE === nr.e ? (R.lastTD - d) / Math.max(1e-3, R.dtH || .016) : 0; R.lastTD = d; R.lastTE = nr.e;
+      tb.style.display = 'block'; tb.style.transform = `translate(${((p.x + 1) / 2 * W - px / 2).toFixed(1)}px,${((1 - p.y) / 2 * H - px / 2).toFixed(1)}px)`; tb.style.width = tb.style.height = px.toFixed(0) + 'px';
+      const u = !ST.scanned.has(nr.e.o.id); tb.classList.toggle('u', u); const t = `${u ? 'UNKNOWN SIGNAL' : nr.e.o.n.toUpperCase()} · ${d.toFixed(1)} u · ${cl >= 0 ? '▼' : '▲'} ${Math.abs(cl * 1000).toFixed(0)} km/h`; const lb = tb.firstChild; if (lb._t !== t) { lb.textContent = t; lb._t = t; } } }
+  if (!shown) { tb.style.display = 'none'; R.lastTD = null; }
+  // prograde marker: where the ship is actually drifting
+  const pg = el.querySelector('.pg'); let pv = false; if (spd > 2) { const p = tmpV.copy(R.ship.position).addScaledVector(R.vel, 40 / spd).project(R.cam); if (p.z < 1 && Math.abs(p.x) < .95 && Math.abs(p.y) < .95) { pv = true; pg.style.transform = `translate(${((p.x + 1) / 2 * W - 13).toFixed(1)}px,${((1 - p.y) / 2 * H - 13).toFixed(1)}px)`; } }
+  pg.style.display = pv ? 'block' : 'none'; el.querySelector('.ck').style.display = CAM.mode === 'cockpit' ? 'block' : 'none'; }
+function camToggle() { CAM.mode = CAM.mode === 'chase' ? 'cockpit' : 'chase'; toast(CAM.mode === 'cockpit' ? '🎥 Cockpit view' : '🎥 Chase view', 1200); }
+function photoToggle() { CAM.photo = !CAM.photo; R.root.classList.toggle('photo', !!CAM.photo); if (CAM.photo) { CAM.pa = Math.atan2(R.cam.position.z - R.ship.position.z, R.cam.position.x - R.ship.position.x); toast('📷 Photo mode · tap anywhere to exit', 1800); } }
+
 function loadDEM(site) { return new Promise(res => { if (!site || !site.dem || site.hm) return res(); const im = new Image(); im.onload = () => { const N = 256, cv = document.createElement('canvas'); cv.width = cv.height = N; const g = cv.getContext('2d'); g.drawImage(im, 0, 0, N, N); const d = g.getImageData(0, 0, N, N).data, hm = new Float32Array(N * N); for (let i = 0; i < N * N; i++) hm[i] = d[i * 4] / 255; site.hm = hm; site.N = N; site.relief = (DEM[site.dem] || {}).relief || .06; res(); }; im.onerror = () => res(); im.src = 'models/dem/' + site.dem + '.png'; }); }
 function sitePicker(b) { const p = document.createElement('div'); p.className = 'pnl'; const L = SITES[b.id];
   p.innerHTML = `<div class="crd"><div class="ey">🛬 CHOOSE A LANDING SITE · ${b.n.toUpperCase()}</div><h2>Where do you want to land?</h2><div class="mt">Sites marked 🗺 use real NASA terrain models of that exact place.</div><div class="grid">${L.map((x, i) => `<button data-s="${i}"><b style="font-size:13px">${x.dem ? '🗺 ' : ''}${x.n}</b><br><span style="opacity:.75">${x.facts[0]}</span></button>`).join('')}</div><div class="row"><button id="sX">Cancel</button></div></div>`;
@@ -507,13 +558,14 @@ function surfStep(dt) { const k = R.keys, S = R.surf.S, jump = !!(R.thr || k[' '
   const W_ = innerWidth, H_ = innerHeight, v = new THREE.Vector3(); let i = 0; const P_ = S.player ? S.player.position : v;
   const L = S.mode === 'dive' ? [] : [...S.items.filter(x => !x.geyser).map(x => [x.g.position, (ST.scanned.has(x.o.id) ? x.o.n : '📡 ' + x.o.n), x.s * 1.15 + 1.5, !ST.scanned.has(x.o.id)]), ...S.cols.filter(c => !c.got && c.m.position.distanceTo(P_) < 90).map(c => [c.m.position, c.sample ? '🧪 Sample' : '⭐', 1.2, 1])];
   L.forEach(x => x[4] = x[0].distanceTo(P_)); L.sort((a, b) => a[4] - b[4]); L.length = Math.min(L.length, 8);
-  for (const [p, t, up, u] of L) { const d = p.distanceTo(P_); if (d > 400) continue; v.copy(p); v.y += up; v.project(R.cam); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) continue; let el = R.lab[i]; if (!el) { el = R.lab[i] = document.createElement('div'); R.labs.appendChild(el); } i++; el.className = 'lab' + (u ? ' u' : ''); el.innerHTML = t + `<small>${Math.round(d)} m</small>`; el.style.left = ((v.x + 1) / 2 * W_) + 'px'; el.style.top = ((1 - v.y) / 2 * H_) + 'px'; el.style.display = 'block'; }
+  for (const [p, t, up, u] of L) { const d = p.distanceTo(P_); if (d > 400) continue; v.copy(p); v.y += up; v.project(R.cam); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) continue; let el = R.lab[i]; if (!el) { el = R.lab[i] = document.createElement('div'); R.labs.appendChild(el); } i++; if (el._m !== 'g') { el._m = 'g'; el.style.transform = ''; } el._c = el._h = el._d = null; el.className = 'lab' + (u ? ' u' : ''); el.innerHTML = t + `<small>${Math.round(d)} m</small>`; el.style.left = ((v.x + 1) / 2 * W_) + 'px'; el.style.top = ((1 - v.y) / 2 * H_) + 'px'; el.style.display = 'block'; }
   for (; i < R.lab.length; i++) R.lab[i].style.display = 'none'; }
 /* ---------------- open / close ---------------- */
 function draw(sc) { R.rp.scene = sc; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
-function setQ(q) { Q = q; P('adv_q', q); DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(Math.min(devicePixelRatio || 1, Q === 'ultra' ? 2 : Q === 'high' ? 1.5 : 1)); R.ren.shadowMap.enabled = true; [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? (Q === 'ultra' ? 4 : 2) : 0; t.dispose(); }); R.bloom.strength = Q === 'ultra' ? .45 : .4; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + QL[Q]; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+function setQ(q) { Q = q; P('adv_q', q); DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(dprCap()); R.ren.shadowMap.enabled = true; [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? (Q === 'ultra' ? 4 : 2) : 0; t.dispose(); }); R.bloom.strength = Q === 'ultra' ? .45 : .4; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + QL[Q]; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
 function loop(t) { if (!ST.on) return; const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
-  if (sf) { if (!pnl) { surfStep(dt); draw(R.surf.S.scn); } }
+  if (sf) { if (!pnl) { if (R.surf.S.launch) { R.surf.step(dt, {}); } else surfStep(dt); draw(R.surf.S.scn); } }
+  else if (R.entry) { stepEntry(dt); draw(R.scn); }
   else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) lb.textContent = k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase(); draw(R.scn); } }
   requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */

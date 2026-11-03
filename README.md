@@ -516,3 +516,19 @@ On phones, the game screen has been tidied so you can see the action and know wh
   - Dynamic resolution now changes rarely. It used to adjust every 1.5 s when the frame rate hovered near its thresholds, and each change cleared the screen for one frame. Now it only steps down after about 6 s of sustained slowness, waits at least 12 s between changes, and makes at most 6 changes per session.
   - The HDR/anti-aliased render buffers are only used when the phone's GPU supports rendering to them. Otherwise the game uses standard buffers, which avoids black frames on some Android GPUs.
 - `www/models/manifest.json` lists every resource for the downloader.
+
+## v58 — Flicker fix, smoother play, space-sim cinematics
+
+- **Black-flicker fix (main cause):** a guard pass now runs right after the 3D scene renders. It removes invalid pixels (Inf from an over-bright highlight, NaN from a broken normal) before bloom. Bloom used to smear a single bad pixel into black flashes across the screen.
+- **Smoother on phones:**
+  - Phones render at most 1.6× resolution on Ultra and 1.3× on High. Desktops stay at 2× and 1.5×.
+  - Distant spacecraft stop drawing once they'd be only a few pixels wide.
+  - Labels move with GPU transforms and only rewrite their text when it changes, so the page no longer re-lays itself out every frame.
+  - Shadows are 2048 px on phones, and grass and rocks are lighter.
+- **🔥 Atmospheric entry:** landing now plays a 3-second entry. The ship dives toward the planet with plasma streaming off its heat shield, camera shake and an orange heat glow, then a white flash into the landing site. Airless worlds get a retro-rocket descent instead.
+- **🚀 Lift-off:** launching from a planet shows your ship lighting its engines on the pad. Smoke billows out, a shockwave ring spreads, and the camera watches the climb from the ground.
+- **🎥 Cockpit view (V):** switches between the chase camera and a first-person cockpit with a reticle and a vignette.
+- **Flight HUD:**
+  - A target bracket locks onto the nearest object and shows its name (or UNKNOWN SIGNAL), distance and closing speed.
+  - A green ◎ prograde marker shows where the ship is actually drifting.
+- **📷 Photo mode (P):** hides the UI, adds cinematic letterbox bars, and slowly orbits the camera around your ship for screenshots.

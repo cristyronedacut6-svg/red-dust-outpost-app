@@ -101,13 +101,13 @@ export function makeSurface(ctx) {
     const W = kind === 'dive' ? null : WORLD[body.id], scn = new THREE.Scene(); S.scn = scn; S.body = body; S.mode = kind; S.t = 0; S.items = []; S.cols = []; S.depth = 0; S.sea = null;
     scn.add(new THREE.HemisphereLight(0xdfe8ff, 0x302820, .55)); const dl = new THREE.DirectionalLight(W ? col(W.sun) : 0xffffff, 2.6); dl.position.set(-1500, 900, -1800); scn.add(dl); scn.add(dl.target); S.dl = dl;
     if (ctx.env) { scn.environment = ctx.env(); scn.environmentIntensity = .5; }
-    const q = ctx.q ? ctx.q() : 'high'; if (kind !== 'dive') { dl.castShadow = true; const ms = q === 'ultra' ? 4096 : 2048; dl.shadow.mapSize.set(ms, ms); const c = dl.shadow.camera; c.left = c.bottom = -70; c.right = c.top = 70; c.near = 10; c.far = 600; dl.shadow.bias = -.0006; dl.shadow.normalBias = .4; }
+    const q = ctx.q ? ctx.q() : 'high'; if (kind !== 'dive') { dl.castShadow = true; const ph = matchMedia('(pointer:coarse)').matches, ms = q === 'ultra' && !ph ? 4096 : 2048; dl.shadow.mapSize.set(ms, ms); const c = dl.shadow.camera; c.left = c.bottom = -70; c.right = c.top = 70; c.near = 10; c.far = 600; dl.shadow.bias = -.0006; dl.shadow.normalBias = .4; }
     if (kind === 'dive') return enterDive(body, scn);
     sky(body.id, W, scn); const ter = terrain(body.id, W, site); scn.add(ter); S.site = site;
     // landing site: your capsule and a golden beacon (rest point)
     const pad = new THREE.Group(); scn.add(pad); pad.position.set(0, H(0, 0), 0);
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(.6, 1.6, 60, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); beam.position.set(-16, 30, -12); pad.add(beam); S.beam = beam;
-    const sh = ctx.ship ? ctx.ship() : { m: 'orion' }, cap = { o: { id: sh.m }, r: sh.r, g: new THREE.Group(), s: sh.id === 'sls' || sh.id === 'shuttle-stack' ? 9 : sh.id === 'shuttle-orbiter' ? 8 : 4 }; cap.g.position.set(-12, 0, -8); pad.add(cap.g); placeModel(cap);
+    const sh = ctx.ship ? ctx.ship() : { m: 'orion' }, cap = { o: { id: sh.m }, r: sh.r, g: new THREE.Group(), s: sh.id === 'sls' || sh.id === 'shuttle-stack' ? 9 : sh.id === 'shuttle-orbiter' ? 8 : 4 }; cap.g.position.set(-12, 0, -8); pad.add(cap.g); placeModel(cap, 1); S.capG = cap.g; S.capS = cap.s; S.launch = null;
     // NASA things that live on this world
     for (const it of ctx.objs(body.id, site)) { const g = new THREE.Group(), y = H(it.at[0], it.at[1]); g.position.set(it.at[0], y + (it.y || 0), it.at[1]); g.rotation.y = it.rot || 0; scn.add(g);
       const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,1)', ctx.scanned.has(it.o.id) ? 'rgba(125,249,255,.5)' : 'rgba(255,207,74,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false })); mk.scale.set(.03, .03, 1); mk.position.y = it.s * 1.1 + 2; g.add(mk);
@@ -123,7 +123,7 @@ export function makeSurface(ctx) {
     S.player = playerModel(); scn.add(S.player); scn.add(S.player.userData.sh); S.player.position.set(4, H(4, 4) + .1, 8); S.vel.set(0, 0, 0); S.yaw = Math.PI; S.camYaw = Math.PI;
     // VFX: glowing particles, soft dust, shockwave rings; rocks everywhere, grass on Earth
     S.fx = makeFX(scn, 2200, true); S.dust = makeFX(scn, 2600, false); S.rings = makeRings(scn); S.grass = null; S.gc = col(W.gr[1]); S.dc = col(W.gr[2]).lerp(new THREE.Color(0xffffff), .08).multiplyScalar(.85);
-    const ultra = (ctx.q ? ctx.q() : 'high') === 'ultra', nearPad = (x, z) => Math.hypot(x + 12, z + 8) < 14 || Math.hypot(x - 4, z - 8) < 6 || (W.sea && x > 300) || S.items.some(it => !it.geyser && Math.hypot(x - it.g.position.x, z - it.g.position.z) < it.s * .8 + 2);
+    const ultra = (ctx.q ? ctx.q() : 'high') === 'ultra' && !matchMedia('(pointer:coarse)').matches, nearPad = (x, z) => Math.hypot(x + 12, z + 8) < 14 || Math.hypot(x - 4, z - 8) < 6 || (W.sea && x > 300) || S.items.some(it => !it.geyser && Math.hypot(x - it.g.position.x, z - it.g.position.z) < it.s * .8 + 2);
     if (body.id === 'earth') { S.grass = makeGrass(scn, H, ultra ? 30000 : 18000, ultra ? 75 : 60, (x, z) => nearPad(x, z) || Math.abs(x - 40) < 9); scatterRocks(scn, H, col('#8b8577'), ultra ? 120 : 80, 600, nearPad); }
     else scatterRocks(scn, H, col(W.gr[1]).lerp(col(W.gr[0]), .35), ultra ? 1500 : 900, 640, nearPad);
     for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283; S.dust.emit(new THREE.Vector3(-12 + Math.cos(a) * 3, H(-12, -8) + .4, -8 + Math.sin(a) * 3), new THREE.Vector3(Math.cos(a) * 9, 1.2, Math.sin(a) * 9), S.dc, 1.6, 2.2, 1, 2, { grow: 3, drag: .7, a: .3, grav: W.g * .05 }); }
@@ -140,7 +140,7 @@ export function makeSurface(ctx) {
     for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1.4, 16, 12), om); const h = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,1)', 'rgba(125,249,255,.6)'), blending: THREE.AdditiveBlending, depthWrite: false })); h.scale.setScalar(12); m.add(h); scn.add(m); S.orbs.push({ m, depth: 220 + i * 260, got: false, i, fact: D.facts[i] }); }
     S.factI = 0; ctx.ui(body, null, 'dive'); S.on = true; ctx.toast(`🌀 Diving into <b>${body.n}</b><br><small>Steer with the joystick · collect 3 glowing gas samples · climb back out before the pressure crushes you</small>`, 4500); }
   function step(dt, inp) {
-    if (!S.on) return; S.t += dt; const r = S.mode === 'dive' ? stepDive(dt, inp) : stepLand(dt, inp);
+    if (!S.on) return; S.t += dt; if (S.launch) { stepLaunch(dt); S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, S.player.position.x, S.player.position.z); return {}; } const r = S.mode === 'dive' ? stepDive(dt, inp) : stepLand(dt, inp);
     if (S.fx && S.mode !== 'dive') { const P = S.player.position; if (WORLD[S.body.id].air !== 'None' && Math.random() < dt * 6) S.dust.emit(new THREE.Vector3(P.x + (Math.random() - .5) * 40, P.y + Math.random() * 8, P.z + (Math.random() - .5) * 40), new THREE.Vector3(1.2, .1, .4), S.dc, .25, 6, 1, .6, { drag: .1, a: .35, fadeIn: .3, grow: 1 });
       S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, P.x, P.z); }
     return r; }
@@ -226,6 +226,15 @@ export function makeSurface(ctx) {
     const sh = P.userData.sh, ng = H(P.position.x, P.position.z); sh.position.set(P.position.x, ng + .05, P.position.z); sh.scale.setScalar(cr.s * .45); sh.material.opacity = .35 * Math.max(0, 1 - (P.position.y - ng) / (cr.s * 4 + 10));
     if (S.beam) S.beam.material.opacity = 0;
     const r = things(dt, P); r.alt = Math.round(P.position.y - ng); r.spd = Math.round((cr.heli ? Math.hypot(S.vel.x, S.vel.z) : S.fv) * 3.6); return r; }
+  // lift-off cinematic: you board, engines light, smoke billows, the ship climbs away and the camera watches from the ground
+  function launch(cb) { if (!S.capG) return cb(); S.launch = { t: 0, cb, y0: S.capG.position.y }; if (S.fly) fly(null); S.player.visible = false; if (S.player.userData.sh) S.player.userData.sh.visible = false; ctx.toast('🚀 Lift-off!', 1600); }
+  function stepLaunch(dt) { const L = S.launch, g = S.capG, W = WORLD[S.body.id]; L.t += dt; if (S.beam) S.beam.material.opacity = 0; const t = L.t, up = t < .7 ? 0 : 1.5 * 9 * Math.pow(t - .7, 2.2);
+    g.position.y = L.y0 + up; g.position.x = -12 + (t < .7 ? (Math.random() - .5) * .12 : 0); const wp = g.getWorldPosition(new THREE.Vector3()), gy = H(-12, -8), base = new THREE.Vector3(wp.x, wp.y + .2, wp.z);
+    const n = t < .7 ? 3 : 6; S.fx.emit(base, new THREE.Vector3(0, -14 - up * .2, 0), 0xffc070, S.capS * .35, .35, n, 4, { grow: 2, jit: .6 }); S.fx.emit(base, new THREE.Vector3(0, -8, 0), 0xffffff, S.capS * .2, .2, 3, 2, { grow: 1.5, jit: .4 });
+    if (up < 40) for (let i = 0; i < 4; i++) { const a = Math.random() * 6.283; S.dust.emit(new THREE.Vector3(-12 + Math.cos(a) * 2, gy + .6, -8 + Math.sin(a) * 2), new THREE.Vector3(Math.cos(a) * (8 + Math.random() * 8), 1 + Math.random() * 2, Math.sin(a) * (8 + Math.random() * 8)), W.air === 'None' ? S.dc : 0xd8d4cc, 3.5, 4, 1, 1.5, { grow: 3.5, drag: .55, a: W.air === 'None' ? .45 : .6, grav: -.3 }); }
+    if (t > .7 && t < .8) S.rings.add(new THREE.Vector3(-12, gy + .3, -8), 0xffd27a, 34, 1.4);
+    const cp = new THREE.Vector3(14, gy + 3.5, 26), look = wp.clone(); look.y = Math.max(look.y, gy + 6); ctx.cam.position.lerp(cp.add(new THREE.Vector3((Math.random() - .5), (Math.random() - .5), 0).multiplyScalar(t > .7 && up < 30 ? .12 : 0)), Math.min(1, dt * 3)); ctx.cam.lookAt(look);
+    if (t > 3.2) { const cb = L.cb; S.launch = null; S.player.visible = true; if (S.player.userData.sh) S.player.userData.sh.visible = true; cb(); } }
   function collect(c) { c.got = true; c.m.visible = false; if (S.fx) { S.fx.emit(c.m.position, new THREE.Vector3(0, 2, 0), c.sample ? 0x7df9ff : 0xffcf4a, .6, .9, 36, 9, { grow: .4, drag: .85 }); S.rings.add(c.m.position, c.sample ? 0x7df9ff : 0xffcf4a, 6, .7, ctx.cam.position); } c.gotSet.add(c.i); ctx.set(c.key, [...c.gotSet]); ctx.sfx(c.sample ? 'chime' : 'pop');
     if (c.sample) { ctx.reward(2, 25); ctx.toast(`🧪 <b>Science sample</b> +2 🔧<br><small>${c.fact}</small>`, 5200); } else { ctx.reward(1, 10); ctx.toast('⭐ Star fragment +1 🔧', 1400); }
     const left = S.cols.filter(x => !x.got).length; if (!left) { ctx.reward(15, 120); setTimeout(() => ctx.toast(`🏅 Everything collected on <b>${S.body.n}</b>! +15 🔧`, 3500), 1600); } }
@@ -243,5 +252,5 @@ export function makeSurface(ctx) {
     return { depth: S.depth, max: D.max };
   }
   function exit() { if (S.fx) { S.fx.dispose(); S.dust.dispose(); S.fx = S.dust = null; S.grass = null; } if (S.fly) { S.fly = null; S.craft = null; } if (S.player && S.player.userData.sh) S.player.userData.sh.scale.setScalar(1); S.on = false; if (S.scn) { S.scn.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } S.scn = null; S.items = []; S.cols = []; }
-  return { S, enter, step, exit, fly, H: (x, z) => H(x, z) };
+  return { S, enter, step, exit, fly, launch, H: (x, z) => H(x, z) };
 }

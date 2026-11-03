@@ -81,3 +81,11 @@ export function makeGrass(scene, H, n = 26000, R = 70, avoid) { const blade = ne
       e.set(0, o[2], (o[4] - .5) * .3); q.setFromEuler(e); s.set(sc, sc * (.8 + o[4] * .7), sc); p.set(x, H(x, z) - .02, z); m4.compose(p, q, s); im.setMatrixAt(i, m4); c.setHSL(.22 + o[4] * .05, .38 + o[4] * .15, .17 + o[4] * .09); im.setColorAt(i, c); }
     im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true; }
   return { im, update(dt, t, px, pz) { U.time.value = t; if (Math.hypot(px - cx, pz - cz) > 3) place(px, pz); } }; }
+
+// Guard pass: clamp HDR values and replace NaN/Inf with black-free values before bloom.
+// One bad pixel (Inf from an over-bright highlight, NaN from a degenerate normal) would otherwise be blurred by bloom into black flashes across the screen.
+export const SafeShader = { uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+  void main(){ vec4 c = texture2D(tDiffuse, vUv); bvec3 bad = bvec3(!(c.r == c.r) || c.r > 6e4, !(c.g == c.g) || c.g > 6e4, !(c.b == c.b) || c.b > 6e4);
+    if (any(bad) || !(c.a == c.a)) c = vec4(0., 0., 0., 1.); gl_FragColor = vec4(clamp(c.rgb, 0., 24.), clamp(c.a, 0., 1.)); }` };
