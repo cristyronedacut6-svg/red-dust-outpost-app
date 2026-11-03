@@ -582,7 +582,7 @@ function fmtKm(km) { return km >= 1e6 ? (km / 1e6).toFixed(2) + ' million km' : 
 function realAlt(b, d) { const r = RKM[b.id]; return r ? Math.max(0, (d - b.r) / b.r * r) : null; }
 /* ---------------- opening cinematic: a sweeping flyby that ends behind your ship ---------------- */
 function openingShot() { if (!R || R.intro) return; const e = R.bpos.earth, er = R.bmesh.earth.geometry.parameters.radius, s = R.bpos.sun.clone().sub(e).normalize(), side = new THREE.Vector3(-s.z, 0, s.x).normalize();
-  R.intro = { t: 0, T: 10, p0: e.clone().addScaledVector(s, er * 1.2).addScaledVector(side, -er * 5.5).add(new THREE.Vector3(0, er * 1.6, 0)), p1: e.clone().addScaledVector(side, er * 2.2).add(new THREE.Vector3(0, er * .35, 0)) };
+  R.intro = { t: 0, T: 11, p0: e.clone().addScaledVector(s, -er * 2.7).addScaledVector(side, er * .9).add(new THREE.Vector3(0, er * .45, 0)), p1: e.clone().addScaledVector(side, er * 2.2).add(new THREE.Vector3(0, er * .35, 0)) };
   R.root.classList.add('cine', 'intro'); let t = R.root.querySelector('#aTitle'); if (!t) { t = document.createElement('div'); t.id = 'aTitle'; R.root.appendChild(t); }
   t.innerHTML = '<div class="k">MOON PRODUCTIONS PRESENTS</div><h1>RED DUST OUTPOST</h1><div class="s">ADVENTURE · THE GRAND TOUR</div><div class="m">Every spacecraft is a real NASA 3D model · tap to skip</div>'; t.className = 'on';
   t.onclick = () => { if (R.intro) R.intro.t = R.intro.T; }; sfx('whoosh'); }

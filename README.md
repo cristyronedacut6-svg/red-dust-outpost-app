@@ -642,3 +642,8 @@ On phones, the game screen has been tidied so you can see the action and know wh
 - It moves into landing range if the autopilot stopped slightly short.
 - It picks a landing site automatically if the site menu still opens.
 - Before each showcase stop it closes any card left open, and it skips a stop whose spacecraft is missing instead of waiting.
+
+## v68 — Opening cinematic: sunrise over Earth
+
+- The opening shot now starts on Earth's night side. The city lights glow, the atmosphere blazes into a sunrise ring, and the Sun peeks over the edge as the title fades in. Then the camera sweeps round the day/night line to the day side and settles in behind your ship. It lasts 11 seconds; tap to skip.
+- I checked all four graphics presets (Low, Medium, High and Max) by switching between them live with no errors. Anti-aliasing per preset: none, 2×, 2× and 4×.
