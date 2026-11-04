@@ -829,6 +829,14 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v80 — Phone layout
+
+- Top bar: small icon buttons in one row at the top-right edge, with no text labels on phones. In portrait, the extra tools (graphics, hangar, trophies, co-op, star chart, media, downloads, camera, demo) fold into a menu button.
+- Context buttons (Land, Launch, Drive, Fly) moved to the right edge above the controls, and made smaller.
+- Thrust, boost and scan buttons are smaller and pinned to the bottom-right corner.
+- The mission card is compact. The suit readout sits under it at the top-left. Speed info and the model-loading notice sit in the bottom-left corner.
+- The middle of the screen stays clear for the view.
+
 ## v79 — Max graphics, still smooth · a real-looking SLS launch · 5 more realism
 
 **Max graphics that stay smooth**
