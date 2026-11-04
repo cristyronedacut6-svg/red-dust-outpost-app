@@ -13,6 +13,7 @@ import { OutputPass } from './vendor/three/postprocessing/OutputPass.js';
 import { ShaderPass } from './vendor/three/postprocessing/ShaderPass.js';
 import { makeFX, makeRings, makeWarp, CineShader, SafeShader, rockGeo } from './adv_fx.js';
 import { AUD } from './adv_audio.js';
+import { makeProminences, makeAurora, makeComet, makeRingField } from './adv_space.js';
 import { planetMaterial, atmosphereMaterial, cloudMaterial, ringMaterial, updatePlanetUniforms, sunMaterial, coronaMaterial } from './adv_planet.js';
 // Every model ships as .glb (GitHub Pages / app). The preview host can't serve .glb, so each also exists as embedded glTF (.json).
 // Try .glb first; if it fails (404, or an HTML page instead of a model) use .json, and remember which works so later loads go straight there.
@@ -295,13 +296,15 @@ function build() {
   const ATM = { earth: [0x5fa8ff, .9], venus: [0xffd28a, .7], mars: [0xff9a6a, .35], titan: [0xffb05a, .8], jupiter: [0xffe2b0, .35], saturn: [0xfff0c8, .3], uranus: [0xa8f0ff, .45], neptune: [0x7aa0ff, .45], pluto: [0x9ab4ff, .15] };
   BODIES.forEach(b => { const geo = new THREE.SphereGeometry(b.r, b.r > 20 ? 64 : 40, b.r > 20 ? 48 : 28);
     const mat = b.id === 'sun' ? sunMaterial() : planetMaterial(null, { atmo: (ATM[b.id] || [0])[0], atmoK: (ATM[b.id] || [0, 0])[1], ocean: b.id === 'earth', flow: { jupiter: 1, saturn: .6, uranus: .25, neptune: .5 }[b.id] || 0 }); if (b.id !== 'sun') mat.map = texFor(b, mat); PL.push({ mat }); if (b.id === 'earth') TL.load('models/tex/earth_night.webp', nt => { nt.colorSpace = THREE.SRGBColorSpace; nt.anisotropy = 4; mat.uniforms.night.value = nt; mat.uniforms.hasNight.value = 1; }); // NASA Black Marble 2016: real city lights
-    const m = new THREE.Mesh(geo, mat); m.position.copy(bpos[b.id]); if (b.tilt) m.rotation.z = b.tilt; scn.add(m); bmesh[b.id] = m;
+    const m = new THREE.Mesh(geo, mat); m.position.copy(bpos[b.id]); m.rotation.order = 'ZYX';   // spin around the tilted axis, not wobble
+    { const tl = b.tilt ?? { earth: .41, mars: .44, saturn: .47, neptune: .49, jupiter: .05 }[b.id]; if (tl) m.rotation.z = tl; } scn.add(m); bmesh[b.id] = m;
+    if (b.id === 'earth') SPACEFX.push(makeAurora(m, b.r, 0x3dff8a, 0xff4d6d)); if (b.id === 'jupiter') SPACEFX.push(makeAurora(m, b.r, 0x9a7bff, 0xff7be0)); if (b.id === 'saturn') SPACEFX.push(makeAurora(m, b.r, 0x8a7bff, 0xff6fd0));
     if (b.model) loader.load('models/nasa/' + b.model + '.glb', gl => { const sm = gl.scene, bx = new THREE.Box3().setFromObject(sm), sp = bx.getBoundingSphere(new THREE.Sphere()), k = b.r * 1.15 / sp.radius; sm.position.sub(sp.center).multiplyScalar(k); sm.scale.setScalar(k); m.add(sm); mat.visible = false; });
     if (b.id === 'sun') { // screen-space lens flare made of sprites (no framebuffer reads, so no flicker with anti-aliasing)
       const ft = glowTex('rgba(255,255,255,1)', 'rgba(255,200,120,.35)'), rt = glowTex('rgba(255,255,255,.0)', 'rgba(160,200,255,.25)'); FLARE.length = 0;
       [[.16, 0, ft, 0xfff2d8], [.18, 0, ft, 0xbfd8ff, 1], [.03, .6, rt, 0xffffff], [.05, .7, rt, 0xcfe0ff], [.08, .9, rt, 0xbfd4ff], [.03, 1, rt, 0xffe0c0]].forEach(([sz, d, t, c, ana]) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, color: c, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true })); sp.renderOrder = 20; sp.userData = { sz, d, ana }; sp.visible = false; scn.add(sp); FLARE.push(sp); });
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex('rgba(255,240,200,1)', 'rgba(255,170,60,.45)'), blending: THREE.AdditiveBlending, depthWrite: false, opacity: .55 })); s.scale.set(320, 320, 1); m.add(s);
-      const cm = coronaMaterial(); PL.push({ mat: cm }); m.add(new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.35, 64, 48), cm)); }
+      const cm = coronaMaterial(); PL.push({ mat: cm }); m.add(new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.35, 64, 48), cm)); SPACEFX.push(makeProminences(m, b.r)); }
     const AC = { earth: 0x5fa8ff, venus: 0xffd28a, mars: 0xff9a6a, titan: 0xffb05a, jupiter: 0xffe2b0, saturn: 0xfff0c8, uranus: 0xa8f0ff, neptune: 0x7aa0ff, pluto: 0x9ab4ff }[b.id];
     if (AC) { const sm = atmosphereMaterial(AC, b.id === 'earth' ? 3.2 : 4); PL.push({ mat: sm });
       m.add(new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.035, 64, 48), sm)); }
@@ -309,7 +312,8 @@ function build() {
       g3.putImageData(id3, 0, 0); const ctex = new THREE.CanvasTexture(cv3); ctex.colorSpace = THREE.SRGBColorSpace; const cmat = cloudMaterial(ctex); PL.push({ mat: cmat }); const cl = new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.012, 64, 48), cmat); m.add(cl); m.userData.clouds = cl; }
     if (b.rings) { const cv2 = document.createElement('canvas'); cv2.width = 256; cv2.height = 4; const g2 = cv2.getContext('2d'); for (let i = 0; i < 256; i++) { const a = (i > 30 && i < 245) ? (.25 + .6 * vnoise(i * .15, 3)) * (i > 150 && i < 165 ? .1 : 1) : 0; g2.fillStyle = `rgba(230,215,180,${a})`; g2.fillRect(i, 0, 1, 4); }
       const rg = new THREE.RingGeometry(b.r * 1.25, b.r * 2.3, 128, 1), pos = rg.attributes.position, uv = rg.attributes.uv, v = new THREE.Vector3(); for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); uv.setXY(i, (v.length() - b.r * 1.25) / (b.r * 1.05), .5); }
-      const t2 = new THREE.CanvasTexture(cv2); t2.colorSpace = THREE.SRGBColorSpace; const rmat = ringMaterial(t2, b.r); PL.push({ mat: rmat, mesh: m }); const ring = new THREE.Mesh(rg, rmat); ring.rotation.x = -Math.PI / 2 + .45; m.add(ring);
+      const t2 = new THREE.CanvasTexture(cv2); t2.colorSpace = THREE.SRGBColorSpace; const rmat = ringMaterial(t2, b.r); PL.push({ mat: rmat, mesh: m }); const ring = new THREE.Mesh(rg, rmat); ring.rotation.x = -Math.PI / 2; m.add(ring);   // rings lie in the equator; the planet itself carries the 27° tilt
+      SPACEFX.push(makeRingField(ring, b.r * 1.25, b.r * 2.3, u => { const i = Math.floor(u * 255); return (i > 30 && i < 245) ? (.25 + .6 * vnoise(i * .15, 3)) * (i > 150 && i < 165 ? .1 : 1) : 0; }));
       if (m.material && m.material.uniforms && m.material.uniforms.hasRing) { const u = m.material.uniforms; u.ringMap.value = t2; u.hasRing.value = 1; u.ringR.value.set(b.r * 1.25, b.r * 2.3); PL.push({ mat: m.material, ring }); } } });
   // asteroid belt
   { const n = Math.round((mob ? 600 : 1500) * (GFX === 'low' ? .4 : GFX === 'max' ? 1.4 : 1) / 3), mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .96, metalness: .02 }), q = new THREE.Object3D(), c = new THREE.Color();
@@ -452,16 +456,26 @@ function step(dt) {
   const k = R.keys, ship = R.ship; R.t += dt;
   const yRaw = (k.a || k.arrowleft ? 1 : 0) - (k.d || k.arrowright ? 1 : 0) - R.joy.x, pRaw = (k.arrowup ? 1 : 0) - (k.arrowdown ? 1 : 0) - R.joy.y; R.yi += (yRaw - R.yi) * Math.min(1, dt * 7); R.pi += (pRaw - R.pi) * Math.min(1, dt * 7); let yawIn = R.yi, pitIn = R.pi;
   const thrust = R.thr || k.w ? 1 : 0, boost = R.bst || k.shift ? 1 : 0, brake = k.s ? 1 : 0;
-  if (R.ap) { const tp = R.ap.e.g.position, d = tp.distanceTo(ship.position), stop = (R.ap.e.o.r ? R.ap.e.o.r * 1.6 + 12 : R.ap.e.o.sz * 3 + 8);
-    const dir = tp.clone().sub(ship.position).normalize(), ty = Math.atan2(-dir.x, -dir.z), tpch = Math.asin(THREE.MathUtils.clamp(dir.y, -1, 1));
+  if (R.ap) { const tp0 = R.ap.e.g.position, d = tp0.distanceTo(ship.position), stop = (R.ap.e.o.r ? R.ap.e.o.r * 1.6 + 12 : R.ap.e.o.sz * 3 + 8);
+    let tp = tp0; { const ab = tmpV.copy(tp0).sub(ship.position), L = ab.length(); ab.divideScalar(L || 1);   // a body in the way? aim for a point beside it instead
+      for (const b of BODIES) { if (b.id === R.ap.e.o.id) continue; const c = R.bpos[b.id], t = c.clone().sub(ship.position).dot(ab), cl = b.r + (b.id === 'sun' ? 60 : 8); if (t <= 0 || t >= L) continue;
+        const pc = ship.position.clone().addScaledVector(ab, t), off = pc.clone().sub(c); if (off.length() < cl) { if (off.lengthSq() < 1e-6) off.set(0, 1, 0); tp = c.clone().add(off.normalize().multiplyScalar(cl * 1.4)); break; } } }
+    const dir = tp.clone().sub(ship.position).normalize();
+    for (const b of BODIES) { if (b.id === R.ap.e.o.id) continue; const away = ship.position.clone().sub(R.bpos[b.id]), dd = away.length(), cl = b.r + (b.id === 'sun' ? 60 : 8); if (dd < cl * 1.25) dir.addScaledVector(away.divideScalar(dd), 2.5 * (1 - dd / (cl * 1.25)) + .4).normalize(); }   // too close: lean away
+    const ty = Math.atan2(-dir.x, -dir.z), tpch = Math.asin(THREE.MathUtils.clamp(dir.y, -1, 1));
     let dy = ty - R.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; R.yaw += dy * Math.min(1, dt * 2.5); R.pitch += (tpch - R.pitch) * Math.min(1, dt * 2.5);
-    const sp = Math.min(R.ap.max, Math.max(8, (d - stop) * 1.4)); fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); R.vel.lerp(fwd.multiplyScalar(d > stop ? sp : 0), Math.min(1, dt * 2));
+    fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); const sp = Math.min(R.ap.max, Math.max(8, (d - stop) * 1.4)) * Math.max(.12, fwd.dot(dir)); /* turn first, then go */ R.vel.lerp(fwd.multiplyScalar(d > stop ? sp : 0), Math.min(1, dt * 2));
     if (d <= stop + 1) { R.ap = null; R.vel.multiplyScalar(.2); toast(`Arrived: <b>${R.apName}</b> · tap 📡 SCAN`); say('Arriving at ' + R.apName.replace(/\(.*?\)/g, '') + '.'); } }
   else { const SS = R.shipStat || SHIPS[0]; R.yaw += yawIn * dt * 1.4 * SS.turn; R.pitch = THREE.MathUtils.clamp(R.pitch + pitIn * dt * 1.1 * SS.turn, -1.35, 1.35);
     fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); const ts = (thrust ? (boost ? 180 * SS.bst : 45 * SS.spd) : boost ? 180 * SS.bst : 0); R.vel.lerp(fwd.clone().multiplyScalar(ts), Math.min(1, dt * (ts ? 1.4 : brake ? 3 : .6))); }
   ship.position.addScaledVector(R.vel, dt);
   // never fly into a planet
-  for (const b of BODIES) { const c = R.bpos[b.id], d = ship.position.distanceTo(c), m = b.r + (b.id === 'sun' ? 25 : 1.6); if (d < m) { ship.position.copy(c).add(tmpV.copy(ship.position).sub(c).normalize().multiplyScalar(m)); R.vel.multiplyScalar(.3); if (b.id === 'sun' && !R.hotT) { R.hotT = 3; toast('☀️ Too hot! The Sun pushes you back'); trophy('a_sun'); } } }
+  for (const b of BODIES) { const c = R.bpos[b.id], d = ship.position.distanceTo(c), m = b.r + (b.id === 'sun' ? 25 : 1.6); if (d < m) { const n = tmpV.copy(ship.position).sub(c); if (n.lengthSq() < 1e-6) n.set(0, 1, 0); n.normalize(); ship.position.copy(c).addScaledVector(n, m);
+      // slide along instead of sticking: remove the inward part of the velocity
+      const vn = R.vel.dot(n); if (vn < 0) R.vel.addScaledVector(n, -vn * (b.id === 'sun' ? 1.6 : 1));
+      if (b.id === 'sun') { R.vel.addScaledVector(n, 40); if (!R.ap) R.evade = { n: n.clone(), t: 1.4 }; if (!R.hotT) { R.hotT = 3; toast('☀️ Heat shield at its limit! Auto-turn away from the Sun', 2600); say('Heat shield critical. Turning away.'); trophy('a_sun'); try { sfx('alarm'); } catch (e) {} } } } }
+  // emergency turn: swing the nose away from the Sun so the player isn't left facing into it
+  if (R.evade) { R.evade.t -= dt; const n = R.evade.n, ty = Math.atan2(-n.x, -n.z), tp = Math.asin(THREE.MathUtils.clamp(n.y, -1, 1)); let dy = ty - R.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; R.yaw += dy * Math.min(1, dt * 3); R.pitch += (tp - R.pitch) * Math.min(1, dt * 3); if (R.evade.t <= 0) R.evade = null; }
   R.hotT = Math.max(0, (R.hotT || 0) - dt);
   ship.quaternion.setFromEuler(new THREE.Euler(R.pitch, R.yaw, -(yawIn || 0) * .35, 'YXZ'));
   const spd = R.vel.length(); R.flame.scale.setScalar(.5 + Math.min(3, spd / 40)); R.flame.material.opacity = Math.min(1, .25 + spd / 60);
@@ -502,7 +516,7 @@ function step(dt) {
   if (R.anomaly) { const A = R.anomaly, d = A.g.position.distanceTo(ship.position); A.g.rotation.y += dt * .4; A.cr.rotation.x = Math.sin(R.t * .7) * .2; const pu = 1 + Math.sin(R.t * 2.2) * .12; A.halo.scale.setScalar(22 * pu); A.cr.material.emissiveIntensity = 2 + Math.sin(R.t * 3.1) * .8;
     if (Math.random() < dt * 8) R.fx.emit(A.g.position, new THREE.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2), 0xb070ff, .8, 2.4, 1, 3, { grow: 2, drag: .1, jit: 4 });
     if (d < 70 && !A.met) { A.met = 1; R.root.classList.add('glitch'); setTimeout(() => R.root.classList.remove('glitch'), 900); sfx('whoosh'); say('Commander… that signal is not on any NASA chart.', 1); try { if (typeof speakCreepy === 'function') setTimeout(() => speakCreepy('six doors', 0, .3), 3200); } catch (e) {} toast('📻 <b>Unknown signal</b><br><small>The same purple glow as the crystal on the Moon… Fly closer and scan it.</small>', 5000); } }
-  updatePlanetUniforms(R.PL, R.bpos.sun, R.t); navBlink(R.t); flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
+  updatePlanetUniforms(R.PL, R.bpos.sun, R.t); spaceFX(dt); navBlink(R.t); flare(); R.fx.update(dt, R.cam); R.rings.update(dt); R.warp.update(dt, R.cam, CAM.photo ? 0 : spd); R.dtH = dt; hud(spd);
   labels();
 }
 function labels() {
@@ -784,7 +798,7 @@ function stepIntro(dt) { const I = R.intro; I.t += dt; R.t += dt; const k = Math
   // first 70%: glide past Earth's terminator; last 30%: settle in behind the ship
   const mid = I.p0.clone().lerp(I.p1, Math.min(1, e / .7)); R.cam.position.copy(k < .7 ? mid : I.p1.clone().lerp(chase, (k - .7) / .3 * ((k - .7) / .3) * (3 - 2 * (k - .7) / .3)));
   const look = R.bpos.earth.clone().lerp(ship.position, Math.max(0, (k - .55) / .45)); R.cam.lookAt(look); R.cam.fov = 48 + 12 * e; R.cam.updateProjectionMatrix();
-  updatePlanetUniforms(R.PL, R.bpos.sun, R.t); flare(); R.fx.update(dt, R.cam);
+  updatePlanetUniforms(R.PL, R.bpos.sun, R.t); spaceFX(dt); flare(); R.fx.update(dt, R.cam);
   const t = R.root.querySelector('#aTitle'); if (k > .78) t.className = 'off';
   if (k >= 1) { R.intro = null; R.root.classList.remove('cine', 'intro'); t.className = 'off'; setTimeout(() => t.remove(), 900); if (!G('adv_seen', 0)) intro(); else toast(R.anomaly && !ST.flags.has('anomaly') ? '📻 Mission Control: a strange <b>purple signal</b> is coming from the asteroid belt…' : '🗺 Map → pick a destination · 📡 scan signals · 🎬 Demo for a guided tour', 4500); } }
 /* ---------------- demo tour: flies itself through the best moments (any input takes control back) ---------------- */
@@ -849,6 +863,15 @@ function surfStep(dt) { const k = R.keys, S = R.surf.S, jump = !!(R.thr || k[' '
   for (const [p, t, up, u] of L) { const d = p.distanceTo(P_); if (d > 400) continue; v.copy(p); v.y += up; v.project(R.cam); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) continue; let el = R.lab[i]; if (!el) { el = R.lab[i] = document.createElement('div'); R.labs.appendChild(el); } i++; if (el._m !== 'g') { el._m = 'g'; el.style.transform = ''; } el._c = el._h = el._d = null; el.className = 'lab' + (u ? ' u' : ''); el.innerHTML = t + `<small>${Math.round(d)} m</small>`; el.style.left = ((v.x + 1) / 2 * W_) + 'px'; el.style.top = ((1 - v.y) / 2 * H_) + 'px'; el.style.display = 'block'; }
   for (; i < R.lab.length; i++) R.lab[i].style.display = 'none'; }
 /* ---------------- open / close ---------------- */
+/* realism pass 11: prominences, auroras, the comet, Saturn's ring chunks, and the Sun's heat as you get close */
+const SPACEFX = [];
+function spaceFX(dt) { if (!R.comet) { R.comet = makeComet(R.scn, R.bpos.sun); R.cometSeen = 0; }
+  for (const f of SPACEFX) f.update(dt, R.t, f.ring ? R.ship.position : R.bpos.sun);
+  R.comet.update(dt, R.cam); const cd = R.comet.pos.distanceTo(R.ship.position); if (cd < 260 && !R.cometSeen) { R.cometSeen = 1; toast('☄️ A comet! Its blue ion tail points straight away from the Sun; the dusty tail curves behind it.', 4500); say('Comet in sight.'); }
+  // close to the Sun: heat glow at the screen edges, a shaking hull and a warning, before the shield limit
+  const ds = R.ship.position.distanceTo(R.bpos.sun) - 60, heat = THREE.MathUtils.clamp(1 - (ds - 25) / 160, 0, 1), ov = R.root.querySelector('#aHeat') || (() => { const d = document.createElement('div'); d.id = 'aHeat'; R.root.appendChild(d); return d; })();
+  if (!R.entry && !R.ending) { ov.classList.remove('w'); ov.style.opacity = (heat * heat * .8).toFixed(3); if (heat > .35) R.cam.position.add(tmpV.set((Math.random() - .5), (Math.random() - .5), (Math.random() - .5)).multiplyScalar(heat * .12));
+    if (heat > .5 && !R.heatW) { R.heatW = 1; toast('🌡️ Hull temperature rising: 1,370 °C. Parker Solar Probe survives this with a carbon heat shield.', 3500); } if (heat < .2) R.heatW = 0; } }
 /* eye adaptation: like a real camera or a real eye, exposure drops when the Sun fills the view and opens up in a planet's shadow,
    where the stars and the Milky Way come out. Cheap: one ray test against each body per frame. */
 const EXP = { v: 1.05, f: new THREE.Vector3(), s: new THREE.Vector3(), oc: new THREE.Vector3() };

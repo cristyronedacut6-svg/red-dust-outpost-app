@@ -735,3 +735,22 @@ On phones, the game screen has been tidied so you can see the action and know wh
 - **Realism pass 10 (surfaces):**
   - **Sun haze (forward scattering):** distant terrain on worlds with air glows toward the Sun, warm and orange at low sun. It's strongest in Mars dust, gentler on Earth, Titan and Venus. Airless worlds stay crisp, the way they really look.
   - **Ballistic regolith:** on airless worlds (the Moon, Vesta, Ceres, Europa, Pluto…), footsteps and landings kick up dust grains that fly in clean parabolas under the world's gravity and drop straight back down, like in the Apollo footage. Worlds with air still get billowing dust.
+
+## v72 — Sun fix, realism passes 11 (space) and 12 (on every world)
+
+- **🐛 Fixed: the ship got stuck at the Sun.** Flying into the Sun (or autopilot routing through it) used to pin the ship to its heat limit.
+  - Now the ship slides off. A heat-shield warning auto-turns you away and pushes you clear.
+  - Autopilot steers around the Sun and planets, and turns before it accelerates.
+- **Realism pass 11 (space):**
+  - **Solar prominences:** arches of flowing plasma rise off the Sun's limb.
+  - **Sun approach:** the screen edges glow with heat and the hull shakes, with a Parker Solar Probe heat-shield note.
+  - **A real comet** on a long elliptical orbit, with true Kepler motion (it speeds up near the Sun). As it nears the Sun it grows a glowing coma, a straight blue ion tail pointing exactly away from the Sun, and a curved dust tail lagging behind its path.
+  - **Auroras** circle the poles of Earth (green and red) and of Jupiter and Saturn (violet), brightest on the night side.
+  - **Inside Saturn's rings:** fly into the ring plane and thousands of tumbling ice chunks surround you, only where the ring is dense. The Cassini Division stays empty. It's one instanced draw call.
+  - **Correct axial tilts:** planets now spin around their tilted axes instead of wobbling. Earth is 23°, Mars 25° and Saturn 27°, and Saturn's rings now lie exactly in its equator.
+- **Realism pass 12 (on every world):**
+  - **The Sun's real size from each world:** two-thirds size from Mars, small from Jupiter's moons, and a tiny piercing point from Pluto.
+  - **The planet in your sky** (Earth from the Moon, Jupiter from Europa, Saturn from Enceladus…) now shows a real phase with a black night side, an atmosphere rim and, for Earth, city lights on its night side.
+  - **Cloud shadows** drift across the ground on Earth, Titan and Venus, following the real moving clouds.
+  - **Opposition surge:** on airless worlds the ground brightens when the Sun is right behind you, as on the real Moon.
+  - **Ice glints:** icy moons (Europa, Enceladus, Triton, Pluto…) sparkle with crystal facets that catch the Sun.
