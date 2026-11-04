@@ -239,7 +239,7 @@ body.lay-ph #bsel .g4{display:grid;grid-template-columns:7px 7px;gap:2px}body.la
 body.lay-ph #dock.open #bsel{background:#ff7a3d}
 body.lay-ph #bh{width:52px;height:52px;font-size:10.5px;border-radius:14px}body.lay-ph #bh img{width:26px;height:26px}
 body.lay-ph #cards{position:absolute;left:0;bottom:calc(100% + 6px);display:none;flex-wrap:wrap;width:min(252px,calc(64vw - 150px));max-height:62vh;overflow:auto;padding:6px;gap:5px;background:rgba(10,7,14,.94);box-shadow:0 8px 24px rgba(0,0,0,.6)}
-body.lay-ph #dock.open #cards{display:flex}
+body.lay-ph #dock.open #cards{display:flex}@media (orientation:portrait){body.lay-ph #cards{width:min(300px,calc(100vw - 24px))!important;max-height:52vh}}body.lay-ph #dock.open{z-index:30!important}body.lay-ph #ov,body.lay-ph #shop{z-index:12!important}body.lay-ph #cut{z-index:13!important}body.lay-ph #insp,body.lay-ph #tray{z-index:10!important}
 body.lay-ph .card{width:56px}
 body.lay-ph #insp{top:auto;right:auto;bottom:calc(6px + var(--sb));left:50%;transform:translateX(-50%);width:min(340px,52vw);max-height:72vh;padding:7px 9px;font-size:12px;z-index:6}
 body.lay-ph #insp h3{font-size:14px;margin:0 0 4px}body.lay-ph #insp p{font-size:11.5px;margin:3px 0}body.lay-ph #insp .btn{padding:5px 8px;font-size:12px}
@@ -332,7 +332,7 @@ body.nofl #cut.glitch::after,body.nofl #stage.glitch::after{animation:none}body.
 .ghRow{display:flex;gap:10px;flex-wrap:wrap}.ghRow>div{display:flex;flex-direction:column;gap:4px}.ghRow canvas{border-radius:8px;border:1px solid rgba(150,190,255,.2);image-rendering:pixelated}.ghRow small{color:#a3b2cb;font-size:12px}
 .wd.secret{border-color:#b070ff!important;box-shadow:0 0 14px rgba(176,112,255,.45)}
 .wallet{font-weight:700;font-variant-numeric:tabular-nums}
-#rot{position:absolute;inset:44% 0 auto;text-align:center;z-index:5;pointer-events:none}
+#rot{position:absolute;inset:18% 0 auto;animation:rotOut .6s 4.4s forwards}@keyframes rotOut{to{opacity:0}}#rot{text-align:center;z-index:5;pointer-events:none}
 #rot span{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12.5px}
 
 #earth{width:62px;height:62px;background:radial-gradient(circle at 35% 30%,#62b8ff,#1a4fb0 70%);font-size:11px}
@@ -486,7 +486,7 @@ body.bossOn #bossb{background:linear-gradient(90deg,#8a0f1c,#c3202f)!important}
 <div id="tr" class="ui"><div class="r"><button class="tb" id="bShop">🛒 Shop</button><button class="tb" id="b3d" aria-label="Switch 2D or 3D view">3D</button><button class="tb" id="bPause" aria-label="Pause">❚❚</button></div><button class="tb" id="nextw" hidden>⏩ Next wave +10💰</button><canvas id="mm" width="140" height="90" aria-label="Map"></canvas><div class="r v3o"><button class="tb" id="bCam" aria-label="Switch camera view">🎥 Top</button><button class="tb" id="bRL" aria-label="Turn camera left">⟲</button><button class="tb" id="bZm" aria-label="Zoom">🔍</button><button class="tb" id="bRR" aria-label="Turn camera right">⟳</button></div></div>
 <div id="wb"></div><div id="rankup" hidden></div><div id="cin" hidden></div>
 <div id="photo" hidden><div id="phd"></div><div id="phFlash"></div><div class="phbar"><button class="tb v3" id="phL" aria-label="Turn left">⟲</button><button class="tb v3" id="phR" aria-label="Turn right">⟳</button><button class="tb v3" id="phO" aria-label="Zoom out">➖</button><button class="tb v3" id="phI" aria-label="Zoom in">➕</button><button class="tb v3" id="phA">📐 Angle</button><button class="tb pri" id="phS">📸 Snap</button><button class="tb" id="phX">✕ Done</button></div><div id="phHint">Drag to move the camera</div><div id="phPrev" hidden></div></div>
-<div id="dock" class="ui"><div id="cards"></div><button class="rb" id="bsel" aria-label="Choose what to build"><span class="g4"><i></i><i></i><i></i><i></i></span><span>Pick</span></button><button class="rb" id="bh"><img id="bhi" alt="">Build</button></div>
+<div id="dock" class="ui"><div id="cards"></div><button class="rb" id="bsel" aria-label="Choose what to build"><span class="g4"><i></i><i></i><i></i><i></i></span><span>Choose</span></button><button class="rb" id="bh"><img id="bhi" alt="">Build</button></div>
 <div id="act" class="ui"><button class="rb" id="earth" aria-label="Call Earth for help">🌍<br>EARTH<span class="cdw" id="upc"></span></button><div class="col"><button class="rb" id="emp">⚡<br>EMP<span class="cdw" id="empc"></span></button><button class="rb" id="wsw" aria-label="Switch weapon">🔫</button></div><button class="rb" id="fire">🔫<br>FIRE</button></div>
 <div id="tray" class="ui" hidden></div><button id="ctx" class="ui tb" hidden></button><div id="insp" class="ui" hidden></div>
 <div id="rot" hidden><span>📱 Turn your phone sideways for a bigger view</span></div>
@@ -501,8 +501,9 @@ body.bossOn #bossb{background:linear-gradient(90deg,#8a0f1c,#c3202f)!important}
 <script src="config.js"></script>
 <script src="js/net.js"></script>
 <script src="js/coop.js"></script>
-<script src="js/models.js"></script>
-<script src="js/worm.js"></script><script src="js/boss_golem.js"></script><script src="js/boss_cherub.js"></script><script src="js/boss_kraken.js"></script><script src="js/boss_colossus.js"></script><script src="js/boss_queen.js"></script><script src="js/boss_blight.js"></script><script src="js/boss_plant.js"></script>
+<script>/* the 3D model data (about 7 MB) loads in the background after the title appears, or right away when a 3D view is switched on */
+window.RDO_LAZY=(function(){var L=['js/models.js','js/worm.js','js/boss_golem.js','js/boss_cherub.js','js/boss_kraken.js','js/boss_colossus.js','js/boss_queen.js','js/boss_blight.js','js/boss_plant.js'],p=null;return function(){if(p)return p;p=Promise.all(L.map(function(u){return new Promise(function(r){var s=document.createElement('script');s.src=u;s.async=false;s.onload=s.onerror=function(){r()};document.head.appendChild(s)})})).then(function(){if(window.R3&&R3.modelsReady)R3.modelsReady()});return p}})();
+(function(){var c=navigator.connection||{},slow=c.saveData||/(^|-)2g|3g/.test(c.effectiveType||'');try{if(/viewhd|view3d/.test(Object.keys(localStorage).join()))slow=false}catch(e){}if(!slow)window.addEventListener('load',function(){setTimeout(function(){(window.requestIdleCallback||function(f){setTimeout(f,1)})(function(){RDO_LAZY()},{timeout:3000})},2500)})})();</script>
 <script src="js/render3d.js"></script>
 <script src="js/cut3d.js"></script>
 <script src="js/i18n.js"></script><script src="js/gamepad.js"></script>
@@ -753,7 +754,7 @@ function fit(){const st=$('#stage').getBoundingClientRect(),sw=st.width||480,sh=
  if(a>=1){nh=320;nw=Math.round(clamp(320*a,400,760))}else{nw=360;nh=Math.round(clamp(360/a,360,800))}
  if(nw!==W||nh!==H){W=nw;H=nh;cv.width=lc.width=W;cv.height=lc.height=H}
  const k=Math.min(sw/W,sh/H);cv.style.width=Math.round(W*k)+'px';cv.style.height=Math.round(H*k)+'px';
- $('#rot').hidden=!(a<0.8&&matchMedia('(pointer:coarse)').matches&&S&&S.run)}
+ {const sh_=a<0.8&&matchMedia('(pointer:coarse)').matches&&S&&S.run&&!fit.rotDone;$('#rot').hidden=!sh_;if(sh_&&!fit.rotT)fit.rotT=setTimeout(()=>{fit.rotDone=1;$('#rot').hidden=true},5000)}}
 function init(){P.pk=P.pk||{};if(!P.crew)P.crew=makeCrew(3+Math.min(P.lv,3));mkbg();const L=LV[P.lv],cx=Math.floor(WW/2/16)*16,cy=Math.floor(WH/2/16)*16;
  S={t:0,sol:1,L,lv:P.lv,p:{x:cx+8,y:cy+44,cd:0},face:{x:1,y:0},jx:0,jy:0,res:{pw:80,o2:78,fd:78,rad:L.rad*.8},cap:100,rate:{pw:0,o2:0,fd:0},hp:100,mats:40+25*pk('ore'),crew:P.crew.length,crewL:P.crew,npc:[],
  cr:P.cr,lvl:P.lvl,fr:P.fr,spd:P.spd,wo:P.wo.slice(),wp:P.wp,drone:P.drone,kills:P.kills,k0w:P.kills,
@@ -1040,7 +1041,7 @@ function title(){photoClose();if(FINQ&&!CUT){startFin();return}if(CREDQ&&!CUT){r
 function start(){photoClose();ac();MODE='game';document.body.classList.remove('scen');$('#stage').classList.remove('cine');$('#cin').hidden=true;$('#photo').hidden=true;$('#stage').classList.remove('nohud');$('#cut').hidden=true;P0=JSON.parse(JSON.stringify(P));init();S.net=HOOK('role')||null;HOOK('afterInit');liveApply();newFeatures();if(!S.mod.daily&&S.net!=='guest'&&S.tu==null){S.cr+=rankBonus(rank());streakClaim()}rankChip();S.run=true;hide();if(S.tu!=null)tutGo(0);else wb(LV[P.lv].n.toUpperCase(),S.mod.daily?'Daily challenge':S.net?'Co-op mission':'Survive 5 waves');fit();HOOK('start');v23Start();arriveStart();bossJumpApply()}
 function how(back){show(`<div class="eyebrow">Field manual</div><h2>How to play</h2>
  <div class="box"><h3>GOAL</h3><p style="margin:0">Keep your crew alive for 5 waves on each world, then defeat the Hive Queen. Clear a world to travel to the next one.</p></div>
- <div class="box"><h3>CONTROLS</h3><p style="margin:0"><b>Phone:</b> drag on the left side to walk. Hold 🔫 FIRE to shoot (it aims for you). ⚡ EMP stuns nearby aliens. Pick a module in the bottom bar and tap 🏗 Build. Tap a building to upgrade, repair or sell it. Tap 💨 DODGE to roll out of danger.<br><b>Keyboard:</b> WASD to walk, Space to shoot, Shift or K to dodge, J to jump (3D), E for EMP, Q to switch weapon, B to build, 1–9 to pick a module, M for the shop, P to pause.</p></div>
+ <div class="box"><h3>CONTROLS</h3><p style="margin:0"><b>Phone:</b> drag on the left side to walk. Hold 🔫 FIRE to shoot (it aims for you). ⚡ EMP stuns nearby aliens. Pick a module in the bottom bar (on a phone held upright, tap Choose first) and tap 🏗 Build. Tap a building to upgrade, repair or sell it. Tap 💨 DODGE to roll out of danger.<br><b>Keyboard:</b> WASD to walk, Space to shoot, Shift or K to dodge, J to jump (3D), E for EMP, Q to switch weapon, B to build, 1–9 to pick a module, M for the shop, P to pause.</p></div>
  <div class="box"><h3>EXPLORE</h3><p style="margin:0">Each world is bigger than your screen. The map in the top-right shows where you have been. Find the 3 hidden discovery sites (❓) for rewards, real science facts and a star. Walk up to the 🚙 rover and tap Drive rover (or press R) to go faster. Out in the dark you may find abandoned outposts, crashed ships, caves and alien nests, and meteor showers can strike at any time.</p></div>
  <div class="box"><h3>BOSSES</h3><p style="margin:0">The final wave on every world brings a unique boss: the Crystal Golem, Great Dust Worm, Solar Scorcher, Ice Kraken, Hive Queen, Asteroid Colossus and the Hive Mind. Red circles and lines on the ground show where an attack will land, and bosses fire bullet patterns between attacks.<br><b>How to win:</b> bosses are armored. Right after an attack their weak point glows gold: hit it then for big damage. Fill the yellow bar under their health to stagger them. At 66% and 33% health they change phase and get new moves.<br><b>💨 Dodge:</b> you are untouchable while rolling (2 charges). Dodge just as an attack lands for a PERFECT DODGE: time slows, you get the charge back and the weak point opens. Each boss win gets a rank from C to S.<br><b>⚡ Burst:</b> hitting enemies charges the ring on the BURST button. When it is full, tap it (or press T) for an orbital strike that hits hard, breaks the boss’s guard and opens its weak point.</p></div>
  <div class="box"><h3>CREW</h3><p style="margin:0">Your astronauts walk around the base doing their jobs. Tap 👩‍🚀 at the top to change jobs: Engineers repair, Medics heal, Scientists boost discoveries, Botanists grow food, Pilots speed up the rover and Earth help, and Miners dig more ore. A new astronaut arrives on wave 4 (up to 6). More crew means more air and food needed.</p></div>
@@ -1572,7 +1573,7 @@ function cosCheck(){const seen=new Set(LS.get('cosu',[])),nu=[...SUITS.filter(s=
  if(!nu.length)return;nu.forEach(n=>seen.add(n[0]));LS.set('cosu',[...seen]);setTimeout(()=>{toast('🎨','New style unlocked',nu[0][1]+(nu.length>1?` (+${nu.length-1} more)`:''),'Equip it in 🎨 Style');snd('ach')},$('#toast').hidden?300:4200)}
 
 $('#crew').onclick=()=>{if(S&&S.run&&!S.over&&!S.pz)openShop('c')};
-function set3D(v){if(!window.R3)return;if(v&&S&&S.run)loadTip('g3',1100);if(v&&!R3.supported()){say('3D view needs WebGL, which this device does not support.');return}R3.set(v);viewLabel();if(v&&R3.on()&&S&&S.run&&!LS.get('v3tip',0)){LS.set('v3tip',1);say('3D view on! Tap the camera button under the map to see through your astronaut’s eyes. Turn the camera with ⟲ ⟳ and zoom with the magnifier.')}}
+function set3D(v){if(!window.R3)return;if(v&&window.RDO_LAZY)RDO_LAZY();if(v&&S&&S.run)loadTip('g3',1100);if(v&&!R3.supported()){say('3D view needs WebGL, which this device does not support.');return}R3.set(v);viewLabel();if(v&&R3.on()&&S&&S.run&&!LS.get('v3tip',0)){LS.set('v3tip',1);say('3D view on! Tap the camera button under the map to see through your astronaut’s eyes. Turn the camera with ⟲ ⟳ and zoom with the magnifier.')}}
 $('#b3d').onclick=()=>{set3D(!(window.R3&&R3.on()));snd('ui')};$('#bCam').onclick=cycleCam;$('#bRL').onclick=()=>{R3.turn(-Math.PI/4);snd('ui')};$('#bRR').onclick=()=>{R3.turn(Math.PI/4);snd('ui')};$('#bZm').onclick=()=>{R3.zoom=R3.zoom>1.3?.65:R3.zoom<.8?1:1.45;snd('ui')};
 if(window.R3&&LS.get('view3d',0))set3D(1);
 $('#rkb').onclick=()=>{if(!S||!S.run||S.over||S.pz)return;snd('open');show(`<div class="eyebrow">Commander</div><h2>Your rank</h2><div class="box rk">${rankHtml()}</div><div class="acts"><button class="big" id="rkX">Back to the mission</button></div>`);$('#rkX').onclick=()=>{hide();snd('close')}};
@@ -3342,7 +3343,7 @@ body.lay-ph #earth:not(.ready){display:none!important}
 body.lay-ph #earth.ready{animation:mpul 1.4s ease-in-out infinite}@keyframes mpul{50%{box-shadow:0 0 0 6px rgba(125,249,255,.25),0 4px 14px rgba(0,0,0,.45)}}
 body.lay-ph .kh{display:none!important}
 /* tucked away into the ⋯ menu */
-body.lay-ph #emo,body.lay-ph #wsw,body.lay-ph #bsel,body.lay-ph #b3d,body.lay-ph #bCam,body.lay-ph #bRL,body.lay-ph #bRR,body.lay-ph #bZm,body.lay-ph #jhint{display:none!important}
+body.lay-ph #emo,body.lay-ph #wsw,body.lay-ph #b3d,body.lay-ph #bCam,body.lay-ph #bRL,body.lay-ph #bRR,body.lay-ph #bZm,body.lay-ph #jhint{display:none!important}
 /* top right: small icon buttons */
 body.lay-ph #tr .r{gap:6px!important}
 body.lay-ph #bShop,body.lay-ph #bPause,body.lay-ph #mHud{width:38px!important;height:34px!important;min-width:0!important;padding:0!important;font-size:0!important;display:grid!important;place-items:center;border-radius:12px!important}

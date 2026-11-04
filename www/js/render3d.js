@@ -263,7 +263,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
       const DS_ = REAL && mdl('dsn'); if (DS_) drawModel(DS_, bx + 290, 0, bz - 170, 1.25, .7, 0); }
     if (S.lv === 6) { let s2 = 77; const r2 = () => (s2 = s2 * 16807 % 2147483647) / 2147483647; for (let i = 0; i < 60; i++) { const x = r2() * WW_, z = r2() * WH_, hg = 6 + r2() * 12; put(CYL, x, 0, z, 1.4, hg, 1.4, 0, 0, '#3a1652', 0); put(SPH, x, hg, z, 5, 4, 5, 0, 0, r2() < .5 ? '#d070ff' : '#7df9ff', 1.6); } }
     const lk = LOOK[S.lv]; if (lk && lk.planet && S.lv === 6) { const p = lk.planet; put(SPH, WW_ / 2 + p.x, p.h - p.r, WH_ / 2 + p.y, p.r * 2, p.r * 2, p.r * 2, 0, 0, p.c, p.e || 1.1); if (p.c2) put(SPH, WW_ / 2 + p.x + p.r * .25, p.h - p.r * .7, WH_ / 2 + p.y + p.r * .3, p.r * .9, p.r * .6, p.r * .9, 0, 0, p.c2, 1.1); }
-    gl.bindBuffer(gl.ARRAY_BUFFER, sb); gl.bufferData(gl.ARRAY_BUFFER, buf.subarray(0, n * FL), gl.STATIC_DRAW); staticN = n; staticLv = S.lv + ':' + S.L.n + ':' + HQ + ':' + HDM + REAL + TERK; n = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, sb); gl.bufferData(gl.ARRAY_BUFFER, buf.subarray(0, n * FL), gl.STATIC_DRAW); staticN = n; staticLv = S.lv + ':' + S.L.n + ':' + HQ + ':' + HDM + REAL + TERK + ':' + (R3.mv || 0); n = 0;
   }
 
   /* ---------- models ---------- */
@@ -274,7 +274,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
   function cached(obj, key, fn, direct) {
     if (direct) { fn(); return; }
     let c = BC.get(obj);
-    if (HDM) key += '|hd' + TERK + (REAL ? 'r' : ''); if (!c || c.k !== key) { const sv = n; ULT = true; try { fn(); } finally { ULT = false; } c = { k: key, a: buf.slice(sv * FL, n * FL), id: ++bId }; n = sv; BC.set(obj, c); }
+    if (HDM) key += '|hd' + TERK + (REAL ? 'r' : '') + (R3.mv || 0); if (!c || c.k !== key) { const sv = n; ULT = true; try { fn(); } finally { ULT = false; } c = { k: key, a: buf.slice(sv * FL, n * FL), id: ++bId }; n = sv; BC.set(obj, c); }
     STL.push(c);
   }
   function buildStatic() {
@@ -1120,7 +1120,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     if (!document.body.classList.contains('v3d')) document.body.classList.add('v3d');
     const t = T(), L = S.L, lk = LOOK[S.lv] || LOOK[0];
     HDM = R3.hd && !!prog3; REAL = HDM && !!R3.real; if (HDM) terEnsure(); HQ = R3.q !== 'low' || HDM;
-    if (staticLv !== S.lv + ':' + L.n + ':' + HQ + ':' + HDM + REAL + TERK) { buildStatic(); last.bg = -9; }
+    if (staticLv !== S.lv + ':' + L.n + ':' + HQ + ':' + HDM + REAL + TERK + ':' + (R3.mv || 0)) { buildStatic(); last.bg = -9; }
     if (t - last.bg > 1.5 || t < last.bg) { upload(texBg, bg); last.bg = t; }
     if (t - last.fog > .2 || t < last.fog) { upload(texFog, FOG); last.fog = t; }
 
@@ -1786,6 +1786,8 @@ void main(){vC=aC.rgb;if(aE>1.15||aC.a<.98){gl_Position=vec4(2.,2.,2.,1.);return
   }
   /* ---------- v33: the Great Dust Worm in HD (Giant Worm by Vasian-Digital3D, CC-BY-4.0): skinned, animated, with attack effects ---------- */
   let WRM;
+  /* the NASA and boss model data arrive after the title screen (they are big); when they land, forget the 'not loaded' answers so the real models appear */
+  R3.modelsReady = () => { R3.mv = (R3.mv || 0) + 1; for (const k in SKM) if (!SKM[k]) delete SKM[k]; for (const k in MDL) if (!MDL[k]) delete MDL[k]; if (!WRM) WRM = undefined; };
   function wormM() {
     if (WRM !== undefined) return WRM; const R = window.RDO_WORM; if (!R) return (WRM = null);
     try {
@@ -1993,7 +1995,7 @@ void main(){vC=aC.rgb;if(aE>1.15||aC.a<.98){gl_Position=vec4(2.,2.,2.,1.);return
   R3.fpl = () => R3.on() && R3.cm !== 'top' && R3.cm !== 'free';
   R3.fwd = () => [-Math.sin(yawS), -Math.cos(yawS)];
   R3.look = (dx, dy) => { R3.yaw -= dx * .0055; R3.lp = clamp(R3.lp + dy * .004, -.45, .75); };
-  R3.draw = () => { try { frame(); } catch (e) { console.warn('3D view error, switching to 2D', e); R3.ok = false; R3.hide(); } };
+  R3.draw = () => { if (!R3.lzd && window.RDO_LAZY) { R3.lzd = 1; RDO_LAZY(); } try { frame(); } catch (e) { console.warn('3D view error, switching to 2D', e); R3.ok = false; R3.hide(); } };
   const cv0 = () => document.getElementById('c');
   R3.q = 'high'; R3.qs = 'auto'; R3.slowN = 0;
   R3.setQ = v => { R3.qs = v; R3.q = v === 'low' ? 'low' : 'high'; R3.slowN = 0; rectT = 0; };

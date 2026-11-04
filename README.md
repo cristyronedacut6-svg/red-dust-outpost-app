@@ -829,6 +829,14 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v83 — Judge-ready polish
+
+- **First load is about 7× smaller:** the 3D model data (about 7 MB of NASA and boss models) now loads in the background after the title appears, or right away when a 3D view is switched on. The game is playable after about 1 MB.
+- **Choosing what to build on phones held upright:** a "Choose" button now sits next to Build. Before, it was hidden in the ⋯ menu, so players could only build solar panels. The tutorial's highlight now finds it too, and the building list is wider in portrait.
+- **"Turn your phone sideways" hint:** it shows for 5 seconds near the top instead of staying in the middle of the screen.
+- **Pause menu, shop and info panels on phones:** they now cover the round action buttons instead of sitting underneath them.
+- **How to play:** now explains the Choose button.
+
 ## v82 — Story mode realism update
 
 Story mode now runs on real numbers from NASA missions, in every view (2D, 3D, HD and Real).
