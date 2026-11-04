@@ -997,11 +997,13 @@ function settings() { const p = document.createElement('div'); p.className = 'pn
   p.querySelector('#rs').oninput = e => { SET.scale = +e.target.value; p.querySelector('#rsV').textContent = SET.scale + '%'; }; p.querySelector('#rs').onchange = () => { save2(); DR.s = 1; R.ren.setPixelRatio(dprCap()); resize(); };
   p.querySelector('#stX').onclick = () => p.remove(); }
 function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last < 1000 / SET.cap - 3) { requestAnimationFrame(loop); return; } const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); fpsUI(dt); R.ren.info.reset(); padAdv(dt); try { coStep(dt); } catch (e) {} R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
-  if (sf) { if (!pnl) { if (R.surf.S.launch) { R.surf.step(dt, {}); } else surfStep(dt); draw(R.surf.S.scn); } }
+  try {   // one bad frame must never freeze the game: report it and keep the loop alive
+  if (sf) { if (!pnl) { if (R.surf.S.launch) { R.surf.step(dt, {}); } else surfStep(dt); if (R.surf.S.scn) draw(R.surf.S.scn); } }
   else if (R.ending) { stepEnding(dt); draw(R.scn); }
   else if (R.intro) { stepIntro(dt); draw(R.scn); }
   else if (R.entry) { stepEntry(dt); draw(R.scn); }
   else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) lb.textContent = k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase(); draw(R.scn); } }
+  } catch (e) { if (!loop.errN || loop.errN < 5) { loop.errN = (loop.errN || 0) + 1; console.error('Adventure frame error:', e); } }
   try { adapt(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
 const MC = 'rdo-models-2', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
