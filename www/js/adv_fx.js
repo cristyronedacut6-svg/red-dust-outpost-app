@@ -78,14 +78,34 @@ export function makeWarp(scene, n = 260) { const pos = new Float32Array(n * 6), 
     g.attributes.position.needsUpdate = true; } }; }
 
 // cinematic grade: vignette, gentle chromatic aberration at the edges, film grain, contrast and saturation lift
-export const CineShader = { uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vig: { value: .26 }, ca: { value: .0007 }, grain: { value: .012 }, sat: { value: 1.12 }, con: { value: 1.06 }, warm: { value: 0 } },
+export const CineShader = { uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vig: { value: .26 }, ca: { value: .0007 }, grain: { value: .012 }, sat: { value: 1.12 }, con: { value: 1.06 }, warm: { value: 0 },
+    res: { value: new THREE.Vector2(1280, 720) }, sharp: { value: .15 }, heat: { value: 0 }, heatL: { value: new THREE.Vector3(.5, .5, 0) } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, vig, ca, grain, sat, con, warm; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, vig, ca, grain, sat, con, warm, sharp, heat; uniform vec2 res; uniform vec3 heatL; varying vec2 vUv;
   float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)) + time*7.13) * 43758.5453); }
-  void main(){ vec2 d = vUv - .5; float r2 = dot(d,d); vec2 o = d * ca * (1. + r2 * 4.);
-    vec3 c = vec3(texture2D(tDiffuse, vUv + o).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - o).b);
+  void main(){ vec2 uv = vUv;
+    // heat shimmer: hot, dense air bends light (Venus, a summer day on Earth, the air behind rocket engines)
+    float hl = heatL.z > 0. ? heatL.z * exp(-dot((uv - heatL.xy) * vec2(res.x / res.y, 1.), (uv - heatL.xy) * vec2(res.x / res.y, 1.)) * 9.) : 0.;
+    float hw = heat * smoothstep(.75, .05, uv.y) + hl;
+    if (hw > .001) uv += vec2(sin(uv.y * 160. - time * 9. + sin(uv.x * 37. + time * 2.)), sin(uv.x * 120. + time * 6. + uv.y * 60.)) * hw * vec2(.0011, .0016);
+    vec2 d = uv - .5; float r2 = dot(d,d); vec2 o = d * ca * (1. + r2 * 4.);
+    vec3 c = vec3(texture2D(tDiffuse, uv + o).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - o).b);
+    // contrast-adaptive sharpening: keeps detail crisp when the dynamic resolution is scaled down
+    if (sharp > .01) { vec2 px = 1. / res; vec3 a = texture2D(tDiffuse, uv + vec2(px.x, 0.)).rgb, b = texture2D(tDiffuse, uv - vec2(px.x, 0.)).rgb, e = texture2D(tDiffuse, uv + vec2(0., px.y)).rgb, f = texture2D(tDiffuse, uv - vec2(0., px.y)).rgb;
+      vec3 mn = min(min(min(a, b), min(e, f)), c), mx = max(max(max(a, b), max(e, f)), c); vec3 amp = clamp(min(mn, 1. - mx) / max(mx, 1e-4), 0., 1.); amp = sqrt(amp);
+      vec3 w = -amp * sharp * .2; c = clamp((c + (a + b + e + f) * w) / (1. + 4. * w), 0., 1.); }
     float l = dot(c, vec3(.2126,.7152,.0722)); c = mix(vec3(l), c, sat); c = (c - .5) * con + .5; c += vec3(.02,.008,-.012) * warm;
     c *= 1. - vig * smoothstep(.12, .75, r2 * 2.); c += (h(vUv * 913.) - .5) * grain; gl_FragColor = vec4(max(c, 0.), 1.); }` };
+
+// light shafts (crepuscular rays): bright sky around a low Sun streams past hills, rocks and dust in the air
+export const RayShader = { uniforms: { tDiffuse: { value: null }, sun: { value: new THREE.Vector2(.5, .5) }, k: { value: 0 }, col: { value: new THREE.Color(1, .85, .65) }, thr: { value: .9 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 sun; uniform float k, thr; uniform vec3 col; varying vec2 vUv;
+    float hs(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+    void main(){ vec3 base = texture2D(tDiffuse, vUv).rgb; vec2 dl = (vUv - sun) * (.9 / 28.); vec2 uv = vUv - dl * hs(vUv * 731.); float dec = 1., acc = 0.;
+      for (int i = 0; i < 28; i++) { uv -= dl; vec3 s = texture2D(tDiffuse, clamp(uv, 0., 1.)).rgb; acc += max(dot(s, vec3(.3, .5, .2)) - thr, 0.) * dec; dec *= .955; }
+      float fall = 1. - smoothstep(.0, 1.1, length((vUv - sun) * vec2(1.6, 1.)));
+      gl_FragColor = vec4(base + col * acc * (k / 28.) * 2.2 * fall, 1.); }` };
 
 // scattered rocks: three lumpy rock shapes, instanced in the hundreds, following the terrain height
 export function rockGeo(seed) { const g = new THREE.IcosahedronGeometry(1, 3), p = g.attributes.position, v = new THREE.Vector3();

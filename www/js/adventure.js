@@ -11,7 +11,7 @@ import { RenderPass } from './vendor/three/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './vendor/three/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './vendor/three/postprocessing/OutputPass.js';
 import { ShaderPass } from './vendor/three/postprocessing/ShaderPass.js';
-import { makeFX, makeRings, makeWarp, CineShader, SafeShader, VisorShader, rockGeo } from './adv_fx.js';
+import { makeFX, makeRings, makeWarp, CineShader, SafeShader, VisorShader, RayShader, rockGeo } from './adv_fx.js';
 import { AUD } from './adv_audio.js';
 import { makeLaunch } from './adv_launch.js';
 import { makeMedia } from './adv_media.js';
@@ -149,7 +149,7 @@ function vnoise(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - x
 function fbm(x, y, o = 5) { let s = 0, a = .5, f = 1; for (let i = 0; i < o; i++) { s += a * vnoise(x * f, y * f); a *= .5; f *= 2; } return s; }
 const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const TL = new THREE.TextureLoader();
-function texFor(b, mat) { const t = texProc(b); if (NASA_TEX.has(b.id) && mat) TL.load('models/tex/' + b.id + '.webp', nt => { nt.colorSpace = THREE.SRGBColorSpace; nt.anisotropy = 4; mat.map = nt; mat.needsUpdate = true; }); return t; }
+function texFor(b, mat) { const t = texProc(b); if (NASA_TEX.has(b.id) && mat) TL.load('models/tex/' + b.id + '.webp', nt => { if (mat.userData.hd) return; nt.colorSpace = THREE.SRGBColorSpace; nt.anisotropy = 4; mat.map = nt; mat.needsUpdate = true; }); return t; }
 function texProc(b) { if (b.tex === 'nasa') b = { ...b, tex: 'rock' }; if (!b.c && b.tex === 'rock') b = { ...b, c: ['#8a8a8e', '#5e5e64', '#c8c8cc'] };
   const W = b.r >= 10 ? 512 : 256, H = W / 2, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'), im = g.createImageData(W, H), D = im.data, seed = b.d || 7;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -176,7 +176,7 @@ const PRESETS = {
   high:   { n: 'High',   dpr: 1.5, msaa: 2, shadow: 2048, grass: 20000, rocks: .75, tris: 6e6,   tex: 700, full: 1,  bloom: .42, seg: 320, fx: 1 },
   max:    { n: 'Max',    dpr: 2,   msaa: 4, shadow: 4096, grass: 30000, rocks: 1,   tris: 14e6,  tex: 1400, full: 1.25, bloom: .45, seg: 420, fx: 1.5 } };
 const PHONE = matchMedia('(pointer:coarse)').matches;
-let GFX = G('adv_gfx', null); if (!PRESETS[GFX]) GFX = PHONE ? 'medium' : 'high'; const PRE = () => PRESETS[GFX];
+let GFX = G('adv_gfx', null); if (!PRESETS[GFX]) GFX = PHONE ? 'high' : 'max'; const PRE = () => PRESETS[GFX];
 const SET = Object.assign({ cap: 60, scale: 100, fps: 0, voice: 1, newton: 0, orb: 1, launch: 1, rec: 1 }, G('adv_set', {}));
 // compatibility: older code paths read Q
 let Q = GFX === 'max' ? 'ultra' : 'high'; const QL = { ultra: 'Max', high: 'High' };
@@ -276,7 +276,7 @@ function build() {
   // realistic reflections on the NASA models: a studio environment map, plus bloom for glowing things
   const pm = new THREE.PMREMGenerator(ren), envTex = pm.fromScene(new RoomEnvironment(), .04).texture; scn.environment = envTex; scn.environmentIntensity = .45;
   const hdrOK = ren.capabilities.isWebGL2 && (ren.extensions.has('EXT_color_buffer_float') || ren.extensions.has('EXT_color_buffer_half_float')); R_HDR = hdrOK;
-  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? PRE().msaa : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), PRE().bloom, .4, .95), bloomSz = bloom.setSize.bind(bloom), cine = new ShaderPass(CineShader); /* bloom is a soft glow anyway: run its blur chain at half the usual size (except on Max) */ bloom.setSize = (w, h) => GFX === 'max' ? bloomSz(w, h) : bloomSz(Math.max(2, w * .5), Math.max(2, h * .5)); comp.addPass(rp); comp.addPass(new ShaderPass(SafeShader)); comp.addPass(bloom); comp.addPass(new OutputPass()); const visor = new ShaderPass(VisorShader); visor.enabled = false; comp.addPass(visor); comp.addPass(cine);
+  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? PRE().msaa : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), PRE().bloom, .4, .95), bloomSz = bloom.setSize.bind(bloom), cine = new ShaderPass(CineShader); /* bloom is a soft glow anyway: run its blur chain at half the usual size (except on Max) */ bloom.setSize = (w, h) => GFX === 'max' ? bloomSz(w, h) : bloomSz(Math.max(2, w * .5), Math.max(2, h * .5)); comp.addPass(rp); comp.addPass(new ShaderPass(SafeShader)); comp.addPass(bloom); const rays = new ShaderPass(RayShader); rays.enabled = false; comp.addPass(rays); comp.addPass(new OutputPass()); const visor = new ShaderPass(VisorShader); visor.enabled = false; comp.addPass(visor); comp.addPass(cine);
   scn.add(new THREE.AmbientLight(0x8090b0, .22)); const sunL = new THREE.PointLight(0xfff2dd, 3.2, 0, 0); scn.add(sunL);
   const hem = new THREE.HemisphereLight(0xbfd8ff, 0x201810, .12); scn.add(hem);
   // stars
@@ -321,7 +321,9 @@ function build() {
     if (b.id === 'earth') { const cv3 = document.createElement('canvas'); cv3.width = 1024; cv3.height = 512; const g3 = cv3.getContext('2d'), id3 = g3.createImageData(1024, 512); for (let y = 0; y < 512; y++) for (let x = 0; x < 1024; x++) { const lo = x / 1024 * 6.283, la = (.5 - y / 512) * Math.PI, X = Math.cos(la) * Math.cos(lo) * 2.2, Y = Math.sin(la) * 2.2, Z = Math.cos(la) * Math.sin(lo) * 2.2, w1 = fbm(X + 9, Z + Y * .6, 3), w2 = fbm(Z + 3, Y - X * .5, 3), v = (fbm(X * 1.6 + w1 * 1.8 + 40, Y * 1.6 + w2 * 1.8, 6) + fbm(Z * 1.6 + w2 * 1.5, X * 1.6 - Y + w1, 6)) * .5, al = Math.abs(la) / 1.5708, band = .15 * Math.exp(-Math.pow(al / .08, 2)) - .1 * Math.exp(-Math.pow((al - .28) / .1, 2)) + .1 * Math.exp(-Math.pow((al - .6) / .15, 2)), a = Math.max(0, (v + band - .5) * 3.4), o = (y * 1024 + x) * 4; id3.data[o] = id3.data[o + 1] = id3.data[o + 2] = 255; id3.data[o + 3] = Math.min(255, a * 255); }
       g3.putImageData(id3, 0, 0); const ctex = new THREE.CanvasTexture(cv3); ctex.colorSpace = THREE.SRGBColorSpace; const cmat = cloudMaterial(ctex); PL.push({ mat: cmat }); const cl = new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.012, 64, 48), cmat); m.add(cl); m.userData.clouds = cl;
       // HD pack: NASA's real cloud cover, ocean mask and relief replace the generated ones when they're on the device
-      TL.load('models/tex/hd/earth_clouds.webp', t => { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4; cmat.uniforms.map.value = t; cmat.uniforms.useR.value = 1; }, undefined, () => {});
+      const cl2k = () => TL.load('models/tex/hd/earth_clouds.webp', t => { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4; cmat.uniforms.map.value = t; cmat.uniforms.useR.value = 1; }, undefined, () => {});
+      TL.load('models/tex/hd/earth_clouds4k.webp', t => { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 8; cmat.uniforms.map.value = t; cmat.uniforms.useR.value = 1; }, undefined, cl2k);   /* 4K NASA Blue Marble clouds and surface */
+      TL.load('models/tex/hd/earth_day4k.webp', t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; mat.userData.hd = 1; mat.map = t; mat.needsUpdate = true; }, undefined, () => {});
       TL.load('models/tex/hd/earth_spec.webp', t => { t.colorSpace = THREE.NoColorSpace; mat.uniforms.specMap.value = t; mat.uniforms.hasSpec.value = 1; }, undefined, () => {});
       TL.load('models/tex/hd/earth_normal.webp', t => { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4; mat.uniforms.nrmMap.value = t; mat.uniforms.hasNrm.value = 1; }, undefined, () => {}); }
     if (b.rings) { const cv2 = document.createElement('canvas'); cv2.width = 256; cv2.height = 4; const g2 = cv2.getContext('2d'); for (let i = 0; i < 256; i++) { const a = (i > 30 && i < 245) ? (.25 + .6 * vnoise(i * .15, 3)) * (i > 150 && i < 165 ? .1 : 1) : 0; g2.fillStyle = `rgba(230,215,180,${a})`; g2.fillRect(i, 0, 1, 4); }
@@ -374,7 +376,7 @@ function build() {
       const sp = new THREE.Sprite(mk); sp.scale.set(.02, .02, 1); g.add(sp);
       const o = { id: 'anomaly', n: 'The Purple Signal', k: 'Origin unknown', sz: 3, story: 1, ag: '???', facts: [] };
       anomaly = { o, g, sp, model: cr, lod: null, loading: false, cr, halo, clues }; objs.push(anomaly); } }
-  R = { visor, anomaly, spaceDust, engL, PL, comp, rp, bloom, cine, fx: makeFX(scn, 2600), rings: makeRings(scn), warp: makeWarp(scn), yi: 0, pi: 0, envTex, byId: Object.fromEntries(objs.map(e => [e.o.id, e])), mkS, root, ren, scn, cam, bpos, bmesh, objs, ship, flame, beam, placeObj, loadModel, mob, vel: new THREE.Vector3(), yaw: 0, pitch: 0, t: 0, labs: root.querySelector('#labs'), lab: [], keys: {}, joy: { x: 0, y: 0 }, thr: 0, bst: 0, ap: null, scanning: null, last: 0 };
+  R = { rays, visor, anomaly, spaceDust, engL, PL, comp, rp, bloom, cine, fx: makeFX(scn, 2600), rings: makeRings(scn), warp: makeWarp(scn), yi: 0, pi: 0, envTex, byId: Object.fromEntries(objs.map(e => [e.o.id, e])), mkS, root, ren, scn, cam, bpos, bmesh, objs, ship, flame, beam, placeObj, loadModel, mob, vel: new THREE.Vector3(), yaw: 0, pitch: 0, t: 0, labs: root.querySelector('#labs'), lab: [], keys: {}, joy: { x: 0, y: 0 }, thr: 0, bst: 0, ap: null, scanning: null, last: 0 };
   setShip(G('adv_ship', 'orion'), true);
   // start near Earth, looking at it
   const e = bpos.earth; ship.position.set(e.x - 40, e.y + 6, e.z + 30); lookAtYP(e);
@@ -410,12 +412,16 @@ function budget(CF) { const B = PRE(); let tris = 0, tex = 0; const L = R.objs.f
 function disposeTree(o) { o.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => { for (const k in m) { const v = m[k]; if (v && v.isTexture) v.dispose(); } m.dispose(); }); }); }
 // dynamic resolution: keeps the frame rate smooth by trimming render resolution (never the effects) when the device struggles
 const DR = { t: 0, n: 0, s: 1, cool: 4, low: 0, high: 0, changes: 0 };
-// Each resolution change reallocates the render buffers (one blank frame), so it changes rarely and only after a sustained slowdown.
-function dynRes(dt) { DR.t += dt; DR.n++; DR.cool = Math.max(0, DR.cool - dt); if (DR.t < 2) return; const fps = DR.n / DR.t; DR.t = 0; DR.n = 0;
-  DR.low = fps < 32 ? DR.low + 1 : 0; DR.high = fps > 58 ? DR.high + 1 : 0; if (DR.cool > 0 || DR.changes >= 6) return;
+// Max graphics that stay smooth: every 1.5 s compare the frame rate with the target (60, or the frame cap). If it falls short, trim the render
+// resolution a step (never the effects: shadows, bloom, materials and models stay at the chosen preset); when there is headroom, step back up.
+// Sharpening in the final pass grows as the resolution drops, so the picture stays crisp. Resizes are rare (each one reallocates the buffers).
+function dynRes(dt) { DR.t += dt; DR.n++; DR.cool = Math.max(0, DR.cool - dt); if (DR.t < 1.5) return; const fps = DR.n / DR.t, tg = Math.min(60, SET.cap || 60); DR.t = 0; DR.n = 0; DR.fps = fps;
+  DR.low = fps < tg * .86 ? DR.low + 1 : 0; DR.high = fps > tg * .97 ? DR.high + 1 : 0; if (DR.cool > 0 || document.hidden) return;
   const max = dprCap(); let s = DR.s;
-  if (DR.low >= 3 && s > .55) s = Math.max(.55, s - .15); else if (DR.high >= 8 && s < 1) s = Math.min(1, s + .15);
-  if (s !== DR.s) { DR.s = s; DR.cool = 12; DR.low = DR.high = 0; DR.changes++; R.ren.setPixelRatio(max * s); resize(); } }
+  if (DR.low >= 2 && s > .5) s = Math.max(.5, s - (fps < tg * .6 ? .2 : .1)); else if (DR.high >= 6 && s < 1) s = Math.min(1, s + .1);
+  if (DR.low >= 2 && DR.s <= .5) R.shEvery = 3;   /* still slow at the lowest resolution: shadows refresh a little less often */ else if (DR.high >= 6) R.shEvery = 0;
+  if (s !== DR.s) { DR.s = Math.round(s * 100) / 100; DR.cool = DR.s < s ? 4 : 9; DR.low = DR.high = 0; DR.changes++; R.ren.setPixelRatio(max * DR.s); resize(); }
+  R.cine.uniforms.sharp.value = GFX === 'low' ? 0 : .15 + (1 - DR.s) * 1.1; }
 // controller in Adventure Mode (window.PAD comes from js/gamepad.js; menus are handled there)
 let padStick = false; const padW = {}; function padSet(k, on) { if (on || padW[k]) R[k] = on ? 1 : 0; padW[k] = on; }  // only touch R.thr/R.bst while the controller is using them
 function padAdv(dt) { const P = window.PAD; if (!P || !P.on || R.root.querySelector('.pnl') || document.querySelector('#advDL')) return; const dz = v => Math.abs(v) < .18 ? 0 : (v - Math.sign(v) * .18) / .82, S = R.surf && R.surf.S;
@@ -457,7 +463,7 @@ function controls() {
   addEventListener('keyup', e => { if (R) R.keys[e.key.toLowerCase()] = 0; }, true);
   addEventListener('resize', resize);
 }
-function resize() { if (!R) return; const w = innerWidth, h = innerHeight; R.ren.setSize(w, h, false); R.comp.setPixelRatio(R.ren.getPixelRatio()); R.comp.setSize(w, h); R.cam.aspect = w / h; R.cam.updateProjectionMatrix(); }
+function resize() { if (!R) return; const w = innerWidth, h = innerHeight; R.ren.setSize(w, h, false); R.comp.setPixelRatio(R.ren.getPixelRatio()); R.comp.setSize(w, h); { const pr = R.ren.getPixelRatio(); R.cine.uniforms.res.value.set(w * pr, h * pr); } R.cam.aspect = w / h; R.cam.updateProjectionMatrix(); }
 
 /* ---------------- flight, scanning, labels ---------------- */
 const tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), fwd = new THREE.Vector3();
@@ -892,7 +898,7 @@ function surfUI(b, W, mode) { const $ = q => R.root.querySelector(q), on = !!b; 
   R.surfInfo = on ? (mode === 'dive' ? `${b.n} · inside the clouds` : `${b.n} · gravity ${W.g} m/s² (${Math.round(W.g / 9.81 * 100)}% of Earth) · ${W.t} · air: ${W.air}`) : ''; }
 let jumpWas = 0;
 function surfStep(dt) { try { suitHUD(dt); } catch (e) {} const k = R.keys, S = R.surf.S, jump = !!(R.thr || k[' ']), inp = { x: R.joy.x + ((k.d || k.arrowright) ? 1 : 0) - ((k.a || k.arrowleft) ? 1 : 0), y: R.joy.y + ((k.s || k.arrowdown) ? 1 : 0) - ((k.w || k.arrowup) ? 1 : 0), run: !!(R.bst || k.shift), jump, jumpPress: jump && !jumpWas, look: (k.q ? 1 : 0) - (k.r ? 1 : 0), lookY: 0 }; jumpWas = jump;
-  const r = R.surf.step(dt, inp) || {}; { const F = S.fly; AUD.set({ eng: F ? (F.heli ? .55 : Math.min(1, (r.spd || 0) / (F.vmax * 3.6))) : (inp.jump && !S.onGround ? .35 : 0), boost: F && inp.run ? 1 : 0, wind: F && !F.heli && WORLD[S.body.id] && WORLD[S.body.id].air !== 'None' ? Math.min(1, (r.spd || 0) / 300) : (S.mode === 'dive' ? .5 : 0), dt }); }
+  const r = R.surf.step(dt, inp) || {}; { const F = S.fly; AUD.set({ eng: F ? (F.heli ? .55 : Math.min(1, (r.spd || 0) / (F.vmax * 3.6))) : (inp.jump && !S.onGround ? .35 : 0), boost: F && inp.run ? 1 : 0, wind: F && !F.heli && WORLD[S.body.id] && WORLD[S.body.id].air !== 'None' ? Math.min(1, (r.spd || 0) / 300) : (S.mode === 'dive' ? .5 : 0), dt, air: !S.body ? 'ship' : WORLD[S.body.id] && WORLD[S.body.id].air === 'None' ? 'vac' : S.body.id }); }
   if (R.scanning && R.scanning.surf) { R.scanning.t += dt; const el = R.root.querySelector('#aScan'); el.style.display = 'block'; setT(el, 'SCANNING ' + Math.min(100, Math.round(R.scanning.t / 1.1 * 100)) + '%'); if (R.scanning.t > 1.1) { el.style.display = 'none'; const o = R.scanning.e.o; R.scanning = null; card(o, true); } }
   R.root.querySelector('#aScn').classList.toggle('on', !!(S.near && !ST.scanned.has(S.near.o.id))); if (S.mode !== 'dive') ldUI(S.ldK || 0, S.ldN || 0); else ldUI(0, 0);
   setT(R.root.querySelector('#aSpd'), S.mode === 'dive' ? `Depth ${Math.round(r.depth || 0)} km / ${r.max} km · ${Math.round(1 + (r.depth || 0) * .9)} bar · ${R.surfInfo}` : (S.fly ? `${S.fly.heli ? '🚁' : '✈'} ${S.fly.n} · ${r.spd} km/h · altitude ${r.alt} m · ` : '') + `${R.surfInfo} · ${S.cols.filter(c => !c.got).length} finds left`);
@@ -1057,11 +1063,28 @@ function orbitLine(dt) { const b = ORB.dom, on = SET.newton && b && b.id !== 'su
 /* eye adaptation: like a real camera or a real eye, exposure drops when the Sun fills the view and opens up in a planet's shadow,
    where the stars and the Milky Way come out. Cheap: one ray test against each body per frame. */
 const EXP = { v: 1.05, f: new THREE.Vector3(), s: new THREE.Vector3(), oc: new THREE.Vector3() };
-function adapt(dt, sf) { let tg = 1.05; if (!sf && R.bpos && R.bpos.sun) { const cam = R.cam, f = EXP.f.set(0, 0, -1).applyQuaternion(cam.quaternion), s = EXP.s.copy(R.bpos.sun).sub(cam.position), ds = s.length(); s.divideScalar(ds); let vis = 1;
+function adapt(dt, sf) { let tg = sf && R.surfTg ? R.surfTg : 1.05; if (!sf && R.bpos && R.bpos.sun) { const cam = R.cam, f = EXP.f.set(0, 0, -1).applyQuaternion(cam.quaternion), s = EXP.s.copy(R.bpos.sun).sub(cam.position), ds = s.length(); s.divideScalar(ds); let vis = 1;
     for (const b of BODIES) { if (b.id === 'sun') continue; const oc = EXP.oc.copy(R.bpos[b.id]).sub(cam.position), t = oc.dot(s); if (t > 0 && t < ds && oc.lengthSq() - t * t < b.r * b.r * .96) { vis = 0; break; } }
     const glare = THREE.MathUtils.smoothstep(f.dot(s), .86, .995) * vis * Math.min(1, 900 / ds); tg = 1.05 * (1 - .4 * glare) * (vis ? 1 : 1.3); }
   EXP.v += (tg - EXP.v) * (1 - Math.exp(-dt * (tg < EXP.v ? 2.4 : .8))); R.ren.toneMappingExposure = EXP.v; }
-function draw(sc) { R.rp.scene = sc; /* shadows: refresh every 2nd frame (every 3rd on Low); the sun barely moves between frames */ R.fr = (R.fr || 0) + 1; R.ren.shadowMap.needsUpdate = GFX === 'max' || R.fr % (GFX === 'low' ? 3 : 2) === 0; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
+/* ---------------- realism pass 17: light shafts, heat shimmer, eyes that adjust ---------------- */
+const EFX = { v: new THREE.Vector3(), f: new THREE.Vector3(), d: new THREE.Vector3() };
+function envFX(dt, sf) { const cu = R.cine.uniforms, ry = R.rays; let heat = 0, rk = 0; R.surfTg = 0;
+  if (sf) { const S = R.surf.S, id = S.body && S.body.id, U = S.skyU, dl = S.dl;
+    if (id && dl && S.mode !== 'dive') { const sd = U ? EFX.d.copy(U.sd.value) : EFX.d.copy(dl.position).sub(dl.target.position).normalize(), e = sd.y, day = U ? THREE.MathUtils.smoothstep(e, -.04, .12) : Math.min(1, dl.intensity / 2.6);
+      const f = EFX.f.set(0, 0, -1).applyQuaternion(R.cam.quaternion), look = THREE.MathUtils.smoothstep(f.dot(sd), .78, .99) * day;
+      // eyes and cameras adjust: squint toward the Sun, open up in the dark (but night stays night)
+      R.surfTg = 1.05 * (1 - .32 * look) * (1 + (U ? .38 : .15) * (1 - day));
+      heat = id === 'venus' ? .9 : id === 'earth' ? .16 * THREE.MathUtils.smoothstep(e, .3, .85) : id === 'titan' ? .05 : 0;
+      const air = U ? ({ earth: .95, mars: .8 }[id] || 0) : 0;
+      if (air > 0 && day > 0 && GFX !== 'low') { const sp = EFX.v.copy(sd).multiplyScalar(3000).add(R.cam.position).project(R.cam);
+        if (sp.z < 1) { const on = 1 - THREE.MathUtils.smoothstep(Math.max(Math.abs(sp.x), Math.abs(sp.y)), 1.05, 1.9), low = 1 - .6 * THREE.MathUtils.smoothstep(e, .1, .6);
+          rk = air * day * on * low * (1 + ((S.storm && S.storm.k) || 0) * 1.5); ry.uniforms.sun.value.set(sp.x * .5 + .5, sp.y * .5 + .5);
+          if (id === 'mars') ry.uniforms.col.value.setRGB(.62, .78, 1).lerp(new THREE.Color(1, .72, .45), THREE.MathUtils.smoothstep(e, .15, .6));   /* Mars: the sky around a low Sun glows blue */
+          else ry.uniforms.col.value.setRGB(1, .82, .6).lerp(new THREE.Color(1, .97, .9), THREE.MathUtils.smoothstep(e, .1, .6)); } } } }
+  if (R.launch && R.launch.heat) { const h = R.launch.heat; cu.heatL.value.set(h.x, h.y, h.k); } else cu.heatL.value.z = 0;
+  cu.heat.value += (heat - cu.heat.value) * Math.min(1, dt * 2); ry.uniforms.k.value += (rk - ry.uniforms.k.value) * Math.min(1, dt * 3); ry.enabled = ry.uniforms.k.value > .01; }
+function draw(sc) { R.rp.scene = sc; /* shadows: refresh every 2nd frame (every 3rd on Low); the sun barely moves between frames */ R.fr = (R.fr || 0) + 1; R.ren.shadowMap.needsUpdate = R.fr % (R.shEvery || (GFX === 'max' ? 1 : GFX === 'low' ? 3 : 2)) === 0; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
 function setGfx(g) { GFX = g; P('adv_gfx', g); Q = g === 'max' ? 'ultra' : 'high'; DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(dprCap()); [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? PRE().msaa : 0; t.dispose(); }); R.bloom.strength = PRE().bloom; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + PRE().n; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
 function settings() { const p = document.createElement('div'); p.className = 'pnl'; const opt = (k, v, l) => `<button data-${k}="${v}" class="${String((k === 'g' ? GFX : SET[k])) === String(v) ? 'sel' : ''}">${l}</button>`;
   p.innerHTML = `<div class="crd"><div class="ey">⚙ GRAPHICS</div><h2>Settings</h2><div class="mt">Like Genshin: lower settings run smoother and cooler on phones. Max is for strong phones and PCs.</div>
@@ -1091,10 +1114,10 @@ function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last 
   else if (R.entry) { stepEntry(dt); draw(R.scn); }
   else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) setT(lb, k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase()); draw(R.scn); } }
   } catch (e) { if (!loop.errN || loop.errN < 5) { loop.errN = (loop.errN || 0) + 1; console.error('Adventure frame error:', e); } }
-  try { adapt(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
+  try { envFX(dt, sf); adapt(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
 const MC = 'rdo-models-2', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
-const DLV = 77;
+const DLV = 78;
 function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== DLV; }
 function resPanel(done, fromGame) {
   const o = document.createElement('div'); o.id = 'advDL'; o.innerHTML = `<style>#advDL{position:fixed;inset:0;z-index:99999;background:radial-gradient(ellipse at 50% 30%,#14204a,#02040c 70%);color:#eaf2ff;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}

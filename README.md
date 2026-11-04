@@ -829,6 +829,31 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v79 — Max graphics, still smooth · a real-looking SLS launch · 5 more realism
+
+**Max graphics that stay smooth**
+- New players start on **Max** (desktop) or **High** (phones).
+- Smarter dynamic resolution. Every 1.5 s it checks the frame rate against your target (60, or your frame cap). If the game falls short, only the render resolution drops a step. Shadows, bloom, materials and models stay at your preset, and it climbs back up when there's headroom.
+- **Contrast-adaptive sharpening** in the final pass grows as the resolution drops, so the image stays crisp.
+
+**The launch, rebuilt**
+- **SLS Block 1 built to its real dimensions:** 98 m tall, 8.4 m core, 3.7 m boosters. It replaces the old low-poly mesh that had no normals.
+  - Core stage: sprayed-orange foam texture, with weld seams, the ribbed intertank and the soot-dark engine section. Four bell-shaped RS-25 nozzles, LOX feedlines and the systems tunnel.
+  - Boosters: five segments with joints, aft skirts, nozzles, separation motors and attach struts.
+  - Upper stack: stage adapter, ICPS with its RL10, Orion service module, crew module and the launch abort tower.
+- **New events:** service module fairing separation (3 panels) and launch abort system jettison, with its motor firing.
+- **Billowing smoke:** camera-facing cloud puffs, lit by the Sun on one side and glowing orange from the engines below. The ground cloud rolls out around the pad, and the steam bursts from the flame trench.
+- **The pad:** sound-suppression water deluge; three 180 m lightning towers with catenary wires; the crawlerway in river rock; marsh ponds; the Atlantic with moving wave normals and a surf line; sun shadows on the pad and tower.
+- **Engines:** white-hot cores inside the booster plumes, glow at every nozzle and heat shimmer over the exhaust.
+- **Earth from orbit:** a 4K Blue Marble surface and 4K clouds, also used on Earth in space (textures from the three.js examples, originally NASA).
+
+**5 more realism**
+1. **Light shafts (crepuscular rays)** when the Sun is low on Earth and Mars, stronger in a dust storm. On Mars they glow blue around the Sun, like real Martian sunsets.
+2. **Heat shimmer:** strong on Venus, mild on hot afternoons on Earth, and behind the rocket engines.
+3. **Shooting stars** at night on Earth and Mars, with the occasional bright fireball.
+4. **Sound travels through the air:** Mars is about 20 dB quieter and muffled (as Perseverance's microphones heard it), Venus and Titan are louder, and on airless worlds you only hear what your suit carries.
+5. **Eyes that adjust on the surface:** the view dims when you look toward the Sun and slowly opens up in the dark.
+
 ## v78 — Smoother
 
 - **Sky baked once:** the Milky Way and nebula glow used to be many layers of 3D noise computed for every pixel, every frame. It is now rendered once into a cube map at start-up and simply sampled. This is the biggest win on phones.
