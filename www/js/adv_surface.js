@@ -1,5 +1,7 @@
 /* Adventure Mode — landing on worlds (walk around as an astronaut) and diving into gas giants. */
 import * as THREE from 'three';
+import { makeAstronaut } from './adv_astro.js';
+import { makeRover } from './adv_rover.js';
 import { makeFX, makeRings, scatterRocks, makeGrass, FOGSUN, FOGSUNC, fogHook } from './adv_fx.js';
 
 function hash(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); }
@@ -9,9 +11,12 @@ const col = h => new THREE.Color(h);
 
 /* distance from the Sun in AU: the Sun's disc shrinks with distance (from Mars it is 2/3 the size; from Pluto a blinding star) */
 const AU = { mercury: .39, venus: .72, earth: 1, moon: 1, mars: 1.52, phobos: 1.52, deimos: 1.52, vesta: 2.36, ceres: 2.77, io: 5.2, europa: 5.2, ganymede: 5.2, callisto: 5.2, titan: 9.5, enceladus: 9.5, mimas: 9.5, rhea: 9.5, iapetus: 9.5, dione: 9.5, tethys: 9.5, miranda: 19.2, titania: 19.2, ariel: 19.2, triton: 30, pluto: 39.5, charon: 39.5, arrokoth: 44.6 };
+// real length of a solar day (hours). Game time runs 360× faster, so Earth's day takes 4 minutes, Mars 4.1, the Moon about 2 hours.
+export const DAYH = { earth: 24, moon: 708.7, mars: 24.66, phobos: 7.65, deimos: 30.3, mercury: 4223, venus: 2802, io: 42.5, europa: 85.2, ganymede: 171.7, callisto: 400.5, titan: 382.7, enceladus: 32.9, mimas: 22.6, rhea: 108.4, iapetus: 1904, dione: 65.7, tethys: 45.3, miranda: 33.9, ariel: 60.5, titania: 208.9, oberon: 323, umbriel: 99.5, triton: 141, pluto: 153.3, charon: 153.3, ceres: 9.07, vesta: 5.34 };
+const SHINE = { earth: [0x9cc4ff, .5], jupiter: [0xffe0b8, .6], saturn: [0xfff0c8, .35], mars: [0xffb080, .25], uranus: [0xb8f0ff, .2], neptune: [0x8aa8ff, .2], pluto: [0xe8d8c0, .12], charon: [0xc8c8cc, .1] };
 const ICY = { europa: 1, enceladus: 1, mimas: .6, rhea: .7, tethys: .7, dione: .6, triton: .8, pluto: .7, ganymede: .4, titania: .5, miranda: .5, ariel: .5, iapetus: .4 };
 // terrain extras shared by every world: cloud shadows, opposition surge and ice glints (one uniform set, swapped per landing)
-const TU = { tsd: { value: new THREE.Vector3(-1500, 900, -1800).normalize() }, opp: { value: 0 }, cmap: { value: null }, cOn: { value: 0 }, cY: { value: 520 }, cOff: { value: new THREE.Vector2() }, cRep: { value: 5 }, ice: { value: 0 }, day: { value: 1 } };
+const TU = { frost: { value: 0 }, lavaT: { value: 0 }, tsd: { value: new THREE.Vector3(-1500, 900, -1800).normalize() }, opp: { value: 0 }, cmap: { value: null }, cOn: { value: 0 }, cY: { value: 520 }, cOff: { value: new THREE.Vector2() }, cRep: { value: 5 }, ice: { value: 0 }, day: { value: 1 } };
 /* world settings: gravity (m/s²), temperature, air, sky, fog, ground colours, terrain roughness, craters, extra features */
 export const WORLD = {
   earth: { g: 9.81, t: 'about 15 °C', air: 'Nitrogen and oxygen (you could breathe it!)', sky: '#8ec3f0', fog: .0011, gr: ['#5d7a3a', '#8a9a5a', '#c9b98a'], amp: 3, cr: 0, sea: '#2a6aa8', site: 'Kennedy Space Center, Florida', sun: '#fff4e0' },
@@ -71,15 +76,15 @@ export function makeSurface(ctx) {
       if (W.sea && x > 330) h = Math.min(h, -1.5 - (x - 330) * .05);
       return h * fl + h * (1 - fl) * .15; };
     const H0 = H(0, 0); if (site && site.hm) { const Hr = H; H = (x, z) => Hr(x, z) - H0; }
-    const p = geo.attributes.position, cc = new Float32Array(p.count * 3), C0 = col(W.gr[0]), C1 = col(W.gr[1]), C2 = col(W.gr[2]), c = new THREE.Color();
+    const p = geo.attributes.position, lava = new Float32Array(p.count), cc = new Float32Array(p.count * 3), C0 = col(W.gr[0]), C1 = col(W.gr[1]), C2 = col(W.gr[2]), c = new THREE.Color();
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), h = H(x, z); p.setY(i, h); const n = fbm(x * .02 + 9, z * .02, 4), k = THREE.MathUtils.clamp(.5 + h / ((site && site.hm ? site.relief * size * .5 : W.amp * 3) + 1) + (n - .5) * .7, 0, 1);
       if (k < .5) c.copy(C0).lerp(C1, k * 2); else c.copy(C1).lerp(C2, (k - .5) * 2);
       if (id === 'earth') { if (x > 300) c.lerp(col('#e8dcb0'), THREE.MathUtils.clamp((x - 300) / 30, 0, 1)); if (Math.abs(z) < 5 || Math.abs(x + 40) < 4) c.set('#6a6a68'); }
       if (W.salt && Math.hypot(x - 90, z + 70) < 30 + n * 14) c.set('#f4f6f8');
-      if (W.lava && fbm(x * .01, z * .01 + 3, 3) > .68) c.lerp(col('#2a1a10'), .7);
+      if (W.lava) { const lv = fbm(x * .01, z * .01 + 3, 3); if (lv > .68) c.lerp(col('#2a1a10'), .7); lava[i] = THREE.MathUtils.smoothstep(lv, .7, .78) * (.6 + .4 * fbm(x * .08, z * .08, 2)); }
       if (W.cracks && Math.abs(Math.sin(x * .02 + fbm(x * .005, z * .005) * 8) + Math.sin(z * .017 + 2)) < .06) c.set('#9a5a3a');
       cc.set([c.r, c.g, c.b], i * 3); }
-    geo.setAttribute('color', new THREE.BufferAttribute(cc, 3)); geo.computeVertexNormals();
+    geo.setAttribute('color', new THREE.BufferAttribute(cc, 3)); geo.setAttribute('lava', new THREE.BufferAttribute(lava, 1)); geo.computeVertexNormals();
     { const nn = geo.attributes.normal, rock = C0.clone().multiplyScalar(.8); for (let i = 0; i < p.count; i++) { const sl = 1 - nn.getY(i), k = THREE.MathUtils.smoothstep(sl, .12, .45); if (k > 0) { c.setRGB(cc[i * 3], cc[i * 3 + 1], cc[i * 3 + 2]).lerp(rock, k * (id === 'earth' ? .6 : .75)); cc.set([c.r, c.g, c.b], i * 3); } } geo.attributes.color.needsUpdate = true; }
     const dcv = document.createElement('canvas'); dcv.width = dcv.height = 256; const dg = dcv.getContext('2d'), im = dg.createImageData(256, 256);
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const v = 200 + (fbm(x * .06, y * .06, 4) - .5) * 90 + (hash(x, y) - .5) * 40, o = (y * 256 + x) * 4; im.data[o] = im.data[o + 1] = im.data[o + 2] = v; im.data[o + 3] = 255; }
@@ -96,9 +101,14 @@ export function makeSurface(ctx) {
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: dt, normalMap: nt, normalScale: new THREE.Vector2(1.1, 1.1), roughness: .95, metalness: 0 });
     // break up texture tiling with a slow, large-scale brightness variation sampled from the same detail map at another scale
     mat.onBeforeCompile = sh => { fogHook(sh); Object.assign(sh.uniforms, TU);
-      sh.vertexShader = 'varying vec3 vTWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vTWP = (modelMatrix * vec4(transformed, 1.)).xyz;');
-      sh.fragmentShader = 'varying vec3 vTWP; uniform vec3 tsd; uniform float opp, cOn, cY, cRep, ice, day; uniform vec2 cOff; uniform sampler2D cmap;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      sh.vertexShader = 'attribute float lava; varying float vLava; varying vec3 vTWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vTWP = (modelMatrix * vec4(transformed, 1.)).xyz; vLava = lava;');
+      sh.fragmentShader = 'varying float vLava; varying vec3 vTWP; uniform float frost, lavaT; uniform vec3 tsd; uniform float opp, cOn, cY, cRep, ice, day; uniform vec2 cOff; uniform sampler2D cmap;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
       { float m1 = texture2D(map, vMapUv * .061 + .37).r, m2 = texture2D(map, vMapUv * .013 + .11).r; diffuseColor.rgb *= mix(.82, 1.12, m1) * mix(.88, 1.1, m2); }`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        // dawn frost on Mars: water-ice and CO2 frost on sun-facing ground that burns off as the Sun climbs (Viking 2 photographed it)
+        if (frost > 0.) { float up = dot(normal, normalize((viewMatrix * vec4(0., 1., 0., 0.)).xyz)), fn = texture2D(map, vMapUv * .21 + .13).r, fn2 = texture2D(map, vMapUv * 1.7).r; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.8, .8, .84), frost * .32 * smoothstep(.78, .96, up) * smoothstep(.5, .66, fn) * (.6 + .4 * fn2)); }
+        // Io: molten lava glowing through cracks in the crust, flickering
+        if (vLava > .01) totalEmissiveRadiance += vec3(1., .32, .05) * vLava * (1.4 + .5 * sin(lavaT * 2.3 + vTWP.x * .3) * sin(lavaT * 1.7 + vTWP.z * .25));`)
         .replace('#include <opaque_fragment>', `{ vec3 L = normalize(tsd), V = normalize(cameraPosition - vTWP); float sunUp = smoothstep(-.02, .15, L.y);
           // cloud shadows: follow the sunlight up to the cloud deck and read the same drifting cloud texture
           if (cOn > .5 && L.y > .05) { vec2 cp = vTWP.xz + L.xz / L.y * (cY - vTWP.y); vec2 cu = vec2((cp.x + 4500.) / 9000., (-cp.y + 4500.) / 9000.) * cRep + cOff; outgoingLight *= 1. - texture2D(cmap, cu).a * .5 * sunUp * day; }
@@ -131,8 +141,8 @@ export function makeSurface(ctx) {
         const cl = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshBasicMaterial({ map: ct, transparent: true, depthWrite: false, fog: false, opacity: .9, color: id === 'earth' ? 0xffffff : id === 'titan' ? 0xd8a060 : 0xf0d090 })); cl.rotation.x = -Math.PI / 2; cl.position.y = id === 'earth' ? 520 : 380; scn.add(cl); S.cloudL = cl; S.cloudBase = cl.material.color.clone(); }
       const st = ctx.stars(); if (st) { const sm = new THREE.Mesh(new THREE.SphereGeometry(3400, 32, 16), new THREE.MeshBasicMaterial({ map: st, side: THREE.BackSide, color: 0xb0b0b0, transparent: true, opacity: 0, depthWrite: false, fog: false, blending: THREE.AdditiveBlending })); scn.add(sm); S.starM = sm.material; } }
     else { scn.background = new THREE.Color('#000'); const st = ctx.stars(); if (st) { const s = new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), new THREE.MeshBasicMaterial({ map: st, side: THREE.BackSide, color: 0x9a9a9a, fog: false })); scn.add(s); } }
-    const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,240,1)', 'rgba(255,220,150,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); sun.position.set(-1500, 900, -1800); sun.scale.setScalar(260 * (W.bigSun || 1) * Math.max(.22, Math.pow(1 / (AU[id] || 1), .75))); if (!W.sky) scn.add(sun);
-    if (!W.sky && (AU[id] || 1) > 4) { const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,1)', 'rgba(255,250,235,.9)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); core.position.copy(sun.position); core.scale.setScalar(26); scn.add(core); }   // far out: a tiny, piercing point
+    const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,240,1)', 'rgba(255,220,150,.5)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); sun.position.set(-1500, 900, -1800); sun.scale.setScalar(260 * (W.bigSun || 1) * Math.max(.22, Math.pow(1 / (AU[id] || 1), .75))); if (!W.sky) { scn.add(sun); S.sunSpr = sun; }
+    if (!W.sky && (AU[id] || 1) > 4) { const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,1)', 'rgba(255,250,235,.9)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); core.position.copy(sun.position); core.scale.setScalar(26); scn.add(core); S.sunCore = core; }   // far out: a tiny, piercing point
     if (W.inSky) { const tex = ctx.texOf(W.inSky); const big = { earth: 120, mars: 260, jupiter: 900, saturn: 600, uranus: 420, neptune: 380, pluto: 300, charon: 260 }[W.inSky] || 200;
       const PU = { map: { value: tex }, night: { value: null }, hasN: { value: 0 }, sd: S.skyU ? S.skyU.sd : TU.tsd, rim: { value: new THREE.Color({ earth: 0x6aa8ff, saturn: 0xfff0c8, jupiter: 0xffe2b0, neptune: 0x7aa0ff, uranus: 0xa8f0ff, mars: 0xff9a6a, pluto: 0x9ab4ff }[W.inSky] || 0x000000) } };
       if (W.inSky === 'earth') new THREE.TextureLoader().load('models/tex/earth_night.webp', t => { t.colorSpace = THREE.SRGBColorSpace; PU.night.value = t; PU.hasN.value = 1; });
@@ -155,15 +165,16 @@ export function makeSurface(ctx) {
           float dist = length(cameraPosition - wp); c = mix(c, sky, 1. - exp(-dist * fogD * .9)); gl_FragColor = vec4(c, .96); }` }));
       sea.rotation.x = -Math.PI / 2; sea.position.y = -1; scn.add(sea); S.sea = sea; }
   }
-  function playerModel() { const g = new THREE.Group(); const fb = new THREE.Group(), fbm = new THREE.Mesh(new THREE.CapsuleGeometry(.35, 1, 4, 10), new THREE.MeshStandardMaterial({ color: 0xf2f2f5 })); fbm.position.y = .9; fb.add(fbm); g.add(fb);
-    ctx.loader.load('models/nasa/astronaut.glb', gl => { const m = gl.scene; if (ctx.fixMat) ctx.fixMat(m); const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3()), k = 1.8 / Math.max(s.y, .01); m.scale.setScalar(k); const b2 = new THREE.Box3().setFromObject(m); m.position.y -= b2.min.y; m.position.x -= (b2.min.x + b2.max.x) / 2; m.position.z -= (b2.min.z + b2.max.z) / 2; m.traverse(n => { if (n.isMesh) n.castShadow = true; }); g.remove(fb); const w = new THREE.Group(); w.add(m); g.add(w); }, undefined, () => {});
-    const jet = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,1)', 'rgba(120,200,255,.6)'), blending: THREE.AdditiveBlending, depthWrite: false })); jet.position.set(0, .7, .45); jet.scale.setScalar(.01); g.add(jet); g.userData.jet = jet;
+  function playerModel() { const g = new THREE.Group();
+    // a fully jointed astronaut with a real gait (the old NASA mesh was a single frozen T-pose)
+    const rig = makeAstronaut(); g.add(rig.root); g.userData.rig = rig; rig.root.traverse(n => { if (n.isMesh) n.castShadow = true; });
+    const jet = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,1)', 'rgba(120,200,255,.6)'), blending: THREE.AdditiveBlending, depthWrite: false })); jet.position.set(0, 1.25, -.42); jet.scale.setScalar(.01); g.add(jet); g.userData.jet = jet;
     const sh = new THREE.Mesh(new THREE.CircleGeometry(.6, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; g.userData.sh = sh; return g; }
   let busy = 0;
   function placeModel(e, force) { if (e.loading || (!force && busy >= 3)) return; e.loading = 1; busy++; const done = () => { busy = Math.max(0, busy - 1); }; ctx.loader.load('models/nasa/' + (e.useLod ? 'lod/' : '') + (e.o.model || e.o.id) + '.glb', gl => { const m = gl.scene; if (ctx.fixMat) ctx.fixMat(m); if (e.r) { m.rotation.set(e.r[0], e.r[1], e.r[2], 'YXZ'); m.updateMatrixWorld(true); } const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3()), k = e.s / Math.max(s.x, s.y, s.z, .001); m.scale.setScalar(k); const b2 = new THREE.Box3().setFromObject(m); m.position.y -= b2.min.y; m.position.x -= (b2.min.x + b2.max.x) / 2; m.position.z -= (b2.min.z + b2.max.z) / 2; m.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } }); e.g.add(m); e.model = m; done(); }, undefined, () => { done(); e.loading = 0; e.fails = (e.fails || 0) + 1; if (e.fails >= 2 && !e.useLod) { e.useLod = 1; e.fails = 0; } else if (e.fails >= 3) e.model = new THREE.Group(); }); }
   function enter(body, kind, site) { FOGSUN.value.w = 0;
     const W = kind === 'dive' ? null : WORLD[body.id], scn = new THREE.Scene(); S.scn = scn; S.body = body; S.mode = kind; S.t = 0; S.items = []; S.cols = []; S.depth = 0; S.sea = null;
-    const hemi = new THREE.HemisphereLight(0xdfe8ff, 0x302820, .55); scn.add(hemi); S.hemi = hemi; S.cloudL = null; S.skyU = null; S.starM = null; S.seaU = null; S.devils = null; S.tod = .055; const dl = new THREE.DirectionalLight(W ? col(W.sun) : 0xffffff, 2.6); dl.position.set(-1500, 900, -1800); scn.add(dl); scn.add(dl.target); S.dl = dl;
+    const hemi = new THREE.HemisphereLight(0xdfe8ff, 0x302820, .55); scn.add(hemi); S.hemi = hemi; S.sunSpr = S.sunCore = null; S.storm = null; S.rain = null; S.rover = null; S.drive = null; S.helmet = 0; S.o2 = 100; TU.frost.value = 0; S.cloudL = null; S.skyU = null; S.starM = null; S.seaU = null; S.devils = null; S.tod = .055; const dl = new THREE.DirectionalLight(W ? col(W.sun) : 0xffffff, 2.6); dl.position.set(-1500, 900, -1800); scn.add(dl); scn.add(dl.target); S.dl = dl;
     if (ctx.env) { scn.environment = ctx.env(); scn.environmentIntensity = .5; }
     const q = ctx.q ? ctx.q() : 'high'; if (kind !== 'dive') { dl.castShadow = true; const ms = ctx.pre ? ctx.pre().shadow : 2048; dl.shadow.mapSize.set(ms, ms); const c = dl.shadow.camera; c.left = c.bottom = -70; c.right = c.top = 70; c.near = 10; c.far = 600; dl.shadow.bias = -.0006; dl.shadow.normalBias = .4; }
     if (kind === 'dive') return enterDive(body, scn);
@@ -186,6 +197,14 @@ export function makeSurface(ctx) {
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,.9)', sample ? 'rgba(125,249,255,.35)' : 'rgba(255,200,90,.4)'), blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(sample ? 4 : 3); m.add(halo);
       const c = { i, m, sample, fact: sample ? facts[i % facts.length] : null, got: got.has(i), key, gotSet: got }; m.visible = !c.got; S.cols.push(c); }
     if (W.geysers) for (let i = 0; i < 5; i++) { const x = 120 + i * 40, z = -150 + i * 25; S.items.push({ geyser: 1, g: geyser(scn, x, H(x, z), z) }); }
+    if (body.id === 'titan') { const hs = []; for (let z = -600; z <= 600; z += 40) for (let x = -600; x <= 600; x += 40) hs.push(H(x, z)); hs.sort((a, b) => a - b); const lv = Math.min(hs[Math.floor(hs.length * .2)], H(4, 8) - .6);
+      // liquid methane–ethane lakes: dark, mirror-smooth (Cassini's radar saw them flatter than any lake on Earth)
+      const lake = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), new THREE.MeshStandardMaterial({ color: 0x1a120a, roughness: .04, metalness: .2, envMapIntensity: 1.5, transparent: true, opacity: .93 })); lake.rotation.x = -Math.PI / 2; lake.position.y = lv; lake.receiveShadow = true; scn.add(lake); }
+    if (body.id === 'io') { const N = 2600, seed = new Float32Array(N * 2), g2 = new THREE.BufferGeometry(); for (let i = 0; i < N * 2; i++) seed[i] = Math.random(); g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3)); g2.setAttribute('seed', new THREE.BufferAttribute(seed, 2));
+      const PU = { time: { value: 0 } }, plume = new THREE.Points(g2, new THREE.ShaderMaterial({ uniforms: PU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,   // a Pele-class plume on the horizon: a 300 km umbrella of sulfur
+        vertexShader: 'attribute vec2 seed; uniform float time; varying float vA; void main(){ float ph = fract(time / 14. + seed.x), a = seed.y * 6.2832, sp = .2 + .8 * fract(seed.x * 13.7); vec3 v = vec3(cos(a) * sp, 1., sin(a) * sp); float t = ph * 2.; vec3 p = (v * t - vec3(0., .5 * t * t, 0.)) * 420.; vA = (1. - ph) * step(0., p.y); vec4 mv = modelViewMatrix * vec4(p, 1.); gl_PointSize = clamp(2600. / -mv.z, 1., 5.); gl_Position = projectionMatrix * mv; }',
+        fragmentShader: 'varying float vA; void main(){ float d = length(gl_PointCoord - .5); gl_FragColor = vec4(vec3(.7, .8, 1.) * 1.3, smoothstep(.5, .1, d) * vA * .5); }' }));
+      plume.position.set(-900, H(-900, -1500) - 20, -1500); plume.frustumCulled = false; scn.add(plume); S.items.push({ geyser: 1, g: new THREE.Group(), up: dt => { PU.time.value = S.t; } }); }
     S.prints = null;
     S.player = playerModel(); scn.add(S.player); scn.add(S.player.userData.sh);
     { const lamp = new THREE.SpotLight(0xfff4e0, 0, 60, .5, .6, 1.4); lamp.position.set(0, 1.7, -.1); lamp.target.position.set(0, .6, -8); S.player.add(lamp); S.player.add(lamp.target); S.lamp = lamp; } S.player.position.set(4, H(4, 4) + .1, 8); S.vel.set(0, 0, 0); S.yaw = Math.PI; S.camYaw = Math.PI;
@@ -219,7 +238,7 @@ export function makeSurface(ctx) {
       S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, P.x, P.z); }
     return r; }
   function stepLand(dt, inp) {
-    if (S.fly) return stepFly(dt, inp);
+    if (S.fly) return stepFly(dt, inp); if (S.drive) return stepDrive(dt, inp);
     const P = S.player, W = WORLD[S.body.id], g = S.gEff, run = inp.run ? 2.1 : 1, speed = 5.2 * run;
     S.camYaw += inp.look * dt * 2.2; S.camPitch = THREE.MathUtils.clamp(S.camPitch + inp.lookY * dt * 1.5, .05, 1.2);
     const fx = -Math.sin(S.camYaw), fz = -Math.cos(S.camYaw), mx = inp.x * Math.cos(S.camYaw) + inp.y * fx * -1, mz = -inp.x * Math.sin(S.camYaw) + inp.y * fz * -1, l = Math.hypot(inp.x, inp.y);
@@ -232,7 +251,9 @@ export function makeSurface(ctx) {
     if (P.position.y <= ng) { if (!S.onGround && S.vel.y < -6) ctx.sfx('lnd'); P.position.y = ng; S.vel.y = 0; S.onGround = true; } else if (P.position.y > ng + .2) S.onGround = false;
     const lim = 680; P.position.x = THREE.MathUtils.clamp(P.position.x, -lim, lim); P.position.z = THREE.MathUtils.clamp(P.position.z, -lim, lim);
     P.rotation.y += ((S.yaw - P.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
-    const moving = Math.hypot(S.vel.x, S.vel.z) > .5 && S.onGround, lowg = THREE.MathUtils.clamp(1 - W.g / 9.81, 0, 1), gf = 9 - lowg * 4.5, ga = .08 + lowg * .28; P.children.forEach(c => { if ((c.isGroup || c.isMesh) && !c.isLight) { c.position.y = moving ? Math.abs(Math.sin(S.t * gf * run)) * ga : 0; c.rotation.x = moving ? .12 * run : 0; } });
+    const moving = Math.hypot(S.vel.x, S.vel.z) > .5 && S.onGround, lowg = THREE.MathUtils.clamp(1 - W.g / 9.81, 0, 1), gf = 9 - lowg * 4.5, ga = .08 + lowg * .28; const rig = P.userData.rig; if (rig) { const landed = P.userData.wasG === false && S.onGround ? (P.userData.lastVy || 0) : 0; P.userData.wasG = S.onGround; if (!S.onGround) P.userData.lastVy = S.vel.y;
+      rig.update(dt, { spd: Math.hypot(S.vel.x, S.vel.z), ground: S.onGround, g, run: run > 1, yaw: P.rotation.y, landed: landed < -2.5 ? landed : 0, hold: !S.onGround && inp.jump }); }
+    else P.children.forEach(c => { if ((c.isGroup || c.isMesh) && !c.isLight) { c.position.y = moving ? Math.abs(Math.sin(S.t * gf * run)) * ga : 0; c.rotation.x = moving ? .12 * run : 0; } });
     if (S.prints && moving) { const F = S.prints, sp = Math.hypot(S.vel.x, S.vel.z); F.d += sp * dt; if (F.d > (.7 + lowg * .5) * run) { F.d = 0; F.side = -F.side; const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), S.yaw + Math.PI), sx = Math.cos(S.yaw) * .13 * F.side, sz = -Math.sin(S.yaw) * .13 * F.side, x = P.position.x + sx, z = P.position.z + sz;
         m4.compose(new THREE.Vector3(x, H(x, z) + .03, z), q, new THREE.Vector3(F.side < 0 ? -1 : 1, 1, 1)); F.im.setMatrixAt(F.n % 220, m4); F.n++; if (F.n === 100 && S.body.id === 'moon' && ctx.trophy) ctx.trophy('a_boots'); F.im.count = Math.min(220, F.n); F.im.instanceMatrix.needsUpdate = true; } }
     if (S.lamp) { const dark = S.skyU ? 1 - THREE.MathUtils.smoothstep(S.skyU.e.value, -.08, .12) : 0; S.lamp.intensity += ((dark > .05 ? 40 * dark : 0) - S.lamp.intensity) * Math.min(1, dt * 3); S.lamp.visible = S.lamp.intensity > .5; }
@@ -247,14 +268,16 @@ export function makeSurface(ctx) {
     const sh = P.userData.sh; sh.position.set(P.position.x, ng + .05, P.position.z); sh.material.opacity = .35 * Math.max(0, 1 - (P.position.y - ng) / 8);
     // camera: behind and above, Genshin style
     const cd = 7.5, cx = P.position.x + Math.sin(S.camYaw) * cd * Math.cos(S.camPitch), cz = P.position.z + Math.cos(S.camYaw) * cd * Math.cos(S.camPitch); let cy = P.position.y + 1.6 + Math.sin(S.camPitch) * cd; cy = Math.max(cy, H(cx, cz) + .8);
-    ctx.cam.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 8)); ctx.cam.lookAt(P.position.x, P.position.y + 1.4, P.position.z);
+    if (S.helmet) { const hp = new THREE.Vector3(P.position.x, P.position.y + 1.66 + (P.userData.rig ? P.userData.rig.root.children[0].position.y : 0), P.position.z); ctx.cam.position.copy(hp);   // inside the helmet: you see what the astronaut sees
+      const lp = -(S.camPitch - .35) * 1.4; ctx.cam.lookAt(hp.x - Math.sin(S.camYaw) * Math.cos(lp) * 10, hp.y + Math.sin(lp) * 10, hp.z - Math.cos(S.camYaw) * Math.cos(lp) * 10); if (P.userData.rig) P.userData.rig.root.visible = false; }
+    else { if (P.userData.rig) P.userData.rig.root.visible = true; ctx.cam.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 8)); ctx.cam.lookAt(P.position.x, P.position.y + 1.4, P.position.z); }
     if (S.beam) { const bd = Math.hypot(ctx.cam.position.x + 16, ctx.cam.position.z + 12); S.beam.material.opacity = THREE.MathUtils.clamp((bd - 12) / 30, 0, 1) * .18; }
     return things(dt, P);
   }
   function things(dt, P) {
     const F = S.fly, cr = F ? F.s * .6 + 3 : 0;
     let near = null, nd = 1e9, want = null, wd = 1e9;
-    for (const it of S.items) { if (it.geyser) { const a = it.g.geometry.attributes.position; for (let i = 0; i < a.count; i++) { const t = (S.t * .6 + i / a.count + it.g.userData.seed) % 1; a.setXYZ(i, Math.sin(i * 7.1) * t * 4, t * 60, Math.cos(i * 3.3) * t * 4); } a.needsUpdate = true; continue; }
+    for (const it of S.items) { if (it.up) { it.up(dt); continue; } if (it.geyser) { const a = it.g.geometry.attributes.position; for (let i = 0; i < a.count; i++) { const t = (S.t * .6 + i / a.count + it.g.userData.seed) % 1; a.setXYZ(i, Math.sin(i * 7.1) * t * 4, t * 60, Math.cos(i * 3.3) * t * 4); } a.needsUpdate = true; continue; }
       const d = it.g.position.distanceTo(P.position); if (!it.model && !it.loading && d < 300 + it.s * 2 && d < wd) { wd = d; want = it; } if (it.fly) { it.g.position.y = it.base.y + it.fly + Math.sin(S.t * 1.3) * .6; if (it.fly > 20) { const a = S.t * .08 + it.base.x; it.g.position.x = it.base.x + Math.cos(a) * 120; it.g.position.z = it.base.z + Math.sin(a) * 120; it.g.rotation.y = -a; } }
       it.mk.visible = d > it.s * 1.6; const r = Math.max(9, it.s * .9) + (F ? 28 : 0); if (d - r < nd) { nd = d - r; near = it; } }
     if (want) placeModel(want);
@@ -314,7 +337,12 @@ export function makeSurface(ctx) {
     const cp = new THREE.Vector3(14, gy + 3.5, 26), look = wp.clone(); look.y = Math.max(look.y, gy + 6); ctx.cam.position.lerp(cp.add(new THREE.Vector3((Math.random() - .5), (Math.random() - .5), 0).multiplyScalar(t > .7 && up < 30 ? .12 : 0)), Math.min(1, dt * 3)); ctx.cam.lookAt(look);
     if (t > 3.2) { const cb = L.cb; S.launch = null; S.player.visible = true; if (S.player.userData.sh) S.player.userData.sh.visible = true; cb(); } }
   // day/night cycle on worlds with air: a full day every 4 minutes; light, sky, fog, stars and ocean all follow the Sun
-  function dayCycle(dt) { const U = S.skyU; if (!U) return; const W = WORLD[S.body.id]; S.tod = (S.tod + dt / 240) % 1; const a = S.tod * Math.PI * 2, e = Math.sin(a) * .9;
+  function shine(day) { const W = WORLD[S.body.id], sp = W.inSky && SHINE[W.inSky]; if (!sp) return; if (!S.psl) { const l = new THREE.DirectionalLight(sp[0], 0); l.position.set(900, 1100, -2600); S.scn.add(l); S.scn.add(l.target); S.psl = l; }
+    S.psl.target.position.copy(S.player.position); S.psl.position.copy(S.player.position).add(new THREE.Vector3(900, 1100, -2600).normalize().multiplyScalar(400)); S.psl.intensity = sp[1] * (1 - day * .85); }   // Earthshine / Jupitershine on the night side
+  function airlessCycle(dt) { const W = WORLD[S.body.id]; S.tod = (S.tod + dt / ((DAYH[S.body.id] || 24) * 10)) % 1; const a = S.tod * Math.PI * 2, e = Math.sin(a) * .9, sd = new THREE.Vector3(-Math.cos(a) * .82, e, -.42).normalize(), day = THREE.MathUtils.smoothstep(e, -.03, .08);
+    if (S.sunSpr) { S.sunSpr.position.copy(sd).multiplyScalar(2530); if (S.sunCore) S.sunCore.position.copy(S.sunSpr.position); } TU.tsd.value.copy(sd); TU.day.value = day;
+    const dl = S.dl, pl = S.player ? S.player.position : new THREE.Vector3(); dl.intensity = 2.6 * day; dl.position.copy(pl).addScaledVector(sd, 420); dl.target.position.copy(pl); S.hemi.intensity = .03 + .35 * day; S.scn.environmentIntensity = .5 * (.05 + .95 * day); shine(day); }
+  function dayCycle(dt) { const U = S.skyU; if (!U) return airlessCycle(dt); const W = WORLD[S.body.id]; S.tod = (S.tod + dt / ((DAYH[S.body.id] || 24) * 10)) % 1; const a = S.tod * Math.PI * 2, e = Math.sin(a) * .9;
     U.e.value = e; U.sd.value.set(-Math.cos(a) * .82, e, -.42).normalize(); const day = THREE.MathUtils.smoothstep(e, -.06, .22), low = 1 - THREE.MathUtils.smoothstep(e, .02, .4);
     const P = S.skyP, fogC = P[3].clone().multiplyScalar(1.6).lerp(P[1], day).lerp(P[2], low * day * .55); if (S.scn.fog) S.scn.fog.color.copy(fogC); S.scn.background.copy(fogC);
     { const k = W.air === 'None' ? 0 : ({ mars: .95, earth: .6, titan: .55, venus: .45 }[S.body.id] ?? .5); FOGSUN.value.set(U.sd.value.x, U.sd.value.y, U.sd.value.z, k * day * (S.mode === 'dive' ? 0 : 1)); FOGSUNC.value.copy(col(W.sun || '#ffffff')).lerp(new THREE.Color(1, .55, .28), low * .8).multiplyScalar(S.body.id === 'mars' ? .55 : .7); }
@@ -322,12 +350,50 @@ export function makeSurface(ctx) {
     else { dl.intensity = .28; dl.color.setRGB(.6, .7, 1); dl.position.copy(pl).addScaledVector(U.sd.value, -420).setY(pl.y + 300); }   // moonlight / starlight
     dl.target.position.copy(pl); S.hemi.intensity = .06 + .5 * day; S.scn.environmentIntensity = .5 * (.1 + .9 * day); S.hemi.color.copy(P[1]).lerp(new THREE.Color(1, 1, 1), .4); if (S.starM) S.starM.opacity = 1 - THREE.MathUtils.smoothstep(e, -.15, .05);
     TU.tsd.value.copy(U.sd.value); TU.day.value = day; if (S.cloudL) { const m = S.cloudL.material; m.map.offset.x += dt * .0015; m.map.offset.y += dt * .0006; TU.cOff.value.copy(m.map.offset); m.color.copy(S.cloudBase).lerp(P[2], low * day * .8).multiplyScalar(.12 + .88 * day); m.opacity = .9 * (.3 + .7 * day); }
-    if (S.seaU) { S.seaU.time.value = S.t; S.seaU.sky.value.copy(fogC); S.seaU.sunI.value = day; }
+    if (S.seaU) { S.seaU.time.value = S.t; S.seaU.sky.value.copy(fogC); S.seaU.sunI.value = day; } shine(day); weather(dt, e, day, a, fogC);
     if (S.body.id === 'mars' && low > .75 && day > .15 && day < .7 && ctx.trophy && !S.ssT) { S.ssT = 1; ctx.trophy('a_sunset'); }
     // Mars: wandering dust devils
     if (S.body.id === 'mars' && S.dust) { if (!S.devils) S.devils = [0, 1, 2].map(i => ({ x: 60 + i * 90, z: -120 + i * 110, a: i * 2, h: 0 }));
       for (const dv of S.devils) { dv.a += dt * .07; dv.x += Math.cos(dv.a) * dt * 3; dv.z += Math.sin(dv.a * 1.3) * dt * 3; const gy = H(dv.x, dv.z);
         for (let k = 0; k < 3; k++) { const r = 1 + Math.random() * 4, th = Math.random() * 6.283; S.dust.emit(new THREE.Vector3(dv.x + Math.cos(th) * r, gy + Math.random() * 2, dv.z + Math.sin(th) * r), new THREE.Vector3(-Math.sin(th) * 7, 4 + Math.random() * 7, Math.cos(th) * 7), S.dc, 1.4 + Math.random() * 1.6, 3.2, 1, 1, { grow: 3, drag: .25, a: .28 }); } } } }
+  /* rovers: Apollo LRV on the Moon, a Perseverance-style rover on Mars */
+  function drive(on) { const P = S.player, kind = S.body.id === 'moon' ? 'lrv' : S.body.id === 'mars' ? 'perse' : null; if (!kind || S.fly) return false;
+    if (!on) { if (!S.drive) return false; const st = S.rover.st, sx = -Math.sin(st.yaw), sz = -Math.cos(st.yaw); P.position.set(st.x + sx * 2.2, H(st.x + sx * 2.2, st.z + sz * 2.2), st.z + sz * 2.2); S.vel.set(0, 0, 0); S.onGround = true; P.visible = true; S.drive = null; S.camYaw = Math.PI / 2 - st.yaw + Math.PI;
+      ctx.toast('🧑‍🚀 Parked. The rover stays where you left it.', 1800); return true; }
+    if (!S.rover) { S.rover = makeRover(kind); S.scn.add(S.rover.g); const tr = new THREE.InstancedMesh(new THREE.PlaneGeometry(.24, .42).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: S.dc.clone().multiplyScalar(.62), roughness: 1, transparent: true, opacity: .75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), 900); tr.count = 0; tr.frustumCulled = false; tr.receiveShadow = true; S.scn.add(tr); S.tracks = { im: tr, n: 0, d: 0 };
+      S.rover.place(P.position.x + 3, P.position.z + 3, Math.PI / 2 - S.yaw, H); S.rover.onLand = v => { ctx.sfx('lnd'); for (let i = 0; i < 30; i++) { const a = Math.random() * 6.283; S.dust.emit(new THREE.Vector3(S.rover.st.x, H(S.rover.st.x, S.rover.st.z) + .1, S.rover.st.z), new THREE.Vector3(Math.cos(a) * 3, 1 + Math.random() * 2, Math.sin(a) * 3), S.dc, .15, 2, 1, .2, { grow: 1, drag: 0, grav: S.gEff, a: .9 }); } }; }
+    else { const st = S.rover.st; if (Math.hypot(st.x - P.position.x, st.z - P.position.z) > 12) { ctx.toast('🚙 Walk back to your rover to drive it', 1800); return false; } }
+    S.drive = S.rover; P.visible = false; ctx.toast(kind === 'lrv' ? '🚙 <b>Lunar Roving Vehicle</b> · joystick to drive, JUMP to brake<br><small>Apollo 15, 16 and 17 drove these 90 km in total. Top speed was about 13 km/h, and on bumps the wheels left the ground in the low gravity.</small>' : '🤖 <b>Perseverance-style rover</b> · driving by remote, like the team at JPL<br><small>The real rover drives about 0.15 km/h; this one is sped up. Six wheels on a rocker-bogie suspension climb over rocks as big as the wheels.</small>', 6000); return true; }
+  function stepDrive(dt, inp) { const R = S.rover, st = R.update(dt, inp, H, S.gEff), P = S.player, W = WORLD[S.body.id]; P.position.set(st.x, st.y, st.z);
+    const fx = Math.cos(st.yaw), fz = -Math.sin(st.yaw), sp = Math.abs(st.v);
+    // tyre tracks behind the rear wheels
+    if (!st.air && sp > .3) { const T = S.tracks; T.d += sp * dt; if (T.d > .38) { T.d = 0; const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), st.yaw + Math.PI / 2);
+      for (const w of R.wheels) { if (w.x > 0 && R.wheels.length > 4) continue; if (w.x > 0 && R.wheels.length === 4) continue; const wx = st.x + w.x * Math.cos(st.yaw) + w.z * Math.sin(st.yaw), wz = st.z - w.x * Math.sin(st.yaw) + w.z * Math.cos(st.yaw); m4.compose(new THREE.Vector3(wx, H(wx, wz) + .03, wz), q, new THREE.Vector3(R.L.r * 2.2, 1, 1)); T.im.setMatrixAt(T.n % 900, m4); T.n++; }
+      T.im.count = Math.min(900, T.n); T.im.instanceMatrix.needsUpdate = true; } }
+    // rooster tails: on the airless Moon the dust flies in perfect arcs and drops straight back (seen in the Apollo 16 rover film)
+    if (S.dust && sp > 1 && !st.air && Math.random() < dt * 40) for (const w of R.wheels) { if (w.x > 0) continue; const wx = st.x + w.x * fx - w.z * fz * 0 + w.z * Math.sin(st.yaw), wz = st.z + w.x * fz + w.z * Math.cos(st.yaw);
+      if (W.air === 'None') { const up = 1.2 + Math.random() * 1.6; S.dust.emit(new THREE.Vector3(wx, H(wx, wz) + .1, wz), new THREE.Vector3(-fx * sp * .7 + (Math.random() - .5), up, -fz * sp * .7 + (Math.random() - .5)), S.dc, .12, 2 * up / S.gEff, 2, .3, { grow: 1, drag: 0, grav: S.gEff, a: .85 }); }
+      else S.dust.emit(new THREE.Vector3(wx, H(wx, wz) + .2, wz), new THREE.Vector3(-fx * sp * .3, .7, -fz * sp * .3), S.dc, .9, 1.6, 1, .6, { grow: 3, drag: .7, a: .3 }); }
+    // chase camera
+    const back = 8.5 + sp * .3, cx = st.x - fx * back, cz = st.z - fz * back, cy = Math.max(st.y + 3.2, H(cx, cz) + 1.2); ctx.cam.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 4)); ctx.cam.lookAt(st.x + fx * 2, st.y + .6, st.z + fz * 2);
+    const sh = P.userData.sh; sh.material.opacity = 0; if (S.dl && S.dl.castShadow) { S.dl.target.position.copy(P.position); }
+    return things(dt, P); }
+  /* weather for each world */
+  function weather(dt, e, day, a, fogC) { const id = S.body.id, P = S.player.position;
+    if (id === 'mars') {
+      TU.frost.value = (Math.cos(a) > 0 || e < -.05) ? 1 - THREE.MathUtils.smoothstep(e, .02, .32) : 0;      // frost forms at night and burns off after dawn
+      const st = S.storm || (S.storm = { t: 0, next: 70 + Math.random() * 60, k: 0, base: S.scn.fog.density }); st.t += dt;
+      if (!st.on && st.t > st.next) { st.on = 1; st.t = 0; ctx.toast('🌪 A dust storm is rolling in.<br><small>Real Martian storms can grow to cover the whole planet for weeks; Opportunity was lost to one in 2018.</small>', 5000); }
+      if (st.on) { const T = 80; st.k = THREE.MathUtils.smoothstep(st.t, 0, 18) * (1 - THREE.MathUtils.smoothstep(st.t, T - 18, T)); if (st.t > T) { st.on = 0; st.t = 0; st.next = 140 + Math.random() * 120; st.k = 0; } }
+      const k = st.k; S.scn.fog.density = st.base * (1 + 5 * k); const sc = new THREE.Color(.55, .36, .22).multiplyScalar(.25 + .75 * day); S.scn.fog.color.lerp(sc, k * .85); S.scn.background.copy(S.scn.fog.color); S.dl.intensity *= 1 - .7 * k; FOGSUN.value.w *= 1 + k;
+      if (k > .02 && S.dust) for (let i = 0; i < dt * 140 * k; i++) S.dust.emit(new THREE.Vector3(P.x - 30 + Math.random() * 20, P.y + Math.random() * 7, P.z + (Math.random() - .5) * 50), new THREE.Vector3(16 + Math.random() * 8, (Math.random() - .3) * 2, 4 + Math.random() * 3), S.dc, 1.2 + Math.random() * 1.6, 2.2, 1, 1, { grow: 2, drag: .05, a: .22 * k });
+    }
+    if (id === 'titan') {   // methane drizzle: big slow drops (Titan's thick air and low gravity make rain fall about 1.6 m/s)
+      if (!S.rain) { const N = 900, pos = new Float32Array(N * 6), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const ls = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xd8b888, transparent: true, opacity: .35, depthWrite: false })); ls.frustumCulled = false; S.scn.add(ls);
+        const d = []; for (let i = 0; i < N; i++) d.push([(Math.random() - .5) * 60, Math.random() * 30, (Math.random() - .5) * 60]); S.rain = { ls, pos, d }; }
+      const R = S.rain; for (let i = 0; i < R.d.length; i++) { const q = R.d[i]; q[1] -= dt * 1.6; q[0] += dt * .4; if (q[1] < -2) { q[1] = 28; q[0] = (Math.random() - .5) * 60; q[2] = (Math.random() - .5) * 60; }
+        const x = P.x + q[0], y = P.y + q[1], z = P.z + q[2]; R.pos.set([x, y, z, x - .04, y + .35, z], i * 6); } R.ls.geometry.attributes.position.needsUpdate = true; }
+    if (id === 'io') TU.lavaT.value = S.t; }
   function collect(c) { c.got = true; c.m.visible = false; if (S.fx) { S.fx.emit(c.m.position, new THREE.Vector3(0, 2, 0), c.sample ? 0x7df9ff : 0xffcf4a, .6, .9, 36, 9, { grow: .4, drag: .85 }); S.rings.add(c.m.position, c.sample ? 0x7df9ff : 0xffcf4a, 6, .7, ctx.cam.position); } c.gotSet.add(c.i); ctx.set(c.key, [...c.gotSet]); ctx.sfx(c.sample ? 'chime' : 'pop');
     if (c.sample) { ctx.reward(2, 25); ctx.toast(`🧪 <b>Science sample</b> +2 🔧<br><small>${c.fact}</small>`, 5200); } else { ctx.reward(1, 10); ctx.toast('⭐ Star fragment +1 🔧', 1400); }
     const left = S.cols.filter(x => !x.got).length; if (!left) { ctx.reward(15, 120); setTimeout(() => ctx.toast(`🏅 Everything collected on <b>${S.body.n}</b>! +15 🔧`, 3500), 1600); } }
@@ -345,5 +411,5 @@ export function makeSurface(ctx) {
     return { depth: S.depth, max: D.max };
   }
   function exit() { FOGSUN.value.w = 0; if (S.fx) { S.fx.dispose(); S.dust.dispose(); S.fx = S.dust = null; S.grass = null; } if (S.fly) { S.fly = null; S.craft = null; } if (S.player && S.player.userData.sh) S.player.userData.sh.scale.setScalar(1); S.on = false; if (S.scn) { S.scn.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } S.scn = null; S.items = []; S.cols = []; }
-  return { S, enter, step, exit, fly, launch, H: (x, z) => H(x, z) };
+  return { S, enter, step, exit, fly, launch, drive, helmet: () => { S.helmet = S.helmet ? 0 : 1; return S.helmet; }, H: (x, z) => H(x, z) };
 }

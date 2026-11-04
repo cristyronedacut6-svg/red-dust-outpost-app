@@ -754,3 +754,40 @@ On phones, the game screen has been tidied so you can see the action and know wh
   - **Cloud shadows** drift across the ground on Earth, Titan and Venus, following the real moving clouds.
   - **Opposition surge:** on airless worlds the ground brightens when the Sun is right behind you, as on the real Moon.
   - **Ice glints:** icy moons (Europa, Enceladus, Triton, Pluto…) sparkle with crystal facets that catch the Sun.
+
+## v73 — A walking astronaut, a living solar system, rovers, helmet view and weather on every world
+
+- **🐛 Fixed: the T-posing astronaut.** The old NASA astronaut was a single frozen mesh with its arms out. It's replaced by a fully jointed astronaut (hips, knees, ankles, spine, neck, shoulders, elbows, wrists) in a white suit, with a gold sun visor, a life-support backpack and a chest control unit. A gait engine moves it like a real person:
+  - **Walking:** heel-to-toe steps with knee bend, arm swing opposite the legs, hip sway and a little forward lean.
+  - **Running:** a longer stride and stronger lean.
+  - **Moving around:** it leans into turns and breathes when standing still, looking around a little.
+  - **Jumps and landings:** it tucks its legs and balances with its arms when jumping, and crouches when it lands.
+  - **Low gravity:** it blends into the Apollo "bunny hop" lope, with both feet nearly together, long floating bounds and the suit's arms held out.
+- **🐛 Fixed: Io and Europa offered "Dive into Jupiter"** when you were right next to the moon. Moons now win when you're close.
+- **Realism pass 13 (space):**
+  - **A moving solar system:** planets follow Kepler's third law (an Earth year is 25 minutes, Mercury's is about 8), and moons visibly circle their planets (Io every 45 seconds, Europa 90, Ganymede 3 minutes, our Moon 4). Positions come from the real clock, so co-op friends see the same sky. Your ship rides along with whatever world it's near, like a real orbit. A Settings switch can freeze them.
+  - **The ISS** laps Earth about every half minute.
+  - **Jupiter up close:** a slowly swirling Great Red Spot with spiral cloud arms and a pale collar, lightning flashing in the clouds on the night side, and Io's volcanic plumes (sulfur umbrellas in clean arcs, with glowing lava at the vents) seen from orbit.
+  - **Light from nearby worlds:** sunlight now follows your ship and is blocked when a planet eclipses you. Your ship casts real shadows on nearby spacecraft, Saturn's ring ice, moons, planets and the ring plane. The colour reflected off the nearest world lights your hull: orange near Mars, blue near Earth, cream near Jupiter.
+  - **Newtonian flight** (Settings or the N key): no fake drag. You keep drifting until you fire retro jets (S), with a speed cap of 700.
+  - **RCS jets:** small cold-gas puffs fire at the nose whenever the ship turns or brakes, in both flight modes.
+  - **Real constellations** (the ✨ button or K): all 88 IAU constellation figures and names, plus the 45 brightest named stars. They're drawn on the same sphere as NASA's Tycho star map, so the lines sit exactly on the real stars. Star data is from the open-source d3-celestial project (BSD licence).
+- **Realism pass 14 (on the worlds):**
+  - **Real day lengths** on every world (game time runs 360× faster): Earth 4 minutes, Mars 4 min 6 s (24 h 40 m), the Moon about 2 hours, so its Sun barely moves, and Vesta under a minute, so its Sun races across the sky. Airless worlds now have a moving Sun too.
+  - **Earthshine:** at lunar night the ground is softly lit blue-white by Earth overhead. Jupiter, Saturn and the other sky planets do the same for their moons.
+  - **Weather:**
+    - **Mars:** dust storms roll in now and then. The air thickens, the Sun dims and dust streaks past. A thin, patchy frost forms at night and burns off after dawn, as Viking 2 photographed.
+    - **Titan:** a methane drizzle of big, slow drops (about 1.6 m/s) and dark, mirror-smooth methane lakes.
+    - **Io:** lava glows and flickers through cracks in the crust, and a Pele-class volcanic plume rises 300 km on the horizon.
+  - **🪖 Helmet view** (the 🪖 button, the V key or LB): first person through the visor. The curved faceplate bends the edges of the view, adds slight colour fringing at the rim, faint reflections, a gold visor edge, specks of dust and, on very cold worlds, condensation at the bottom.
+  - **Suit readout** on every world:
+    - **Time:** local time with a Sol or Day count and the real day length.
+    - **Oxygen:** it drains as you explore and refills at your lander or rover.
+    - **Suit:** suit pressure (29.6 kPa, like the real NASA suit) and heart rate, which rises when you run.
+    - **Outside temperature:** it follows day and night (the Moon swings from −173 to 127 °C).
+    - **Radiation:** real dose rates. Earth is 0.1 µSv/h, the Moon 57, Mars 28, Europa 225 mSv/h and Io 1,500 mSv/h (flagged LETHAL).
+  - **🚙 Drivable rovers** (the button on the Moon and Mars, the G key or B):
+    - **Moon:** the Apollo **Lunar Roving Vehicle**, with wire-mesh tyres, an umbrella antenna, a gold-foil pallet and your astronaut seated at the T-handle. On Mars, a **Perseverance-style rover** with six wheels on a rocker-bogie suspension, a Mastcam-Z mast and a finned RTG power source.
+    - **Handling:** each wheel follows the ground on its own suspension, and the chassis pitches and rolls. In low gravity it's thrown into the air over bumps and floats down. The front wheels steer.
+    - **Tracks and dust:** the tyres leave tracks. On the Moon the wheels throw "rooster tails" of dust in perfect arcs, as in the Apollo 16 film.
+    - **Parking:** park it and it stays where you left it. There's a new *Moon buggy* trophy.

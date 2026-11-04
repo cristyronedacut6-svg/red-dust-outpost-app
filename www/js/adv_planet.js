@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 
 const SUN = new THREE.Color(1.0, 0.96, 0.9);
+// the player's ship as a tiny occluder: its shadow falls on moons, planets and rings when you fly low (shared by every planet shader)
+export const OCCS = { value: new THREE.Vector4(0, 0, 0, 0) };
 const COMMON_VS = `varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
 void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vWP = w.xyz; vWN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * viewMatrix * w; }`;
 
@@ -12,9 +14,10 @@ void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vWP = w.xyz; vW
 export function planetMaterial(map, o = {}) {
   const m = new THREE.ShaderMaterial({
     uniforms: { map: { value: map }, night: { value: null }, hasNight: { value: 0 }, sunPos: { value: new THREE.Vector3() }, sunCol: { value: SUN.clone().multiplyScalar(o.sun || 1.55) },
-      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, occ: { value: new THREE.Vector4(0, 0, 0, 0) }, occ2: { value: new THREE.Vector4(0, 0, 0, 0) }, ringMap: { value: null }, hasRing: { value: 0 }, ringN: { value: new THREE.Vector3(0, 1, 0) }, ringC: { value: new THREE.Vector3() }, ringR: { value: new THREE.Vector2(1, 2) }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
+      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, occ: { value: new THREE.Vector4(0, 0, 0, 0) }, occ2: { value: new THREE.Vector4(0, 0, 0, 0) }, ringMap: { value: null }, hasRing: { value: 0 }, ringN: { value: new THREE.Vector3(0, 1, 0) }, ringC: { value: new THREE.Vector3() }, ringR: { value: new THREE.Vector2(1, 2) }, occS: OCCS, grs: { value: new THREE.Vector4(0, 0, 0, 0) }, storm: { value: 0 }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
     vertexShader: COMMON_VS,
     fragmentShader: `uniform sampler2D map; uniform sampler2D night; uniform float hasNight, atmoK, ocean, amb, rough, flow, time; uniform vec4 occ, occ2;
+    uniform vec4 occS, grs; uniform float storm; float hsh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     uniform sampler2D ringMap; uniform float hasRing; uniform vec3 ringN, ringC; uniform vec2 ringR;
     // the rings' own shadow on the planet: follow the ray toward the Sun to the ring plane and read how opaque the ring is there
     float ringShadow(vec3 p, vec3 L){ if (hasRing < .5) return 1.; float dn = dot(L, ringN); if (abs(dn) < 1e-4) return 1.; float t = dot(ringC - p, ringN) / dn; if (t <= 0.) return 1.;
@@ -26,8 +29,14 @@ export function planetMaterial(map, o = {}) {
         float sp = flow * (sin(vUv.y * 61.) * .6 + sin(vUv.y * 23. + 1.3) * .4) * .004;   // alternating jet streams, east and west
         vec3 a1 = texture2D(map, vec2(vUv.x + sp * f1 * T, vUv.y)).rgb, a2 = texture2D(map, vec2(vUv.x + sp * f2 * T, vUv.y)).rgb; alb = mix(a1, a2, w); }
       else alb = texture2D(map, vUv).rgb;
+      if (grs.w > 0.) { vec2 q = vec2((vUv.x - grs.x) * 2., vUv.y - grs.y) / grs.z; q.x *= .55; float r = length(q);   // an oval about twice as wide as tall
+        if (r < 1.6) { float ang = (1. - smoothstep(0., 1.4, r)) * (time * .35 + 3.) , cs = cos(ang), sn = sin(ang); vec2 rq = mat2(cs, -sn, sn, cs) * q; rq.x /= .55;
+          vec2 uv2 = vec2(grs.x + rq.x * grs.z * .5, grs.y + rq.y * grs.z); vec3 sw = texture2D(map, uv2).rgb, sw2 = texture2D(map, uv2 * 1.7 + .31).rgb; float m = smoothstep(1.1, .55, r);
+          float arms = .5 + .5 * sin(atan(rq.y, rq.x) * 2. + r * 6. - time * .2);   // two soft spiral cloud arms, not rings
+          vec3 red = mix(vec3(.72, .36, .22), vec3(.86, .52, .34), arms * .6 + dot(sw2, vec3(.33)) * .4); alb = mix(alb, mix(sw, red * (.75 + .45 * dot(sw, vec3(.33))), .55), m * grs.w);
+          alb = mix(alb, alb * vec3(1.1, 1.0, .9), smoothstep(1.6, 1.15, r) * (1. - m)); } }   // pale collar around the storm
       // soft terminator (light wraps a little through the atmosphere), true dark night side
-      float sh = eclipse(occ, vWP, L) * eclipse(occ2, vWP, L) * ringShadow(vWP, L);   // a planet's shadow on its moons, a moon's shadow on its planet
+      float sh = eclipse(occ, vWP, L) * eclipse(occ2, vWP, L) * ringShadow(vWP, L) * (.35 + .65 * eclipse(occS, vWP, L));   // a planet's shadow on its moons, a moon's shadow on its planet
       float lit = clamp(ndl * .92 + .08 * smoothstep(-.18, .12, ndl), 0., 1.) * sh; float day = smoothstep(-.1, .2, ndl) * sh;
       // reddened light near the terminator: sunlight crosses more air at sunrise/sunset
       vec3 sc = mix(sunCol * vec3(1., .55, .32), sunCol, smoothstep(-.02, .35, ndl));
@@ -35,6 +44,9 @@ export function planetMaterial(map, o = {}) {
       if (ocean > .5) { float water = smoothstep(.02, .12, alb.b - max(alb.r, alb.g) * .85); vec3 H = normalize(L + V); float sp = pow(max(dot(N, H), 0.), 160.) * 1.6 + pow(max(dot(N, H), 0.), 28.) * .05;
         col += sc * sp * water * day; col = mix(col, col * vec3(.82, .9, 1.05), water * .35); }
       if (hasNight > .5) { vec3 nl = texture2D(night, vUv).rgb; col += nl * nl * vec3(1., .78, .5) * 2.4 * (1. - smoothstep(-.12, .08, ndl)); }
+      if (storm > 0.) { vec2 cell = floor(vUv * vec2(90., 45.)); float tk = floor(time * 3.), h = hsh(cell + tk * 1.37);
+        if (h > .9965) { vec2 f = fract(vUv * vec2(90., 45.)) - .5; float fl = exp(-dot(f, f) * 14.) * (1. - fract(time * 3.)) * hsh(cell + tk);   // a flash lights the cloud from inside
+          col += vec3(.75, .82, 1.) * fl * 2.2 * storm * (1. - smoothstep(-.15, .05, ndl)); } }
       // in-scattered sky colour, strongest at the limb on the day side, orange along the terminator
       float fr = pow(1. - max(dot(N, V), 0.), 2.6), term = exp(-pow((ndl - .02) / .16, 2.));
       col += atmoK * (atmo * fr * smoothstep(-.2, .45, ndl) * 1.3 + vec3(1., .45, .18) * fr * term * .55);
@@ -69,11 +81,12 @@ export function cloudMaterial(map) {
 }
 // rings: lit from the Sun, with the planet's shadow falling across them
 export function ringMaterial(map, planetR) {
-  return new THREE.ShaderMaterial({ uniforms: { map: { value: map }, sunPos: { value: new THREE.Vector3() }, pc: { value: new THREE.Vector3() }, pr: { value: planetR }, sunCol: { value: SUN.clone().multiplyScalar(1.4) } },
+  return new THREE.ShaderMaterial({ uniforms: { occS: OCCS, map: { value: map }, sunPos: { value: new THREE.Vector3() }, pc: { value: new THREE.Vector3() }, pr: { value: planetR }, sunCol: { value: SUN.clone().multiplyScalar(1.4) } },
     vertexShader: COMMON_VS,
-    fragmentShader: `uniform sampler2D map; uniform vec3 sunPos, pc, sunCol; uniform float pr; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D map; uniform vec3 sunPos, pc, sunCol; uniform float pr; uniform vec4 occS; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
     void main(){ vec4 t = texture2D(map, vUv); vec3 L = normalize(sunPos - vWP), oc = pc - vWP; float tca = dot(oc, L), d2 = dot(oc, oc) - tca * tca;
       float sh = tca > 0. ? smoothstep(pr * pr * .92, pr * pr * 1.04, d2) : 1.; float back = abs(dot(normalize(vWN), L));
+      if (occS.w > 0.) { vec3 o2 = occS.xyz - vWP; float t2 = dot(o2, L), d2s = dot(o2, o2) - t2 * t2; if (t2 > 0.) sh *= .3 + .7 * smoothstep(occS.w * occS.w * .6, occS.w * occS.w * 1.3, d2s); }
       gl_FragColor = vec4(t.rgb * sunCol * (.25 + .75 * back) * (.04 + .96 * sh), t.a); }`,
     transparent: true, side: THREE.DoubleSide, depthWrite: false });
 }

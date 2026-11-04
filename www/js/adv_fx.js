@@ -14,6 +14,23 @@ if (!THREE.ShaderChunk.fog_fragment.includes('fogSun')) {
   const ob = THREE.Material.prototype.onBeforeCompile; THREE.Material.prototype.onBeforeCompile = function (sh, r) { fogHook(sh); if (ob) ob.call(this, sh, r); };
 }
 
+// helmet visor: the curved faceplate bends the edges of the view (barrel distortion), splits colours a little at the rim,
+// carries faint reflections of the inside of the helmet and, on very cold worlds, a little condensation at the bottom
+export const VisorShader = { uniforms: { tDiffuse: { value: null }, time: { value: 0 }, aspect: { value: 1.6 }, cold: { value: 0 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, aspect, cold; varying vec2 vUv;
+    float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main(){ vec2 p = vUv - .5; vec2 q = p * vec2(aspect, 1.); float r2 = dot(q, q);
+      vec2 d = p * (1. + .085 * r2), off = d * .006 * r2 * 4.;
+      vec3 c = vec3(texture2D(tDiffuse, .5 + d + off).r, texture2D(tDiffuse, .5 + d).g, texture2D(tDiffuse, .5 + d - off).b);
+      vec2 e = q / vec2(aspect * .5 * 1.04, .5 * 1.18); float rim = length(e);                                 // wide oval faceplate
+      float frame = smoothstep(.93, 1.04, rim); c = mix(c, vec3(.05, .055, .06) + c * .05, frame);
+      c += vec3(.9, .95, 1.) * exp(-pow(p.y - .34 + p.x * p.x * .9, 2.) / .0009) * .06 * (1. - frame);       // reflected strip light
+      c += vec3(1., .85, .55) * smoothstep(.5, 1., rim) * (1. - frame) * .05;                                // gold sun-visor edge tint
+      c += vec3(.25, .3, .35) * pow(max(0., -p.x * 1.5 + p.y), 3.) * .25 * (1. - frame);                     // soft reflection of the helmet interior
+      float sp = step(.9985, h(floor(vUv * vec2(320., 200.)))) * (1. - frame); c += sp * .05;                  // specks of dust on the visor
+      float fogM = cold * smoothstep(-.12, -.42, p.y) * (.6 + .4 * h(floor(vUv * 90.))); c = mix(c, vec3(.75, .8, .85) * (.4 + .6 * dot(c, vec3(.33))), fogM * .35 * (1. - frame));
+      gl_FragColor = vec4(c, 1.); }` };
 // soft round particle sprite drawn on a canvas
 let SOFT = null;
 function soft() { if (SOFT) return SOFT; const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
