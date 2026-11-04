@@ -98,6 +98,7 @@ export function makeLaunch(ctx) {
     <div class="tm"><div>MISSION TIME<b id="lT">T−00:10</b></div><div>ALTITUDE<b id="lA">0.0 km</b></div><div>SPEED<b id="lV">0 km/h</b></div></div><button class="sk">Skip launch</button>`;
   root.appendChild(ov); const $ = q => ov.querySelector(q); setTimeout(() => { $('.fd').style.opacity = 0; }, 60);
   $('.sk').onclick = () => finish(true);
+  const TX = {}, tx = (q, v) => { if (TX[q] !== v) { TX[q] = v; $(q).textContent = v; } };   /* touch the DOM only when the text changes */
   const ev = (txt, ms = 2600) => { const e = $('.ev'); e.textContent = txt; e.style.opacity = 1; clearTimeout(e._t); e._t = setTimeout(() => e.style.opacity = 0, ms); };
   const fired = new Set(), once = (k, f) => { if (!fired.has(k)) { fired.add(k); f(); } };
   // ---- motion state
@@ -107,7 +108,7 @@ export function makeLaunch(ctx) {
   let prevPos = new THREE.Vector3();
   function step(dt) { if (L.done) return; L.t += dt; const t = L.t, T = missionT(t), lt = t - S.lift;
     // countdown digits, callouts
-    const cd = $('.cd'); if (t < S.lift) { const n = Math.ceil(-T); cd.textContent = n > 0 ? n : ''; cd.style.opacity = n > 0 && n <= 10 ? 1 : 0; } else cd.style.opacity = 0;
+    const cd = $('.cd'); if (t < S.lift) { const n = Math.ceil(-T); tx('.cd', n > 0 ? String(n) : ''); cd.style.opacity = n > 0 && n <= 10 ? 1 : 0; } else cd.style.opacity = 0;
     if (t > .4) once('c10', () => ctx.say('T minus ten.', 1)); if (t > 3.5) once('go', () => ev('Go for launch')); if (t > 6.6) once('mes', () => { ev('Main engine start'); ctx.say('Main engine start.', 1); ctx.sfx('burst'); });
     if (t > S.lift) once('lo', () => { ev('Lift-off', 3200); ctx.say('Booster ignition, and lift-off!', 1); ctx.sfx('liftoff'); }); if (t > 21.5) once('mq', () => { ev('Max-Q · maximum aerodynamic pressure'); ctx.say('Through max Q.', 1); });
     if (t > 27) once('srb', () => { ev('Booster separation'); ctx.say('Booster separation confirmed.', 1); ctx.sfx('burst'); S.srb = t; ['srb_l', 'srb_r'].forEach((n, i) => { detach(P[n], new THREE.Vector3((i ? -1 : 1) * 9, -6, 0), new THREE.Vector3(0, 0, (i ? 1 : -1) * .5)); }); srbF.forEach(p => p.visible = false); });
@@ -140,7 +141,7 @@ export function makeLaunch(ctx) {
     camera(dt, t, lt);
     // telemetry
     const [km, kmh] = prof(Math.max(0, T)), mm = Math.floor(Math.abs(T) / 60), sec = Math.floor(Math.abs(T) % 60);
-    $('#lT').textContent = `T${T < 0 ? '−' : '+'}${String(mm).padStart(2, '0')}:${String(sec).padStart(2, '0')}`; $('#lA').textContent = km.toFixed(1) + ' km'; $('#lV').textContent = Math.round(kmh).toLocaleString() + ' km/h';
+    tx('#lT', `T${T < 0 ? '−' : '+'}${String(mm).padStart(2, '0')}:${String(sec).padStart(2, '0')}`); tx('#lA', km.toFixed(1) + ' km'); tx('#lV', Math.round(kmh).toLocaleString() + ' km/h');
     if (ctx.audio) ctx.audio({ eng: Math.min(1, k1 * .6 + k2) * (1 - SU.alt.value), boost: k2 * (S.srb ? 0 : 1) * (1 - SU.alt.value), wind: S.y > 300 && !space ? Math.min(1, S.vy / 300) : 0, dt });   // sound fades to silence in vacuum
     if (t > 41) finish(false);
   }

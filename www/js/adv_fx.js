@@ -45,17 +45,19 @@ export function makeFX(scene, max = 3000, additive = true) {
     vertexShader: 'attribute vec2 dat; varying vec3 vC; varying float vA; uniform float scale; void main(){ vC = color; vec4 mv = modelViewMatrix * vec4(position,1.); vA = dat.y * smoothstep(.6, 3.5, -mv.z); gl_PointSize = clamp(dat.x * scale / max(.1,-mv.z), 0., 256.); gl_Position = projectionMatrix * mv; }',
     fragmentShader: 'uniform sampler2D map; varying vec3 vC; varying float vA; void main(){ vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC * t.rgb, t.a * vA); if (gl_FragColor.a < .004) discard; }' });
   const pts = new THREE.Points(g, mat); pts.frustumCulled = false; pts.renderOrder = 5; scene.add(pts);
-  const P = []; for (let i = 0; i < max; i++) P.push({ life: 0 }); let head = 0; const tc = new THREE.Color();
+  const P = []; for (let i = 0; i < max; i++) P.push({ life: 0 }); let head = 0, alive = 0, dirty = false; const tc = new THREE.Color();   /* only live particles cost anything */
   function emit(p, v, color, size, life, n = 1, spread = 0, o = {}) { tc.set(color);
-    for (let k = 0; k < n; k++) { const q = P[head]; head = (head + 1) % max;
+    alive += n; for (let k = 0; k < n; k++) { const q = P[head]; head = (head + 1) % max;
       q.x = p.x + (Math.random() - .5) * (o.jit || 0); q.y = p.y + (Math.random() - .5) * (o.jit || 0); q.z = p.z + (Math.random() - .5) * (o.jit || 0);
       q.vx = v.x + (Math.random() - .5) * spread; q.vy = v.y + (Math.random() - .5) * spread; q.vz = v.z + (Math.random() - .5) * spread;
       q.r = tc.r; q.g = tc.g; q.b = tc.b; q.s0 = size * (.7 + Math.random() * .6); q.grow = o.grow || 1; q.life = q.max = life * (.7 + Math.random() * .6); q.grav = o.grav || 0; q.drag = o.drag ?? .6; q.a = o.a ?? 1; q.fadeIn = o.fadeIn || 0; } }
   function update(dt, cam, h) { if (cam) mat.uniforms.scale.value = (h || innerHeight) / (2 * Math.tan(cam.fov * Math.PI / 360));
-    for (let i = 0; i < max; i++) { const q = P[i]; if (q.life <= 0) { dat[i * 2 + 1] = 0; continue; } q.life -= dt; const k = Math.max(0, q.life / q.max), dr = Math.pow(1 - Math.min(.99, q.drag), dt);
+    if (alive <= 0) { pts.visible = false; if (dirty) { dat.fill(0); g.attributes.dat.needsUpdate = true; dirty = false; } return; } pts.visible = true; dirty = true; let live = 0;
+    for (let i = 0; i < max; i++) { const q = P[i]; if (q.life <= 0) { if (dat[i * 2 + 1] !== 0 || dat[i * 2] !== 0) { dat[i * 2] = 0; dat[i * 2 + 1] = 0; } continue; } live++;   /* size 0: dead points rasterise nothing */ q.life -= dt; const k = Math.max(0, q.life / q.max), dr = Math.pow(1 - Math.min(.99, q.drag), dt);
       q.vx *= dr; q.vy = q.vy * dr - q.grav * dt; q.vz *= dr; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
       pos[i * 3] = q.x; pos[i * 3 + 1] = q.y; pos[i * 3 + 2] = q.z; col[i * 3] = q.r; col[i * 3 + 1] = q.g; col[i * 3 + 2] = q.b;
       const age = 1 - k; dat[i * 2] = q.s0 * (1 + age * (q.grow - 1)); dat[i * 2 + 1] = q.a * k * (q.fadeIn ? Math.min(1, age / q.fadeIn) : 1); }
+    alive = live;
     g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = g.attributes.dat.needsUpdate = true; }
   return { emit, update, pts, dispose() { scene.remove(pts); g.dispose(); mat.dispose(); } };
 }

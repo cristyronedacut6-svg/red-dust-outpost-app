@@ -829,6 +829,15 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v78 — Smoother
+
+- **Sky baked once:** the Milky Way and nebula glow used to be many layers of 3D noise computed for every pixel, every frame. It is now rendered once into a cube map at start-up and simply sampled. This is the biggest win on phones.
+- **Shadows refresh every 2nd frame** (every 3rd on Low, every frame on Max). The sun barely moves between frames, so the difference can't be seen.
+- **Half-resolution bloom** (except Max): the glow is soft anyway.
+- **Particles:** dead sparks, dust and smoke no longer draw at all, and an effect with nothing alive is skipped entirely.
+- **Less DOM churn:** speed, landing button, scan and launch telemetry text only update when the text actually changes.
+- **Background shader compile** for NASA models as they stream in, so a new ship doesn't hitch the frame it appears in.
+
 ## v77 — Launch from Earth, replays and postcards, clean icons
 
 - **Launch from Earth (every journey).** Each trip into Adventure Mode now starts on the pad at Kennedy Space Center, Launch Complex 39B, with NASA's SLS Block 1. The rocket is NASA's 3D model, split into its real stages (two solid boosters, the orange core stage, the upper stage with Orion) so they really separate. It plays like a broadcast, with hard camera cuts:

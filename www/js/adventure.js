@@ -269,14 +269,14 @@ function build() {
   document.body.appendChild(root);
   const cv = root.querySelector('canvas'), mob = matchMedia('(pointer:coarse)').matches;
   const ren = new THREE.WebGLRenderer({ canvas: cv, antialias: false, powerPreference: 'high-performance' });
-  ren.setPixelRatio(dprCap()); ren.info.autoReset = false; ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.05;
+  ren.setPixelRatio(dprCap()); ren.info.autoReset = false; ren.shadowMap.enabled = true; ren.shadowMap.autoUpdate = false; ren.shadowMap.needsUpdate = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.05;
   cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); if (R) { R.lost = true; toast('⚠ Graphics memory full: recovering…', 3000); } });
   cv.addEventListener('webglcontextrestored', () => { if (!R) return; R.lost = false; DR.s = .7; R.ren.setPixelRatio(Math.min(devicePixelRatio || 1, 2) * .7); resize(); LQ.max = 2; toast('✅ Graphics recovered', 1800); });
   const scn = new THREE.Scene(), cam = new THREE.PerspectiveCamera(60, 1, .1, 12000);
   // realistic reflections on the NASA models: a studio environment map, plus bloom for glowing things
   const pm = new THREE.PMREMGenerator(ren), envTex = pm.fromScene(new RoomEnvironment(), .04).texture; scn.environment = envTex; scn.environmentIntensity = .45;
   const hdrOK = ren.capabilities.isWebGL2 && (ren.extensions.has('EXT_color_buffer_float') || ren.extensions.has('EXT_color_buffer_half_float')); R_HDR = hdrOK;
-  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? PRE().msaa : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), PRE().bloom, .4, .95), cine = new ShaderPass(CineShader); comp.addPass(rp); comp.addPass(new ShaderPass(SafeShader)); comp.addPass(bloom); comp.addPass(new OutputPass()); const visor = new ShaderPass(VisorShader); visor.enabled = false; comp.addPass(visor); comp.addPass(cine);
+  const comp = new EffectComposer(ren, new THREE.WebGLRenderTarget(4, 4, { type: hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: hdrOK ? PRE().msaa : 0 })), rp = new RenderPass(scn, cam), bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), PRE().bloom, .4, .95), bloomSz = bloom.setSize.bind(bloom), cine = new ShaderPass(CineShader); /* bloom is a soft glow anyway: run its blur chain at half the usual size (except on Max) */ bloom.setSize = (w, h) => GFX === 'max' ? bloomSz(w, h) : bloomSz(Math.max(2, w * .5), Math.max(2, h * .5)); comp.addPass(rp); comp.addPass(new ShaderPass(SafeShader)); comp.addPass(bloom); comp.addPass(new OutputPass()); const visor = new ShaderPass(VisorShader); visor.enabled = false; comp.addPass(visor); comp.addPass(cine);
   scn.add(new THREE.AmbientLight(0x8090b0, .22)); const sunL = new THREE.PointLight(0xfff2dd, 3.2, 0, 0); scn.add(sunL);
   const hem = new THREE.HemisphereLight(0xbfd8ff, 0x201810, .12); scn.add(hem);
   // stars
@@ -297,7 +297,7 @@ function build() {
         float n1 = fb(d * 2.2 + 11.), n2 = fb(d * 3.1 - 7.), n4 = fb(d * 5. + 2.);
         vec3 nb = vec3(.55, .2, .75) * smoothstep(.12, .5, n1) * .05 + vec3(.15, .45, .7) * smoothstep(.18, .55, n2) * .04 + vec3(.8, .35, .2) * smoothstep(.25, .6, n4) * .025;
         gl_FragColor = vec4(o + (mw + nb * (.4 + band)) * neb, 1.); }` });
-    const sm = new THREE.Mesh(new THREE.SphereGeometry(9500, 64, 32), smat); STARSPHERE = sm; sm.renderOrder = -1; scn.add(sm); TL.load('models/tex/stars.webp', t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; smat.uniforms.map.value = t; R && (R.starTex = t); }); }
+    const sm = new THREE.Mesh(new THREE.SphereGeometry(9500, 64, 32), smat); STARSPHERE = sm; sm.renderOrder = -1; scn.add(sm); TL.load('models/tex/stars.webp', t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; smat.uniforms.map.value = t; R && (R.starTex = t); bakeSky(ren, sm, smat, hdrOK); }); }
   // bodies
   const bpos = {}; BODIES.forEach(b => { if (!b.at) bpos[b.id] = new THREE.Vector3(Math.cos(b.a) * b.d, 0, Math.sin(b.a) * b.d); });
   BODIES.forEach(b => { if (b.at) bpos[b.id] = bpos[b.at].clone().add(new THREE.Vector3(...b.off)); }); orbitPos(bpos, orbT());   // start where the clock says the worlds are
@@ -351,7 +351,7 @@ function build() {
     const fin = () => { LQ.busy = Math.max(0, LQ.busy - 1); e.loading = false; };
     loader.load('models/nasa/' + (full ? '' : 'lod/') + (e.o.model || e.o.id) + '.glb', gl => { fin(); const m = gl.scene;
       if (!full && e.fit) { m.position.copy(e.fit.p); m.scale.setScalar(e.fit.k); } else { const box = new THREE.Box3().setFromObject(m), sph = box.getBoundingSphere(new THREE.Sphere()), k = e.o.sz / Math.max(.001, sph.radius); m.position.copy(sph.center).multiplyScalar(-k); m.scale.setScalar(k); if (!e.fit) e.fit = { p: m.position.clone(), k }; }
-      m.traverse(n => { if (n.isMesh) { n.receiveShadow = true; n.castShadow = true; } if (n.isMesh && n.material) { n.material.side = THREE.FrontSide; if (n.material.metalness > .6) n.material.metalness = .6; } }); fixMat(m); e.g.add(m); e[key] = m; navLights(e, m); if (full) { e.cost = costOf(m); MEM.tris += e.cost.tris; MEM.tex += e.cost.tex; } },
+      m.traverse(n => { if (n.isMesh) { n.receiveShadow = true; n.castShadow = true; } if (n.isMesh && n.material) { n.material.side = THREE.FrontSide; if (n.material.metalness > .6) n.material.metalness = .6; } }); fixMat(m); e.g.add(m); e[key] = m; pre(m, R.scn); navLights(e, m); if (full) { e.cost = costOf(m); MEM.tris += e.cost.tris; MEM.tex += e.cost.tex; } },
       undefined, () => { fin(); if (full) { e.failed = (e.failed || 0) + 1; e.retryT = R.t + 8; } else { e.noLod = 1; } }); }
   // the ship (NASA's ESAS crew module concept, the design that became Orion)
   const ship = new THREE.Group(); scn.add(ship); { const tmp = new THREE.Mesh(new THREE.ConeGeometry(.9, 1.8, 16), new THREE.MeshStandardMaterial({ color: 0xdfe4ee, metalness: .3, roughness: .5 })); tmp.rotation.x = Math.PI / 2; ship.add(tmp); ship.userData.tmp = tmp;
@@ -529,12 +529,12 @@ function step(dt) {
   for (const b of BODIES) R.bmesh[b.id].rotation.y += dt * (b.id === 'sun' ? .02 : .05); if (R.bmesh.earth.userData.clouds) R.bmesh.earth.userData.clouds.rotation.y += dt * .012;
   // scanning
   const sb = R.root.querySelector('#aScn'), nr = nearest(); sb.classList.toggle('on', !!nr.e && nr.d < scanRange(nr.e.o) && !ST.scanned.has(nr.e.o.id));
-  if (R.scanning) { const S2 = R.scanning; S2.t += dt; R.beam.visible = true; R.beam.geometry.setFromPoints([ship.position, S2.e.g.position]); R.root.querySelector('#aScan').style.display = 'block'; R.root.querySelector('#aScan').textContent = 'SCANNING ' + Math.min(100, Math.round(S2.t / 1.1 * 100)) + '%';
+  if (R.scanning) { const S2 = R.scanning; S2.t += dt; R.beam.visible = true; R.beam.geometry.setFromPoints([ship.position, S2.e.g.position]); R.root.querySelector('#aScan').style.display = 'block'; setT(R.root.querySelector('#aScan'), 'SCANNING ' + Math.min(100, Math.round(S2.t / 1.1 * 100)) + '%');
     if (Math.random() < .5) R.fx.emit(S2.e.g.position, tmpV.set(0, 0, 0), 0xffcf4a, 1.2, .6, 2, 3, { grow: 2 });
     if (S2.t > 1.1) { R.beam.visible = false; R.root.querySelector('#aScan').style.display = 'none'; R.scanning = null; R.rings.add(S2.e.g.position, 0x7df9ff, (S2.e.o.sz || 2) * 5, .9, R.cam.position); R.fx.emit(S2.e.g.position, tmpV.set(0, 0, 0), 0x7df9ff, 1.4, 1, 40, 18, { grow: 1.5, drag: .8 }); setTimeout(() => card(S2.e.o, true), 350); } }
   // speed + destination
   { const cb = BODIES.reduce((a, b) => { const d = R.bpos[b.id].distanceTo(ship.position); return d - b.r < a[1] ? [b, d - b.r, d] : a; }, [null, 1e9, 0]); R.altTxt = cb[0] && cb[1] < cb[0].r * 4 ? ' · ' + fmtKm(realAlt(cb[0], cb[2])) + ' above ' + cb[0].n : ''; }
-  R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.altTxt}${OL.txt || ''}${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
+  setT(R.root.querySelector('#aSpd'), `${Math.round(spd * 1000).toLocaleString()} km/h${R.altTxt}${OL.txt || ''}${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`);
   { const D = R.spaceDust, a = D.geometry.attributes.position, c = R.cam.position; for (let i = 0; i < a.count; i++) { let x = a.getX(i), y = a.getY(i), z = a.getZ(i);
       const w = (v, o) => o + ((((v - o + 40) % 80) + 80) % 80) - 40; a.setXYZ(i, w(x, c.x), w(y, c.y), w(z, c.z)); } a.needsUpdate = true; D.material.opacity = CAM.photo ? .3 : .55; }
   if (R.anomaly) { const A = R.anomaly, d = A.g.position.distanceTo(ship.position); A.g.rotation.y += dt * .4; A.cr.rotation.x = Math.sin(R.t * .7) * .2; const pu = 1 + Math.sin(R.t * 2.2) * .12; A.halo.scale.setScalar(22 * pu); A.cr.material.emissiveIntensity = 2 + Math.sin(R.t * 3.1) * .8;
@@ -800,7 +800,7 @@ function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || S
   for (const e2 of R.objs) R.placeObj(e2, R.t); updatePlanetUniforms(R.PL, R.bpos.sun, R.t); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
   entryFX(C, heat, k, dt, sz);
   if (C.air && heat > .92 && !C.pk) { C.pk = 1; say('Peak heating.'); }
-  if (k >= 1) { entryFX(C, 0, 1, 0, sz, true); try { media().stop(2600); } catch (e) {} const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
+  if (k >= 1) { entryFX(C, 0, 1, 0, sz, true); try { media().stop(2600); } catch (e) {} const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); pre(R.surf.S.scn); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
 /* ---------------- mission-control voice callouts (speech synthesis behind a radio chirp) ---------------- */
 let VQ = 0; function say(text, prio) { if (!SET.voice || !window.speechSynthesis) return; const now = Date.now(); if (!prio && now < VQ) return; VQ = now + 2500;
   try { const a = typeof ac === 'function' ? ac() : null; if (a && typeof BUS !== 'undefined' && BUS) { const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = 'square'; o.frequency.setValueAtTime(1850, t); o.frequency.setValueAtTime(1400, t + .05); g.gain.setValueAtTime(.025, t); g.gain.exponentialRampToValueAtTime(.0001, t + .11); o.connect(g); g.connect(BUS.sfx || a.destination); o.start(t); o.stop(t + .12); } } catch (e) {}
@@ -888,14 +888,14 @@ function suitHUD(dt) { const S = R.surf.S, el = R.root.querySelector('#aSuit'); 
   const t = `<b>🕒 ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</b> local · ${id === 'mars' ? 'Sol' : 'Day'} ${SUIT.day} · day = ${dlTxt}<br><b>O₂</b> <span class="${SUIT.o2 < 15 ? 'd' : SUIT.o2 < 35 ? 'w' : ''}">${SUIT.o2.toFixed(0)}%</span> · <b>SUIT</b> 29.6 kPa · <b>♥</b> ${Math.round(SUIT.beat)}<br><b>OUTSIDE</b> ${temp} °C · <b>RAD</b> <span class="${rc}">${radTxt}${rad > 1e4 ? ' · LETHAL' : ''}</span>`;
   if (el._t !== t) { el.innerHTML = t; el._t = t; } R.visor.uniforms.cold.value = temp < -120 ? 1 : temp < -40 ? .5 : 0; R.visor.uniforms.aspect.value = innerWidth / innerHeight; R.visor.uniforms.time.value = SUIT.t; }
 function surfUI(b, W, mode) { const $ = q => R.root.querySelector(q), on = !!b; $('#aHelm').style.display = on && mode === 'land' ? 'block' : 'none'; if (!on) { R.visor.enabled = false; R.root.classList.remove('helm'); SUIT.o2 = 100; SUIT.day = 1; } setTimeout(() => { try { drvUI(); } catch (e) {} }, 0); $('#aHud').style.display = on ? 'none' : ''; $('#aMap').style.display = on ? 'none' : ''; $('#aHan').style.display = on ? 'none' : ''; const cr = on && mode === 'land' ? craftFor(b.id) : null; $('#aFly').style.display = cr ? 'block' : 'none'; if (cr) $('#aFly').innerHTML = (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); $('#aThr').innerHTML = on ? (mode === 'dive' ? '⬆<br>CLIMB' : '⤒<br>JUMP') : '🚀<br>THRUST'; $('#aBst').innerHTML = on ? (mode === 'dive' ? 'DIVE' : 'RUN') : 'BOOST';
-  $('#aLand').style.display = on ? 'block' : 'none'; $('#aLand').textContent = '🚀 LAUNCH'; R.mode = on ? mode : null; R.lab.forEach(l => l.style.display = 'none');
+  $('#aLand').style.display = on ? 'block' : 'none'; $('#aLand').textContent = '🚀 LAUNCH'; $('#aLand')._t = null; R.mode = on ? mode : null; R.lab.forEach(l => l.style.display = 'none');
   R.surfInfo = on ? (mode === 'dive' ? `${b.n} · inside the clouds` : `${b.n} · gravity ${W.g} m/s² (${Math.round(W.g / 9.81 * 100)}% of Earth) · ${W.t} · air: ${W.air}`) : ''; }
 let jumpWas = 0;
 function surfStep(dt) { try { suitHUD(dt); } catch (e) {} const k = R.keys, S = R.surf.S, jump = !!(R.thr || k[' ']), inp = { x: R.joy.x + ((k.d || k.arrowright) ? 1 : 0) - ((k.a || k.arrowleft) ? 1 : 0), y: R.joy.y + ((k.s || k.arrowdown) ? 1 : 0) - ((k.w || k.arrowup) ? 1 : 0), run: !!(R.bst || k.shift), jump, jumpPress: jump && !jumpWas, look: (k.q ? 1 : 0) - (k.r ? 1 : 0), lookY: 0 }; jumpWas = jump;
   const r = R.surf.step(dt, inp) || {}; { const F = S.fly; AUD.set({ eng: F ? (F.heli ? .55 : Math.min(1, (r.spd || 0) / (F.vmax * 3.6))) : (inp.jump && !S.onGround ? .35 : 0), boost: F && inp.run ? 1 : 0, wind: F && !F.heli && WORLD[S.body.id] && WORLD[S.body.id].air !== 'None' ? Math.min(1, (r.spd || 0) / 300) : (S.mode === 'dive' ? .5 : 0), dt }); }
-  if (R.scanning && R.scanning.surf) { R.scanning.t += dt; const el = R.root.querySelector('#aScan'); el.style.display = 'block'; el.textContent = 'SCANNING ' + Math.min(100, Math.round(R.scanning.t / 1.1 * 100)) + '%'; if (R.scanning.t > 1.1) { el.style.display = 'none'; const o = R.scanning.e.o; R.scanning = null; card(o, true); } }
+  if (R.scanning && R.scanning.surf) { R.scanning.t += dt; const el = R.root.querySelector('#aScan'); el.style.display = 'block'; setT(el, 'SCANNING ' + Math.min(100, Math.round(R.scanning.t / 1.1 * 100)) + '%'); if (R.scanning.t > 1.1) { el.style.display = 'none'; const o = R.scanning.e.o; R.scanning = null; card(o, true); } }
   R.root.querySelector('#aScn').classList.toggle('on', !!(S.near && !ST.scanned.has(S.near.o.id))); if (S.mode !== 'dive') ldUI(S.ldK || 0, S.ldN || 0); else ldUI(0, 0);
-  R.root.querySelector('#aSpd').textContent = S.mode === 'dive' ? `Depth ${Math.round(r.depth || 0)} km / ${r.max} km · ${Math.round(1 + (r.depth || 0) * .9)} bar · ${R.surfInfo}` : (S.fly ? `${S.fly.heli ? '🚁' : '✈'} ${S.fly.n} · ${r.spd} km/h · altitude ${r.alt} m · ` : '') + `${R.surfInfo} · ${S.cols.filter(c => !c.got).length} finds left`;
+  setT(R.root.querySelector('#aSpd'), S.mode === 'dive' ? `Depth ${Math.round(r.depth || 0)} km / ${r.max} km · ${Math.round(1 + (r.depth || 0) * .9)} bar · ${R.surfInfo}` : (S.fly ? `${S.fly.heli ? '🚁' : '✈'} ${S.fly.n} · ${r.spd} km/h · altitude ${r.alt} m · ` : '') + `${R.surfInfo} · ${S.cols.filter(c => !c.got).length} finds left`);
   // labels for NASA sites and nearby finds
   const W_ = innerWidth, H_ = innerHeight, v = new THREE.Vector3(); let i = 0; const P_ = S.player ? S.player.position : v;
   const L = S.mode === 'dive' ? [] : [...S.items.filter(x => !x.geyser).map(x => [x.g.position, (ST.scanned.has(x.o.id) ? x.o.n : '📡 ' + x.o.n), x.s * 1.15 + 1.5, !ST.scanned.has(x.o.id)]), ...S.cols.filter(c => !c.got && c.m.position.distanceTo(P_) < 90).map(c => [c.m.position, c.sample ? '🧪 Sample' : '⭐', 1.2, 1])];
@@ -962,6 +962,17 @@ function ioPlumes(m, r) { const N = 900, seed = new Float32Array(N * 3); for (le
 
 // 5) Real constellations: 88 IAU constellations, their stick figures and the brightest named stars (data: d3-celestial, BSD licence),
 //    drawn on the same sphere as NASA's Tycho star map, so the lines sit exactly on the real stars.
+/* the Milky Way and nebula glow are many layers of 3D noise per pixel; render them once into a cube map and just sample it after */
+function bakeSky(ren, sm, smat, hdr) { try { const sz = GFX === 'low' ? 512 : GFX === 'max' ? 2048 : 1024, rt = new THREE.WebGLCubeRenderTarget(sz, { type: hdr ? THREE.HalfFloatType : THREE.UnsignedByteType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+    const cs = new THREE.Scene(), tmp = new THREE.Mesh(new THREE.SphereGeometry(50, 96, 48), smat); cs.add(tmp); const cc = new THREE.CubeCamera(.1, 200, rt); cc.update(ren, cs); tmp.geometry.dispose();
+    sm.material = new THREE.ShaderMaterial({ uniforms: { cube: { value: rt.texture }, map: smat.uniforms.map }, side: THREE.BackSide, depthWrite: false,
+      vertexShader: 'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+      fragmentShader: 'uniform samplerCube cube; varying vec3 vD; void main(){ gl_FragColor = vec4(textureCube(cube, normalize(vD)).rgb, 1.); }' });
+  } catch (e) { console.warn('sky bake', e); } }
+/* only touch the DOM when the text really changed (each write also wakes the icon observer) */
+/* compile a new model's shaders in the background (parallel compile where the GPU driver supports it) so it doesn't hitch the frame it first appears in */
+function pre(o, sc) { try { if (o && R && R.ren.compileAsync) R.ren.compileAsync(o, R.cam, sc || o).catch(() => {}); } catch (e) {} }
+function setT(el, t) { if (el && el._t !== t) { el._t = t; el.textContent = t; } }
 let STARSPHERE = null; const SKY = { g: null, on: false, busy: false };
 const skyDir = (ra, de, r) => { const u = (.5 + ra / 360) % 1, v = .5 - de / 180, ph = u * Math.PI * 2, th = v * Math.PI; return new THREE.Vector3(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)).multiplyScalar(r); };
 function skyLabel(txt, col, h) { const c = document.createElement('canvas'), g = c.getContext('2d'); g.font = `700 ${h}px system-ui, sans-serif`; const w = Math.ceil(g.measureText(txt).width) + 12; c.width = w; c.height = h + 10; g.font = `700 ${h}px system-ui, sans-serif`; g.fillStyle = col; g.shadowColor = '#000'; g.shadowBlur = 4; g.fillText(txt, 6, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
@@ -1050,7 +1061,7 @@ function adapt(dt, sf) { let tg = 1.05; if (!sf && R.bpos && R.bpos.sun) { const
     for (const b of BODIES) { if (b.id === 'sun') continue; const oc = EXP.oc.copy(R.bpos[b.id]).sub(cam.position), t = oc.dot(s); if (t > 0 && t < ds && oc.lengthSq() - t * t < b.r * b.r * .96) { vis = 0; break; } }
     const glare = THREE.MathUtils.smoothstep(f.dot(s), .86, .995) * vis * Math.min(1, 900 / ds); tg = 1.05 * (1 - .4 * glare) * (vis ? 1 : 1.3); }
   EXP.v += (tg - EXP.v) * (1 - Math.exp(-dt * (tg < EXP.v ? 2.4 : .8))); R.ren.toneMappingExposure = EXP.v; }
-function draw(sc) { R.rp.scene = sc; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
+function draw(sc) { R.rp.scene = sc; /* shadows: refresh every 2nd frame (every 3rd on Low); the sun barely moves between frames */ R.fr = (R.fr || 0) + 1; R.ren.shadowMap.needsUpdate = GFX === 'max' || R.fr % (GFX === 'low' ? 3 : 2) === 0; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
 function setGfx(g) { GFX = g; P('adv_gfx', g); Q = g === 'max' ? 'ultra' : 'high'; DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(dprCap()); [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? PRE().msaa : 0; t.dispose(); }); R.bloom.strength = PRE().bloom; resize(); R.root.querySelector('#aQ').textContent = '⚙ ' + PRE().n; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
 function settings() { const p = document.createElement('div'); p.className = 'pnl'; const opt = (k, v, l) => `<button data-${k}="${v}" class="${String((k === 'g' ? GFX : SET[k])) === String(v) ? 'sel' : ''}">${l}</button>`;
   p.innerHTML = `<div class="crd"><div class="ey">⚙ GRAPHICS</div><h2>Settings</h2><div class="mt">Like Genshin: lower settings run smoother and cooler on phones. Max is for strong phones and PCs.</div>
@@ -1078,7 +1089,7 @@ function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last 
   else if (R.ending) { stepEnding(dt); draw(R.scn); }
   else if (R.intro) { stepIntro(dt); draw(R.scn); }
   else if (R.entry) { stepEntry(dt); draw(R.scn); }
-  else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) lb.textContent = k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase(); draw(R.scn); } }
+  else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) setT(lb, k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase()); draw(R.scn); } }
   } catch (e) { if (!loop.errN || loop.errN < 5) { loop.errN = (loop.errN || 0) + 1; console.error('Adventure frame error:', e); } }
   try { adapt(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
