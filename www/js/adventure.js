@@ -316,7 +316,11 @@ function build() {
     if (AC) { const sm = atmosphereMaterial(AC, b.id === 'earth' ? 3.2 : 4); PL.push({ mat: sm });
       m.add(new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.035, 64, 48), sm)); }
     if (b.id === 'earth') { const cv3 = document.createElement('canvas'); cv3.width = 1024; cv3.height = 512; const g3 = cv3.getContext('2d'), id3 = g3.createImageData(1024, 512); for (let y = 0; y < 512; y++) for (let x = 0; x < 1024; x++) { const lo = x / 1024 * 6.283, la = (.5 - y / 512) * Math.PI, X = Math.cos(la) * Math.cos(lo) * 2.2, Y = Math.sin(la) * 2.2, Z = Math.cos(la) * Math.sin(lo) * 2.2, w1 = fbm(X + 9, Z + Y * .6, 3), w2 = fbm(Z + 3, Y - X * .5, 3), v = (fbm(X * 1.6 + w1 * 1.8 + 40, Y * 1.6 + w2 * 1.8, 6) + fbm(Z * 1.6 + w2 * 1.5, X * 1.6 - Y + w1, 6)) * .5, al = Math.abs(la) / 1.5708, band = .15 * Math.exp(-Math.pow(al / .08, 2)) - .1 * Math.exp(-Math.pow((al - .28) / .1, 2)) + .1 * Math.exp(-Math.pow((al - .6) / .15, 2)), a = Math.max(0, (v + band - .5) * 3.4), o = (y * 1024 + x) * 4; id3.data[o] = id3.data[o + 1] = id3.data[o + 2] = 255; id3.data[o + 3] = Math.min(255, a * 255); }
-      g3.putImageData(id3, 0, 0); const ctex = new THREE.CanvasTexture(cv3); ctex.colorSpace = THREE.SRGBColorSpace; const cmat = cloudMaterial(ctex); PL.push({ mat: cmat }); const cl = new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.012, 64, 48), cmat); m.add(cl); m.userData.clouds = cl; }
+      g3.putImageData(id3, 0, 0); const ctex = new THREE.CanvasTexture(cv3); ctex.colorSpace = THREE.SRGBColorSpace; const cmat = cloudMaterial(ctex); PL.push({ mat: cmat }); const cl = new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.012, 64, 48), cmat); m.add(cl); m.userData.clouds = cl;
+      // HD pack: NASA's real cloud cover, ocean mask and relief replace the generated ones when they're on the device
+      TL.load('models/tex/hd/earth_clouds.webp', t => { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4; cmat.uniforms.map.value = t; cmat.uniforms.useR.value = 1; }, undefined, () => {});
+      TL.load('models/tex/hd/earth_spec.webp', t => { t.colorSpace = THREE.NoColorSpace; mat.uniforms.specMap.value = t; mat.uniforms.hasSpec.value = 1; }, undefined, () => {});
+      TL.load('models/tex/hd/earth_normal.webp', t => { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4; mat.uniforms.nrmMap.value = t; mat.uniforms.hasNrm.value = 1; }, undefined, () => {}); }
     if (b.rings) { const cv2 = document.createElement('canvas'); cv2.width = 256; cv2.height = 4; const g2 = cv2.getContext('2d'); for (let i = 0; i < 256; i++) { const a = (i > 30 && i < 245) ? (.25 + .6 * vnoise(i * .15, 3)) * (i > 150 && i < 165 ? .1 : 1) : 0; g2.fillStyle = `rgba(230,215,180,${a})`; g2.fillRect(i, 0, 1, 4); }
       const rg = new THREE.RingGeometry(b.r * 1.25, b.r * 2.3, 128, 1), pos = rg.attributes.position, uv = rg.attributes.uv, v = new THREE.Vector3(); for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); uv.setXY(i, (v.length() - b.r * 1.25) / (b.r * 1.05), .5); }
       const t2 = new THREE.CanvasTexture(cv2); t2.colorSpace = THREE.SRGBColorSpace; const rmat = ringMaterial(t2, b.r); PL.push({ mat: rmat, mesh: m }); const ring = new THREE.Mesh(rg, rmat); ring.rotation.x = -Math.PI / 2; m.add(ring);   // rings lie in the equator; the planet itself carries the 27° tilt
@@ -758,7 +762,7 @@ function viewer(o, cv, panel) {
   (function spin() { if (!alive || !panel.isConnected || VW.tok !== tok) { alive = false; return; } a += .012; if (VW.obj) { VW.obj.rotation.y = a; VW.obj.rotation.x = Math.sin(a * .5) * .15; } VW.ren.render(VW.scn, VW.cam); ctx2.clearRect(0, 0, cv.width, cv.height); if (cv.width !== VW.ren.domElement.width) { cv.width = VW.ren.domElement.width; cv.height = VW.ren.domElement.height; } ctx2.drawImage(VW.ren.domElement, 0, 0); requestAnimationFrame(spin); })();
 }
 /* ---------------- landing, diving, launching ---------------- */
-function nearBody() { let best = null, bd = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = R.bpos[b.id].distanceTo(R.ship.position) - b.r, sc = d / (b.r + 6) * (b.at && b.at !== 'sun' ? .35 : 1); if (d < b.r * 2 + 24 && sc < bd) { bd = sc; best = b; } } return best; }   // a moon right next to you wins over its giant planet
+function nearBody() { let best = null, bd = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = R.bpos[b.id].distanceTo(R.ship.position) - b.r, sc = d; if (d < b.r * 2 + 24 && sc < bd) { bd = sc; best = b; } } return best; }   // whichever surface is actually closest (a moon right next to you beats its giant planet)
 function landOrLaunch() { const S = R.surf.S; if (R.entry) return; if (S.on) { if (S.launch) return; if (S.mode === 'land') { R.root.classList.add('cine'); sfx('liftoff'); say('Main engine start. And lift-off!', 1); R.surf.launch(() => { R.root.classList.remove('cine'); landOrLaunch.done(); }); return; } return landOrLaunch.done(); }
   landOrLaunch.go(); }
 landOrLaunch.done = function () { const S = R.surf.S; { const b = S.body; R.surf.exit(); surfUI(null); const c = R.bpos[b.id]; R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); R.vel.set(0, 0, 0); toast('🚀 Back in orbit around <b>' + b.n + '</b>'); say('Orbit achieved around ' + b.n + '.'); R.rings.add(R.ship.position, 0xffd27a, 8, .8, R.cam.position); } };
@@ -901,7 +905,7 @@ function orbitStep() { const bp = R.bpos;
   for (const b of BODIES) ORB.prev[b.id] = (ORB.prev[b.id] || new THREE.Vector3()).copy(bp[b.id]);
   orbitPos(bp, orbT()); for (const b of BODIES) R.bmesh[b.id].position.copy(bp[b.id]);
   // the ship shares the motion of the world whose gravity it is in
-  let dom = null, sc = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = ORB.prev[b.id].distanceTo(R.ship.position) - b.r, k = d / (b.r + 6) * (b.at && b.at !== 'sun' ? .35 : 1); if (d < b.r * 6 + 40 && k < sc) { sc = k; dom = b; } }
+  let dom = null, sc = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = ORB.prev[b.id].distanceTo(R.ship.position) - b.r, k = d; if (d < b.r * 6 + 40 && k < sc) { sc = k; dom = b; } }
   if (dom && !R.ending) { const dv = ORB.n.copy(bp[dom.id]).sub(ORB.prev[dom.id]); if (dv.lengthSq() < 400) { R.ship.position.add(dv); R.cam.position.add(dv); } }
   // eclipse occluders follow the moons
   for (const b of BODIES) { const m = R.bmesh[b.id]; if (!m.material.uniforms || !m.material.uniforms.occ) continue; const u = m.material.uniforms; if (b.at && BI[b.at] && b.at !== 'sun') u.occ.value.set(bp[b.at].x, bp[b.at].y, bp[b.at].z, BI[b.at].r);
@@ -1001,7 +1005,8 @@ function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last 
   try { adapt(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
 const MC = 'rdo-models-2', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
-function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== 59; }
+const DLV = 74;
+function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== DLV; }
 function resPanel(done, fromGame) {
   const o = document.createElement('div'); o.id = 'advDL'; o.innerHTML = `<style>#advDL{position:fixed;inset:0;z-index:99999;background:radial-gradient(ellipse at 50% 30%,#14204a,#02040c 70%);color:#eaf2ff;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
   #advDL .c{width:min(520px,94vw);background:rgba(10,16,36,.85);border:1px solid rgba(125,249,255,.35);border-radius:18px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}#advDL h2{margin:2px 0 6px;font-size:22px}#advDL .ey{font:700 10px system-ui;letter-spacing:.16em;color:#7df9ff}
@@ -1011,11 +1016,11 @@ function resPanel(done, fromGame) {
   document.body.appendChild(o); const $ = q => o.querySelector(q), mb = b => (b / 1048576).toFixed(b > 1e8 ? 0 : 1) + ' MB';
   fetch('models/manifest.json', { cache: 'no-store' }).then(r => r.json()).then(async M => {
     const cache = await caches.open(MC), uniq = L => { const seen = new Set(); return L.filter(x => !seen.has(x[0]) && seen.add(x[0])); };
-    const light = uniq([...M.base, ...M.lod, ...M.core]), full = uniq([...M.base, ...M.lod, ...M.full]), sum = L => L.reduce((a, x) => a + x[1], 0);
+    const light = uniq([...M.base, ...(M.hd || []), ...M.lod, ...M.core]), full = uniq([...M.base, ...(M.hd || []), ...M.lod, ...M.full]), sum = L => L.reduce((a, x) => a + x[1], 0);
     let have = 0; for (const [p] of full) if (await cache.match(p)) have++;
-    $('#dlT').innerHTML = `Store every NASA 3D model on this device once, so Adventure Mode loads instantly and plays smoothly, even offline.${have ? `<br><b>${have} of ${full.length} files are already on this device.</b>` : ''}<br><span style="opacity:.75">Use Wi-Fi for the full pack. You can always download more later from ⬇ in Adventure Mode.</span>`;
+    $('#dlT').innerHTML = `${G('adv_dl', null) ? '<b style="color:#ffcf4a">🆕 New: the HD Realism Pack</b> (NASA\'s real Earth clouds, ocean and relief maps, real sky reflections, water, lava and the NASA Perseverance rover). Download it before your journey.<br>' : ''}Store every NASA 3D model on this device once, so Adventure Mode loads instantly and plays smoothly, even offline.${have ? `<br><b>${have} of ${full.length} files are already on this device.</b>` : ''}<br><span style="opacity:.75">Use Wi-Fi for the full pack. You can always download more later from ⬇ in Adventure Mode.</span>`;
     $('#dlB').innerHTML = `<div class="opt"><button class="pr" id="dF">⬇ Full pack · best quality<small>Every model in full detail · ${mb(sum(full))} · ${full.length} files</small></button><button id="dL">⬇ Light pack · fast start<small>Light versions of every model, plus the ships and aircraft · ${mb(sum(light))}. Full detail streams in when you fly close.</small></button><button id="dS">▶ Skip, stream while playing<small>Uses the least storage. Models load as you fly near them.</small></button></div>`;
-    const finish = (pack) => { if (pack) P('adv_dl', { v: 59, pack }); o.remove(); done && done(); };
+    const finish = (pack) => { if (pack) P('adv_dl', { v: DLV, pack }); o.remove(); done && done(); };
     $('#dS').onclick = () => { open.skipDL = 1; finish(null); };
     const run = async (L, pack) => { let doneB = 0, doneN = 0, fail = 0, stop = false; const tot = sum(L), t0 = performance.now();
       $('#dlB').innerHTML = `<div class="bar"><i></i></div><div class="mt" id="dlP">Starting…</div><div class="row" style="margin-top:12px"><button id="dX">Play now (keeps downloading in this session)</button></div>`;
@@ -1024,7 +1029,7 @@ function resPanel(done, fromGame) {
       let i = 0; const worker = async () => { while (i < L.length && stop !== 'abort') { const [p, sz] = L[i++];
           try { if (!(await cache.match(p))) { let r = await fetch(p); if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) { const pj = p.replace(/\.glb$/, '.json'); if (pj !== p) { r = await fetch(pj); if (r.ok) await cache.put(pj, r); else fail++; } else fail++; } else await cache.put(p, r); } } catch (e) { fail++; }
           doneB += sz; doneN++; if (o.isConnected) upd(); } };
-      await Promise.all(Array.from({ length: 6 }, worker)); if (stop === 'play') { P('adv_dl', { v: 59, pack }); return; }
+      await Promise.all(Array.from({ length: 6 }, worker)); if (stop === 'play') { P('adv_dl', { v: DLV, pack }); return; }
       $('.bar i').style.width = '100%'; $('#dlP').innerHTML = `<b>✅ Download complete.</b> ${mb(tot)} stored on this device${fail ? ` (${fail} files could not be downloaded and will stream instead)` : ''}.`;
       $('.row').innerHTML = '<button class="pr" id="dGo">🚀 Launch Adventure</button>'; $('#dGo').onclick = () => finish(pack); };
     $('#dF').onclick = () => run(full, 'full'); $('#dL').onclick = () => run(light, 'light');

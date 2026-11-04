@@ -15,8 +15,9 @@ const AU = { mercury: .39, venus: .72, earth: 1, moon: 1, mars: 1.52, phobos: 1.
 export const DAYH = { earth: 24, moon: 708.7, mars: 24.66, phobos: 7.65, deimos: 30.3, mercury: 4223, venus: 2802, io: 42.5, europa: 85.2, ganymede: 171.7, callisto: 400.5, titan: 382.7, enceladus: 32.9, mimas: 22.6, rhea: 108.4, iapetus: 1904, dione: 65.7, tethys: 45.3, miranda: 33.9, ariel: 60.5, titania: 208.9, oberon: 323, umbriel: 99.5, triton: 141, pluto: 153.3, charon: 153.3, ceres: 9.07, vesta: 5.34 };
 const SHINE = { earth: [0x9cc4ff, .5], jupiter: [0xffe0b8, .6], saturn: [0xfff0c8, .35], mars: [0xffb080, .25], uranus: [0xb8f0ff, .2], neptune: [0x8aa8ff, .2], pluto: [0xe8d8c0, .12], charon: [0xc8c8cc, .1] };
 const ICY = { europa: 1, enceladus: 1, mimas: .6, rhea: .7, tethys: .7, dione: .6, triton: .8, pluto: .7, ganymede: .4, titania: .5, miranda: .5, ariel: .5, iapetus: .4 };
+const HDL = new THREE.TextureLoader(), hdTex = (n, f) => HDL.load('models/tex/hd/' + n, f, undefined, () => {});
 // terrain extras shared by every world: cloud shadows, opposition surge and ice glints (one uniform set, swapped per landing)
-const TU = { frost: { value: 0 }, lavaT: { value: 0 }, tsd: { value: new THREE.Vector3(-1500, 900, -1800).normalize() }, opp: { value: 0 }, cmap: { value: null }, cOn: { value: 0 }, cY: { value: 520 }, cOff: { value: new THREE.Vector2() }, cRep: { value: 5 }, ice: { value: 0 }, day: { value: 1 } };
+const TU = { lavaMap: { value: null }, frost: { value: 0 }, lavaT: { value: 0 }, tsd: { value: new THREE.Vector3(-1500, 900, -1800).normalize() }, opp: { value: 0 }, cmap: { value: null }, cOn: { value: 0 }, cY: { value: 520 }, cOff: { value: new THREE.Vector2() }, cRep: { value: 5 }, ice: { value: 0 }, day: { value: 1 } };
 /* world settings: gravity (m/s²), temperature, air, sky, fog, ground colours, terrain roughness, craters, extra features */
 export const WORLD = {
   earth: { g: 9.81, t: 'about 15 °C', air: 'Nitrogen and oxygen (you could breathe it!)', sky: '#8ec3f0', fog: .0011, gr: ['#5d7a3a', '#8a9a5a', '#c9b98a'], amp: 3, cr: 0, sea: '#2a6aa8', site: 'Kennedy Space Center, Florida', sun: '#fff4e0' },
@@ -102,13 +103,13 @@ export function makeSurface(ctx) {
     // break up texture tiling with a slow, large-scale brightness variation sampled from the same detail map at another scale
     mat.onBeforeCompile = sh => { fogHook(sh); Object.assign(sh.uniforms, TU);
       sh.vertexShader = 'attribute float lava; varying float vLava; varying vec3 vTWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vTWP = (modelMatrix * vec4(transformed, 1.)).xyz; vLava = lava;');
-      sh.fragmentShader = 'varying float vLava; varying vec3 vTWP; uniform float frost, lavaT; uniform vec3 tsd; uniform float opp, cOn, cY, cRep, ice, day; uniform vec2 cOff; uniform sampler2D cmap;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      sh.fragmentShader = 'varying float vLava; varying vec3 vTWP; uniform sampler2D lavaMap; uniform float frost, lavaT; uniform vec3 tsd; uniform float opp, cOn, cY, cRep, ice, day; uniform vec2 cOff; uniform sampler2D cmap;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
       { float m1 = texture2D(map, vMapUv * .061 + .37).r, m2 = texture2D(map, vMapUv * .013 + .11).r; diffuseColor.rgb *= mix(.82, 1.12, m1) * mix(.88, 1.1, m2); }`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         // dawn frost on Mars: water-ice and CO2 frost on sun-facing ground that burns off as the Sun climbs (Viking 2 photographed it)
         if (frost > 0.) { float up = dot(normal, normalize((viewMatrix * vec4(0., 1., 0., 0.)).xyz)), fn = texture2D(map, vMapUv * .21 + .13).r, fn2 = texture2D(map, vMapUv * 1.7).r; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.8, .8, .84), frost * .32 * smoothstep(.78, .96, up) * smoothstep(.5, .66, fn) * (.6 + .4 * fn2)); }
         // Io: molten lava glowing through cracks in the crust, flickering
-        if (vLava > .01) totalEmissiveRadiance += vec3(1., .32, .05) * vLava * (1.4 + .5 * sin(lavaT * 2.3 + vTWP.x * .3) * sin(lavaT * 1.7 + vTWP.z * .25));`)
+        if (vLava > .01) { vec3 lt = texture2D(lavaMap, vTWP.xz * .045 + vec2(lavaT * .004, 0.)).rgb; totalEmissiveRadiance += (vec3(1., .32, .05) * .6 + lt * lt * 2.2) * vLava * (1.2 + .5 * sin(lavaT * 2.3 + vTWP.x * .3) * sin(lavaT * 1.7 + vTWP.z * .25)); }`)
         .replace('#include <opaque_fragment>', `{ vec3 L = normalize(tsd), V = normalize(cameraPosition - vTWP); float sunUp = smoothstep(-.02, .15, L.y);
           // cloud shadows: follow the sunlight up to the cloud deck and read the same drifting cloud texture
           if (cOn > .5 && L.y > .05) { vec2 cp = vTWP.xz + L.xz / L.y * (cY - vTWP.y); vec2 cu = vec2((cp.x + 4500.) / 9000., (-cp.y + 4500.) / 9000.) * cRep + cOff; outgoingLight *= 1. - texture2D(cmap, cu).a * .5 * sunUp * day; }
@@ -154,16 +155,17 @@ export function makeSurface(ctx) {
           float fr = pow(1. - max(dot(N, vV), 0.), 3.); c += rim * fr * smoothstep(-.25, .4, ndl) * .9; gl_FragColor = vec4(c, 1.); }` })); pl.position.set(900, 1100, -2600); pl.rotation.y = 2.2; scn.add(pl);
       if (W.inSky === 'saturn') { const r = new THREE.Mesh(new THREE.RingGeometry(big * 1.25, big * 2.3, 96), new THREE.MeshBasicMaterial({ color: 0xd8c8a0, transparent: true, opacity: .55, side: THREE.DoubleSide, fog: false })); r.rotation.x = -1.2; pl.add(r); } }
     if (W.sea) { // ocean: layered moving waves, sky reflection by Fresnel, sun glitter, fades into the haze at the horizon
-      const OU = { time: { value: 0 }, deep: { value: col(W.sea).multiplyScalar(.45) }, sky: { value: S.skyP ? S.skyP[1].clone() : col('#bcd8f2') }, sd: S.skyU ? S.skyU.sd : { value: new THREE.Vector3(0, 1, 0) }, sunI: { value: 1 }, fogD: { value: W.fog || .0011 } }; S.seaU = OU;
+      const OU = { nmap: { value: null }, hasN: { value: 0 }, time: { value: 0 }, deep: { value: col(W.sea).multiplyScalar(.45) }, sky: { value: S.skyP ? S.skyP[1].clone() : col('#bcd8f2') }, sd: S.skyU ? S.skyU.sd : { value: new THREE.Vector3(0, 1, 0) }, sunI: { value: 1 }, fogD: { value: W.fog || .0011 } }; S.seaU = OU;
       const sea = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400, 1, 1), new THREE.ShaderMaterial({ uniforms: OU, transparent: true, depthWrite: false, fog: false,
         vertexShader: 'varying vec3 wp; void main(){ vec4 w = modelMatrix * vec4(position,1.); wp = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-        fragmentShader: `uniform float time, sunI, fogD; uniform vec3 deep, sky, sd; varying vec3 wp;
+        fragmentShader: `uniform sampler2D nmap; uniform float hasN; uniform float time, sunI, fogD; uniform vec3 deep, sky, sd; varying vec3 wp;
         vec2 wv(vec2 p, vec2 dir, float f, float s){ float ph = dot(p, dir) * f + time * s; return dir * cos(ph) * f; }
         void main(){ vec2 p = wp.xz; vec2 g = wv(p, normalize(vec2(1., .3)), .05, 1.1) * .9 + wv(p, normalize(vec2(-.4, 1.)), .09, 1.6) * .5 + wv(p, normalize(vec2(.7, -.6)), .23, 2.4) * .22 + wv(p, normalize(vec2(-.9, -.2)), .51, 3.3) * .1;
+          if (hasN > .5) { vec3 a = texture2D(nmap, p * .035 + vec2(time * .011, time * .007)).xzy * 2. - 1., b = texture2D(nmap, p * .061 - vec2(time * .006, -time * .009)).xzy * 2. - 1.; g += (a.xz + b.xz) * .22; }
           vec3 n = normalize(vec3(-g.x, 1., -g.y)), v = normalize(cameraPosition - wp); float fr = .02 + .98 * pow(1. - max(dot(n, v), 0.), 5.);
           vec3 c = mix(deep, sky, fr); vec3 h = normalize(sd + v); c += vec3(1., .95, .85) * pow(max(dot(n, h), 0.), 260.) * 3.5 * sunI;
           float dist = length(cameraPosition - wp); c = mix(c, sky, 1. - exp(-dist * fogD * .9)); gl_FragColor = vec4(c, .96); }` }));
-      sea.rotation.x = -Math.PI / 2; sea.position.y = -1; scn.add(sea); S.sea = sea; }
+      sea.rotation.x = -Math.PI / 2; sea.position.y = -1; scn.add(sea); S.sea = sea; hdTex('waternormals.webp', t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace; OU.nmap.value = t; OU.hasN.value = 1; }); }
   }
   function playerModel() { const g = new THREE.Group();
     // a fully jointed astronaut with a real gait (the old NASA mesh was a single frozen T-pose)
@@ -176,6 +178,8 @@ export function makeSurface(ctx) {
     const W = kind === 'dive' ? null : WORLD[body.id], scn = new THREE.Scene(); S.scn = scn; S.body = body; S.mode = kind; S.t = 0; S.items = []; S.cols = []; S.depth = 0; S.sea = null;
     const hemi = new THREE.HemisphereLight(0xdfe8ff, 0x302820, .55); scn.add(hemi); S.hemi = hemi; S.sunSpr = S.sunCore = null; S.storm = null; S.rain = null; S.rover = null; S.drive = null; S.helmet = 0; S.o2 = 100; TU.frost.value = 0; S.cloudL = null; S.skyU = null; S.starM = null; S.seaU = null; S.devils = null; S.tod = .055; const dl = new THREE.DirectionalLight(W ? col(W.sun) : 0xffffff, 2.6); dl.position.set(-1500, 900, -1800); scn.add(dl); scn.add(dl.target); S.dl = dl;
     if (ctx.env) { scn.environment = ctx.env(); scn.environmentIntensity = .5; }
+    if (body.id === 'earth') hdTex('sky_earth.webp', t => { if (S.scn !== scn) return; t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace; scn.environment = t; });   // a real sunrise sky (Poly Haven, CC0) reflected in suits, visors and craft
+    if (body.id === 'io' && !TU.lavaMap.value) hdTex('lava.webp', t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; TU.lavaMap.value = t; });
     const q = ctx.q ? ctx.q() : 'high'; if (kind !== 'dive') { dl.castShadow = true; const ms = ctx.pre ? ctx.pre().shadow : 2048; dl.shadow.mapSize.set(ms, ms); const c = dl.shadow.camera; c.left = c.bottom = -70; c.right = c.top = 70; c.near = 10; c.far = 600; dl.shadow.bias = -.0006; dl.shadow.normalBias = .4; }
     if (kind === 'dive') return enterDive(body, scn);
     sky(body.id, W, scn); const ter = terrain(body.id, W, site); scn.add(ter); S.site = site;
@@ -360,7 +364,7 @@ export function makeSurface(ctx) {
   function drive(on) { const P = S.player, kind = S.body.id === 'moon' ? 'lrv' : S.body.id === 'mars' ? 'perse' : null; if (!kind || S.fly) return false;
     if (!on) { if (!S.drive) return false; const st = S.rover.st, sx = -Math.sin(st.yaw), sz = -Math.cos(st.yaw); P.position.set(st.x + sx * 2.2, H(st.x + sx * 2.2, st.z + sz * 2.2), st.z + sz * 2.2); S.vel.set(0, 0, 0); S.onGround = true; P.visible = true; S.drive = null; S.camYaw = Math.PI / 2 - st.yaw + Math.PI;
       ctx.toast('🧑‍🚀 Parked. The rover stays where you left it.', 1800); return true; }
-    if (!S.rover) { S.rover = makeRover(kind); S.scn.add(S.rover.g); const tr = new THREE.InstancedMesh(new THREE.PlaneGeometry(.24, .42).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: S.dc.clone().multiplyScalar(.62), roughness: 1, transparent: true, opacity: .75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), 900); tr.count = 0; tr.frustumCulled = false; tr.receiveShadow = true; S.scn.add(tr); S.tracks = { im: tr, n: 0, d: 0 };
+    if (!S.rover) { S.rover = makeRover(kind, ctx.loader, ctx.fixMat); S.scn.add(S.rover.g); const tr = new THREE.InstancedMesh(new THREE.PlaneGeometry(.24, .42).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: S.dc.clone().multiplyScalar(.62), roughness: 1, transparent: true, opacity: .75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), 900); tr.count = 0; tr.frustumCulled = false; tr.receiveShadow = true; S.scn.add(tr); S.tracks = { im: tr, n: 0, d: 0 };
       S.rover.place(P.position.x + 3, P.position.z + 3, Math.PI / 2 - S.yaw, H); S.rover.onLand = v => { ctx.sfx('lnd'); for (let i = 0; i < 30; i++) { const a = Math.random() * 6.283; S.dust.emit(new THREE.Vector3(S.rover.st.x, H(S.rover.st.x, S.rover.st.z) + .1, S.rover.st.z), new THREE.Vector3(Math.cos(a) * 3, 1 + Math.random() * 2, Math.sin(a) * 3), S.dc, .15, 2, 1, .2, { grow: 1, drag: 0, grav: S.gEff, a: .9 }); } }; }
     else { const st = S.rover.st; if (Math.hypot(st.x - P.position.x, st.z - P.position.z) > 12) { ctx.toast('🚙 Walk back to your rover to drive it', 1800); return false; } }
     S.drive = S.rover; P.visible = false; ctx.toast(kind === 'lrv' ? '🚙 <b>Lunar Roving Vehicle</b> · joystick to drive, JUMP to brake<br><small>Apollo 15, 16 and 17 drove these 90 km in total. Top speed was about 13 km/h, and on bumps the wheels left the ground in the low gravity.</small>' : '🤖 <b>Perseverance-style rover</b> · driving by remote, like the team at JPL<br><small>The real rover drives about 0.15 km/h; this one is sped up. Six wheels on a rocker-bogie suspension climb over rocks as big as the wheels.</small>', 6000); return true; }
@@ -375,7 +379,7 @@ export function makeSurface(ctx) {
       if (W.air === 'None') { const up = 1.2 + Math.random() * 1.6; S.dust.emit(new THREE.Vector3(wx, H(wx, wz) + .1, wz), new THREE.Vector3(-fx * sp * .7 + (Math.random() - .5), up, -fz * sp * .7 + (Math.random() - .5)), S.dc, .12, 2 * up / S.gEff, 2, .3, { grow: 1, drag: 0, grav: S.gEff, a: .85 }); }
       else S.dust.emit(new THREE.Vector3(wx, H(wx, wz) + .2, wz), new THREE.Vector3(-fx * sp * .3, .7, -fz * sp * .3), S.dc, .9, 1.6, 1, .6, { grow: 3, drag: .7, a: .3 }); }
     // chase camera
-    const back = 8.5 + sp * .3, cx = st.x - fx * back, cz = st.z - fz * back, cy = Math.max(st.y + 3.2, H(cx, cz) + 1.2); ctx.cam.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 4)); ctx.cam.lookAt(st.x + fx * 2, st.y + .6, st.z + fz * 2);
+    const back = 8.5 + sp * .3, cx = st.x - fx * back, cz = st.z - fz * back, cy = Math.max(st.y + 3.2, H(cx, cz) + 1.2); ctx.cam.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 3.5)); const lk = S.drvLook || (S.drvLook = new THREE.Vector3(st.x, st.y, st.z)); lk.lerp(new THREE.Vector3(st.x + fx * 2, st.y + .6, st.z + fz * 2), Math.min(1, dt * 6)); ctx.cam.lookAt(lk);
     const sh = P.userData.sh; sh.material.opacity = 0; if (S.dl && S.dl.castShadow) { S.dl.target.position.copy(P.position); }
     return things(dt, P); }
   /* weather for each world */

@@ -14,16 +14,20 @@ void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vWP = w.xyz; vW
 export function planetMaterial(map, o = {}) {
   const m = new THREE.ShaderMaterial({
     uniforms: { map: { value: map }, night: { value: null }, hasNight: { value: 0 }, sunPos: { value: new THREE.Vector3() }, sunCol: { value: SUN.clone().multiplyScalar(o.sun || 1.55) },
-      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, occ: { value: new THREE.Vector4(0, 0, 0, 0) }, occ2: { value: new THREE.Vector4(0, 0, 0, 0) }, ringMap: { value: null }, hasRing: { value: 0 }, ringN: { value: new THREE.Vector3(0, 1, 0) }, ringC: { value: new THREE.Vector3() }, ringR: { value: new THREE.Vector2(1, 2) }, occS: OCCS, grs: { value: new THREE.Vector4(0, 0, 0, 0) }, storm: { value: 0 }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
+      atmo: { value: new THREE.Color(o.atmo || 0x000000) }, atmoK: { value: o.atmoK || 0 }, flow: { value: o.flow || 0 }, time: { value: 0 }, occ: { value: new THREE.Vector4(0, 0, 0, 0) }, occ2: { value: new THREE.Vector4(0, 0, 0, 0) }, ringMap: { value: null }, hasRing: { value: 0 }, ringN: { value: new THREE.Vector3(0, 1, 0) }, ringC: { value: new THREE.Vector3() }, ringR: { value: new THREE.Vector2(1, 2) }, specMap: { value: null }, hasSpec: { value: 0 }, nrmMap: { value: null }, hasNrm: { value: 0 }, occS: OCCS, grs: { value: new THREE.Vector4(0, 0, 0, 0) }, storm: { value: 0 }, ocean: { value: o.ocean ? 1 : 0 }, amb: { value: o.amb ?? .006 }, rough: { value: o.rough ?? 1 } },
     vertexShader: COMMON_VS,
     fragmentShader: `uniform sampler2D map; uniform sampler2D night; uniform float hasNight, atmoK, ocean, amb, rough, flow, time; uniform vec4 occ, occ2;
+    uniform sampler2D specMap, nrmMap; uniform float hasSpec, hasNrm;
+    vec3 perturb(vec3 N, vec3 p, vec2 uv, vec3 t){ vec3 q0 = dFdx(p), q1 = dFdy(p); vec2 s0 = dFdx(uv), s1 = dFdy(uv); vec3 S = normalize(q0 * s1.t - q1 * s0.t), T = normalize(-q0 * s1.s + q1 * s0.s); t.xy *= .8; return normalize(mat3(S, T, N) * t); }
     uniform vec4 occS, grs; uniform float storm; float hsh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     uniform sampler2D ringMap; uniform float hasRing; uniform vec3 ringN, ringC; uniform vec2 ringR;
     // the rings' own shadow on the planet: follow the ray toward the Sun to the ring plane and read how opaque the ring is there
     float ringShadow(vec3 p, vec3 L){ if (hasRing < .5) return 1.; float dn = dot(L, ringN); if (abs(dn) < 1e-4) return 1.; float t = dot(ringC - p, ringN) / dn; if (t <= 0.) return 1.;
       float r = length(p + L * t - ringC), u = (r - ringR.x) / (ringR.y - ringR.x); if (u < 0. || u > 1.) return 1.; return 1. - texture2D(ringMap, vec2(u, .5)).a * .88; }
     float eclipse(vec4 o, vec3 p, vec3 L){ if (o.w <= 0.) return 1.; vec3 oc = o.xyz - p; float tca = dot(oc, L); if (tca < 0.) return 1.; float d2 = dot(oc, oc) - tca * tca, r2 = o.w * o.w; return smoothstep(r2 * .78, r2 * 1.18, d2); } uniform vec3 sunPos, sunCol, atmo; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
-    void main(){ vec3 N = normalize(vWN), L = normalize(sunPos - vWP), V = normalize(cameraPosition - vWP); float ndl = dot(N, L);
+    void main(){ vec3 N = normalize(vWN), L = normalize(sunPos - vWP), V = normalize(cameraPosition - vWP);
+      if (hasNrm > .5) N = perturb(N, vWP, vUv, texture2D(nrmMap, vUv).xyz * 2. - 1.);   // real relief: mountains catch the low Sun
+      float ndl = dot(N, L);
       vec3 alb;
       if (flow > 0.) { float T = 40., f1 = fract(time / T), f2 = fract(time / T + .5), w = abs(1. - 2. * f1);
         float sp = flow * (sin(vUv.y * 61.) * .6 + sin(vUv.y * 23. + 1.3) * .4) * .004;   // alternating jet streams, east and west
@@ -41,7 +45,7 @@ export function planetMaterial(map, o = {}) {
       // reddened light near the terminator: sunlight crosses more air at sunrise/sunset
       vec3 sc = mix(sunCol * vec3(1., .55, .32), sunCol, smoothstep(-.02, .35, ndl));
       vec3 col = alb * sc * lit + alb * amb;
-      if (ocean > .5) { float water = smoothstep(.02, .12, alb.b - max(alb.r, alb.g) * .85); vec3 H = normalize(L + V); float sp = pow(max(dot(N, H), 0.), 160.) * 1.6 + pow(max(dot(N, H), 0.), 28.) * .05;
+      if (ocean > .5) { float water = hasSpec > .5 ? texture2D(specMap, vUv).r : smoothstep(.02, .12, alb.b - max(alb.r, alb.g) * .85); vec3 H = normalize(L + V); float sp = pow(max(dot(N, H), 0.), 160.) * 1.6 + pow(max(dot(N, H), 0.), 28.) * .05;
         col += sc * sp * water * day; col = mix(col, col * vec3(.82, .9, 1.05), water * .35); }
       if (hasNight > .5) { vec3 nl = texture2D(night, vUv).rgb; col += nl * nl * vec3(1., .78, .5) * 2.4 * (1. - smoothstep(-.12, .08, ndl)); }
       if (storm > 0.) { vec2 cell = floor(vUv * vec2(90., 45.)); float tk = floor(time * 3.), h = hsh(cell + tk * 1.37);
@@ -70,10 +74,10 @@ export function atmosphereMaterial(color, power = 4) {
 }
 // clouds: white alpha layer lit by the Sun, pink-orange at the terminator, invisible at night
 export function cloudMaterial(map) {
-  const m = new THREE.ShaderMaterial({ uniforms: { map: { value: map }, sunPos: { value: new THREE.Vector3() }, sunCol: { value: SUN.clone().multiplyScalar(1.5) } },
+  const m = new THREE.ShaderMaterial({ uniforms: { useR: { value: 0 }, map: { value: map }, sunPos: { value: new THREE.Vector3() }, sunCol: { value: SUN.clone().multiplyScalar(1.5) } },
     vertexShader: COMMON_VS,
-    fragmentShader: `uniform sampler2D map; uniform vec3 sunPos, sunCol; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
-    void main(){ vec4 t = texture2D(map, vUv); vec3 N = normalize(vWN), L = normalize(sunPos - vWP); float ndl = dot(N, L);
+    fragmentShader: `uniform sampler2D map; uniform float useR; uniform vec3 sunPos, sunCol; varying vec3 vWN; varying vec3 vWP; varying vec2 vUv;
+    void main(){ vec4 t = texture2D(map, vUv); if (useR > .5) t = vec4(1., 1., 1., smoothstep(.08, .85, t.r)); vec3 N = normalize(vWN), L = normalize(sunPos - vWP); float ndl = dot(N, L);
       float lit = clamp(ndl * .9 + .1 * smoothstep(-.15, .1, ndl), 0., 1.); vec3 sc = mix(sunCol * vec3(1., .5, .3), sunCol, smoothstep(0., .3, ndl));
       gl_FragColor = vec4(t.rgb * sc * lit + .004, t.a * (.25 + .75 * smoothstep(-.25, .1, ndl))); }`,
     transparent: true, depthWrite: false });

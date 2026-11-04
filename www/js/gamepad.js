@@ -30,7 +30,7 @@
     for (const el of L) { if (el === focus) continue; const r = el.getBoundingClientRect(), c = { x: r.left + r.width / 2, y: r.top + r.height / 2 }, vx = c.x - c0.x, vy = c.y - c0.y, along = vx * dx + vy * dy; if (along <= 2) continue;
       const side = Math.abs(vx * dy - vy * dx), sc = along + side * 2.2; if (sc < bs) { bs = sc; best = el; } }
     if (best) setFocus(best); }
-  function back(root) { const b = [...root.querySelectorAll('button')].filter(vis).find(x => /^(✕|close|back|cancel|done|continue|resume|▶ resume)/i.test(x.textContent.trim()) || /X$|Back$|back$/.test(x.id)); if (b) b.click(); else key('Escape'); }
+  function back(root) { const b = [...root.querySelectorAll('button')].filter(vis).find(x => /^(✕|close|back|cancel|done|continue|resume|▶ resume|▶ skip|play now)/i.test(x.textContent.trim()) || /X$|Back$|back$/.test(x.id)); if (b) b.click(); else key('Escape'); }
 
   // ---------- main game (classic globals: S, keys, fireHeld, dodge) ----------
   let usedStick = false, usedFire = false;

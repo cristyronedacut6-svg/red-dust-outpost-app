@@ -791,3 +791,19 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Handling:** each wheel follows the ground on its own suspension, and the chassis pitches and rolls. In low gravity it's thrown into the air over bumps and floats down. The front wheels steer.
     - **Tracks and dust:** the tyres leave tracks. On the Moon the wheels throw "rooster tails" of dust in perfect arcs, as in the Apollo 16 film.
     - **Parking:** park it and it stays where you left it. There's a new *Moon buggy* trophy.
+
+## v74 — Smooth realistic rovers, the HD Realism Pack (download before you play) and a full bug sweep
+
+- **🚙 Rovers rebuilt:**
+  - **Smooth suspension:** the glitch came from the rover flipping between "on the ground" and "in the air" every frame on slopes. The suspension is now a real spring-damper: the springs push up, but only gravity pulls down. That means no jitter, and over a crest in low gravity it floats free and settles naturally. Pitch and roll are damped springs too, each wheel's travel is smoothed, and the chase camera eases instead of snapping.
+  - **The real NASA Perseverance:** on Mars you now drive NASA's own 3D model (Mastcam-Z, arm, RTG, every detail). Its wheels are measured from the model and spin, steer and follow the ground on their own suspension.
+  - **The Apollo LRV:** a tubular chassis, GCTA TV camera, helical low-gain antenna, a rear tool rack with geology tools and seat belts, and a top speed of about 13 km/h like the real one.
+- **🗂 HD Realism Pack, downloaded before your journey.** The resource downloader now asks everyone to grab the new pack before playing (about 4 MB, in both the Light and Full packs):
+  - NASA's **real Earth cloud cover**, **ocean mask** (sun glints only on real water) and **relief map** (mountains catch the low Sun at the terminator) for Earth seen from space.
+  - **Real sky reflections** on Earth landings: a CC0 Poly Haven sunrise sky reflected in suits, visors and craft.
+  - **Ocean wave normals** for Earth's sea, and a **lava texture** for Io's glowing flows.
+  - The **NASA Perseverance** model (light and full detail) and the **star chart** data.
+  - Sources: NASA 3D Resources and three.js example assets (Poly Haven CC0 skies). Only GitHub-hosted sources were reachable from the build machine.
+- **🐛 Fixed: landing picked the wrong world.** Near Mars it could pick Phobos, and near Io or Europa it could pick Jupiter. It now picks whichever surface is actually closest, and your ship rides along with that world as it orbits.
+- **🎮 Controller:** B now works as "Skip" on the downloads screen.
+- **Full bug sweep:** every Story Mode world in 2D and 3D, every title-screen menu one level deep, and an Adventure sweep that opens every panel, flies, scans, dives, lands on several worlds, walks, jumps, uses the helmet, flies craft, drives rovers, launches and runs the demo.
