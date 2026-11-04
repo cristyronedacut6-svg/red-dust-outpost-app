@@ -807,3 +807,24 @@ On phones, the game screen has been tidied so you can see the action and know wh
 - **🐛 Fixed: landing picked the wrong world.** Near Mars it could pick Phobos, and near Io or Europa it could pick Jupiter. It now picks whichever surface is actually closest, and your ship rides along with that world as it orbits.
 - **🎮 Controller:** B now works as "Skip" on the downloads screen.
 - **Full bug sweep:** every Story Mode world in 2D and 3D, every title-screen menu one level deep, and an Adventure sweep that opens every panel, flies, scans, dives, lands on several worlds, walks, jumps, uses the helmet, flies craft, drives rovers, launches and runs the demo.
+
+## v76 — Ships land upright, real spacecraft handling, and realism pass 15
+
+- **🐛 Fixed: ships landing sideways.** The landed ship used its flight orientation, with the nose pointing forward, so capsules and rockets lay on their side. Now:
+  - Capsules (ESAS, Orion, Gemini, Apollo–Soyuz) stand upright on their heat shield.
+  - Rockets (Agena, SLS, the Shuttle stack) stand on their engines.
+  - The Shuttle orbiter sits level on its wheels, and the Lunar Module stands on its legs.
+  - Lift-off rises straight up from the engine end.
+- **🛰 Real spacecraft handling:**
+  - **Rotation with momentum:** small thrusters spin the ship up and slow it down smoothly instead of turning instantly. Flight assist stops the spin when you let go.
+  - **Assisted mode:** the main engine pushes only along the nose, and much weaker side thrusters cancel drift. In a hard turn the ship slides, then the thrusters (with visible puffs) pull it back onto its heading, like a real spacecraft with flight assist.
+  - **Banking:** the ship tilts only a little, following its actual turn rate.
+  - **Newtonian braking:** brakes are a steady retro burn instead of an instant stop.
+- **Realism pass 15:**
+  - **🪐 Real orbits (Newtonian mode):** near a world its gravity pulls you in (inverse-square, stronger for bigger worlds), so you can really orbit. A dashed predicted path shows where you'll go, the HUD shows periapsis (Pe) and apoapsis (Ap) in real kilometres, and it warns ⚠ IMPACT TRAJECTORY in red when your path hits the ground, or shows "escape" when you're leaving.
+  - **🔥 A real engine plume:** in vacuum the exhaust spreads into a wide, faint, flickering bell. It's blue-white on normal thrust and hotter, longer and gold on boost, and hidden in cockpit view.
+  - **🌍 Real atmospheric entry:**
+    - **Attitude:** capsules enter heat shield first, rockets come down engine first, and the Shuttle comes in belly first at a 40° angle of attack.
+    - **Plasma glow:** the glowing plasma lights the hull orange from below.
+    - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
+    - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.

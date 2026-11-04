@@ -477,10 +477,18 @@ function step(dt) {
     let dy = ty - R.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; R.yaw += dy * Math.min(1, dt * 2.5); R.pitch += (tpch - R.pitch) * Math.min(1, dt * 2.5);
     fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); const sp = Math.min(R.ap.max, Math.max(8, (d - stop) * 1.4)) * Math.max(.12, fwd.dot(dir)); /* turn first, then go */ R.vel.lerp(fwd.multiplyScalar(d > stop ? sp : 0), Math.min(1, dt * 2));
     if (d <= stop + 1) { R.ap = null; R.vel.multiplyScalar(.2); toast(`Arrived: <b>${R.apName}</b> · tap 📡 SCAN`); say('Arriving at ' + R.apName.replace(/\(.*?\)/g, '') + '.'); } }
-  else { const SS = R.shipStat || SHIPS[0]; R.yaw += yawIn * dt * 1.4 * SS.turn; R.pitch = THREE.MathUtils.clamp(R.pitch + pitIn * dt * 1.1 * SS.turn, -1.35, 1.35);
-    fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); const ts = (thrust ? (boost ? 180 * SS.bst : 45 * SS.spd) : boost ? 180 * SS.bst : 0);
-    if (SET.newton) { if (ts) R.vel.addScaledVector(fwd, ts * .55 * dt); if (brake) R.vel.multiplyScalar(Math.max(0, 1 - dt * 1.1)); if (R.vel.length() > 700) R.vel.setLength(700); }   // true space: you coast until you burn the other way
-    else R.vel.lerp(fwd.clone().multiplyScalar(ts), Math.min(1, dt * (ts ? 1.4 : brake ? 3 : .6))); rcs(dt, yawIn, pitIn, brake); }
+  else { const SS = R.shipStat || SHIPS[0], toward = (v, t, a) => v + THREE.MathUtils.clamp(t - v, -a, a);
+    // attitude: reaction-control jets spin the ship up and down smoothly (real angular momentum); flight assist stops the rotation when you let go
+    const angA = 3.4 * SS.turn * dt; R.yawV = toward(R.yawV || 0, yawIn * 1.4 * SS.turn, angA); R.pitchV = toward(R.pitchV || 0, pitIn * 1.1 * SS.turn, angA);
+    R.yaw += R.yawV * dt; const np = R.pitch + R.pitchV * dt; R.pitch = THREE.MathUtils.clamp(np, -1.35, 1.35); if (R.pitch !== np) R.pitchV = 0;
+    fwd.set(0, 0, -1).applyEuler(new THREE.Euler(R.pitch, R.yaw, 0, 'YXZ')); const ts = (thrust ? (boost ? 180 * SS.bst : 45 * SS.spd) : boost ? 180 * SS.bst : 0); let lat = 0;
+    if (SET.newton) { if (ts) R.vel.addScaledVector(fwd, ts * .55 * dt); if (brake) { const v = R.vel.length(); if (v > 0) R.vel.multiplyScalar(Math.max(0, v - 30 * dt) / v); } if (R.vel.length() > 700) R.vel.setLength(700); }   // true space: you coast until you burn the other way
+    else { // flight assist: the main engine pushes only along the nose; the much weaker side thrusters null out drift, so the ship slides through turns
+      const want = tmpV.copy(fwd).multiplyScalar(ts), dv = want.sub(R.vel), along = dv.dot(fwd), side = dv.addScaledVector(fwd, -along), mainA = boost ? 150 * SS.bst : 42 * SS.spd;
+      const a1 = along > 0 ? Math.min(along, mainA * dt) : Math.max(along, -(brake ? mainA * .9 : 13) * dt), sl = side.length(), sa = 26 * SS.turn * dt; lat = sl;
+      R.vel.addScaledVector(fwd, a1); if (sl > 0) R.vel.addScaledVector(side, Math.min(1, sa / sl)); }
+    rcs(dt, yawIn + (lat > .4 ? .3 : 0), pitIn, brake); }
+  if (SET.newton) gravity(dt);
   ship.position.addScaledVector(R.vel, dt);
   // never fly into a planet
   for (const b of BODIES) { const c = R.bpos[b.id], d = ship.position.distanceTo(c), m = b.r + (b.id === 'sun' ? 25 : 1.6); if (d < m) { const n = tmpV.copy(ship.position).sub(c); if (n.lengthSq() < 1e-6) n.set(0, 1, 0); n.normalize(); ship.position.copy(c).addScaledVector(n, m);
@@ -490,8 +498,8 @@ function step(dt) {
   // emergency turn: swing the nose away from the Sun so the player isn't left facing into it
   if (R.evade) { R.evade.t -= dt; const n = R.evade.n, ty = Math.atan2(-n.x, -n.z), tp = Math.asin(THREE.MathUtils.clamp(n.y, -1, 1)); let dy = ty - R.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; R.yaw += dy * Math.min(1, dt * 3); R.pitch += (tp - R.pitch) * Math.min(1, dt * 3); if (R.evade.t <= 0) R.evade = null; }
   R.hotT = Math.max(0, (R.hotT || 0) - dt);
-  ship.quaternion.setFromEuler(new THREE.Euler(R.pitch, R.yaw, -(yawIn || 0) * .35, 'YXZ'));
-  const spd = R.vel.length(); R.flame.scale.setScalar(.5 + Math.min(3, spd / 40)); R.flame.material.opacity = Math.min(1, .25 + spd / 60);
+  ship.quaternion.setFromEuler(new THREE.Euler(R.pitch, R.yaw, -(R.yawV || 0) * .16, 'YXZ'));
+  const spd = R.vel.length(); R.flame.scale.setScalar(.5 + Math.min(3, spd / 40)); R.flame.material.opacity = Math.min(1, .25 + spd / 60); plume(dt, thrust || !!R.ap, boost); orbitLine(dt);
   // engine exhaust, warp streaks and a speed FOV kick
   { const burn = (thrust || boost || R.ap) ? 1 : 0, sz = (R.shipStat || SHIPS[0]).sz; R.burn = (R.burn || 0) + (burn - (R.burn || 0)) * Math.min(1, dt * 5);
     R.engL.intensity = R.burn * (boost ? 60 : 30) * (CAM.photo ? 0 : 1); R.engL.color.setHex(boost ? 0xffb070 : 0x9fd8ff); R.flame.getWorldPosition(R.engL.position);
@@ -523,7 +531,7 @@ function step(dt) {
     if (S2.t > 1.1) { R.beam.visible = false; R.root.querySelector('#aScan').style.display = 'none'; R.scanning = null; R.rings.add(S2.e.g.position, 0x7df9ff, (S2.e.o.sz || 2) * 5, .9, R.cam.position); R.fx.emit(S2.e.g.position, tmpV.set(0, 0, 0), 0x7df9ff, 1.4, 1, 40, 18, { grow: 1.5, drag: .8 }); setTimeout(() => card(S2.e.o, true), 350); } }
   // speed + destination
   { const cb = BODIES.reduce((a, b) => { const d = R.bpos[b.id].distanceTo(ship.position); return d - b.r < a[1] ? [b, d - b.r, d] : a; }, [null, 1e9, 0]); R.altTxt = cb[0] && cb[1] < cb[0].r * 4 ? ' · ' + fmtKm(realAlt(cb[0], cb[2])) + ' above ' + cb[0].n : ''; }
-  R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.altTxt}${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
+  R.root.querySelector('#aSpd').textContent = `${Math.round(spd * 1000).toLocaleString()} km/h${R.altTxt}${OL.txt || ''}${R.ap ? ' · autopilot → ' + R.apName : ''} · ${ST.scanned.size}/${ALL.length} scanned`;
   { const D = R.spaceDust, a = D.geometry.attributes.position, c = R.cam.position; for (let i = 0; i < a.count; i++) { let x = a.getX(i), y = a.getY(i), z = a.getZ(i);
       const w = (v, o) => o + ((((v - o + 40) % 80) + 80) % 80) - 40; a.setXYZ(i, w(x, c.x), w(y, c.y), w(z, c.z)); } a.needsUpdate = true; D.material.opacity = CAM.photo ? .3 : .55; }
   if (R.anomaly) { const A = R.anomaly, d = A.g.position.distanceTo(ship.position); A.g.rotation.y += dt * .4; A.cr.rotation.x = Math.sin(R.t * .7) * .2; const pu = 1 + Math.sin(R.t * 2.2) * .12; A.halo.scale.setScalar(22 * pu); A.cr.material.emissiveIntensity = 2 + Math.sin(R.t * 3.1) * .8;
@@ -777,18 +785,19 @@ function startEntry(b, kind, st) { if (kind === 'dive') trophy('a_dive'); else {
   let ov = R.root.querySelector('#aHeat'); if (!ov) { ov = document.createElement('div'); ov.id = 'aHeat'; R.root.appendChild(ov); } ov.style.opacity = 0;
   toast(air ? `🔥 Entering the atmosphere of <b>${b.n}</b>` : `🛬 Powered descent to <b>${b.n}</b>`, 2200); say(kind === 'dive' ? 'Entering the clouds of ' + b.n + '. Hold on.' : air ? 'Entry interface. Heat shield is taking the load.' : 'Beginning powered descent to ' + b.n + '.', 1); sfx(kind === 'dive' ? 'whoosh' : air ? 'burst' : 'land'); }
 function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || SHIPS[0]).sz; C.t += dt; R.t += dt; const k = Math.min(1, C.t / C.T), e = k * k * (3 - 2 * k);
-  const alt = C.b.r * 1.012 + (C.r0 - C.b.r * 1.012) * (1 - e); ship.position.copy(C.c).addScaledVector(C.dir, alt); ship.visible = true; ship.lookAt(tmpV.copy(ship.position).addScaledVector(C.dir, 10)); ship.rotateZ(Math.sin(C.t * 2.3) * .08);
+  const alt = C.b.r * 1.012 + (C.r0 - C.b.r * 1.012) * (1 - e); ship.position.copy(C.c).addScaledVector(C.dir, alt); ship.visible = true; entryAttitude(C, ship);
   const heat = C.air ? Math.sin(Math.min(1, k * 1.15) * Math.PI) : 0, nose = new THREE.Vector3().copy(ship.position).addScaledVector(C.dir, -sz * 1.1);
   if (C.air) { const back = C.dir.clone().multiplyScalar(18 + heat * 30); R.fx.emit(nose, back, 0xd8742c, sz * (.22 + .3 * heat), .4, Math.ceil(4 * heat) + 1, 4 * sz, { grow: 2.2, drag: .2, jit: sz * .45, a: .7 }); R.fx.emit(nose, back, 0xffe0b0, sz * .18, .2, Math.ceil(3 * heat), 2 * sz, { grow: 1.4, jit: sz * .3, a: .8 }); if (heat > .4) R.fx.emit(nose, back.multiplyScalar(1.6), 0xff5a20, sz * .12, .35, 2, 6 * sz, { grow: 1, jit: sz * .8 }); }
   else R.fx.emit(nose, C.dir.clone().multiplyScalar(-14), 0x9fd8ff, sz * .5, .5, 4, 1.5 * sz, { grow: 2.4 });
   // camera: high and behind, looking down past the ship toward the planet, shaking with the heat
   const side = new THREE.Vector3(0, 1, 0).cross(C.dir); if (side.lengthSq() < 1e-4) side.set(1, 0, 0); side.normalize(); const sh = (C.air ? heat * .35 : .05) * sz;
-  R.cam.position.copy(ship.position).addScaledVector(C.dir, sz * 7).addScaledVector(side, sz * 3.2).add(tmpV.set((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh));
+  const cw = C.chute ? Math.min(1, (C.t / C.T - .7) / .15) : 0; R.cam.position.copy(ship.position).addScaledVector(C.dir, sz * (7 + cw * 4)).addScaledVector(side, sz * (3.2 + cw * 13)).add(tmpV.set((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh));
   R.cam.lookAt(tmpV.copy(ship.position).lerp(C.c, .02)); R.cam.fov += ((56 - heat * 6) - R.cam.fov) * Math.min(1, dt * 3); R.cam.updateProjectionMatrix();
   AUD.set({ eng: C.air ? .2 : .7, boost: 0, wind: C.air ? Math.min(1, heat * 1.2) : 0, dt }); const ov = R.root.querySelector('#aHeat'); ov.style.opacity = Math.min(1, (C.air ? heat * .85 : 0) + (k > .86 ? (k - .86) / .14 : 0)); ov.classList.toggle('w', k > .86);
   for (const e2 of R.objs) R.placeObj(e2, R.t); updatePlanetUniforms(R.PL, R.bpos.sun, R.t); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
+  entryFX(C, heat, k, dt, sz);
   if (C.air && heat > .92 && !C.pk) { C.pk = 1; say('Peak heating.'); }
-  if (k >= 1) { const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
+  if (k >= 1) { entryFX(C, 0, 1, 0, sz, true); const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
 /* ---------------- mission-control voice callouts (speech synthesis behind a radio chirp) ---------------- */
 let VQ = 0; function say(text, prio) { if (!SET.voice || !window.speechSynthesis) return; const now = Date.now(); if (!prio && now < VQ) return; VQ = now + 2500;
   try { const a = typeof ac === 'function' ? ac() : null; if (a && typeof BUS !== 'undefined' && BUS) { const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = 'square'; o.frequency.setValueAtTime(1850, t); o.frequency.setValueAtTime(1400, t + .05); g.gain.setValueAtTime(.025, t); g.gain.exponentialRampToValueAtTime(.0001, t + .11); o.connect(g); g.connect(BUS.sfx || a.destination); o.start(t); o.stop(t + .12); } } catch (e) {}
@@ -906,7 +915,7 @@ function orbitStep() { const bp = R.bpos;
   orbitPos(bp, orbT()); for (const b of BODIES) R.bmesh[b.id].position.copy(bp[b.id]);
   // the ship shares the motion of the world whose gravity it is in
   let dom = null, sc = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = ORB.prev[b.id].distanceTo(R.ship.position) - b.r, k = d; if (d < b.r * 6 + 40 && k < sc) { sc = k; dom = b; } }
-  if (dom && !R.ending) { const dv = ORB.n.copy(bp[dom.id]).sub(ORB.prev[dom.id]); if (dv.lengthSq() < 400) { R.ship.position.add(dv); R.cam.position.add(dv); } }
+  ORB.dom = dom; if (dom && !R.ending) { const dv = ORB.n.copy(bp[dom.id]).sub(ORB.prev[dom.id]); if (dv.lengthSq() < 400) { R.ship.position.add(dv); R.cam.position.add(dv); } }
   // eclipse occluders follow the moons
   for (const b of BODIES) { const m = R.bmesh[b.id]; if (!m.material.uniforms || !m.material.uniforms.occ) continue; const u = m.material.uniforms; if (b.at && BI[b.at] && b.at !== 'sun') u.occ.value.set(bp[b.at].x, bp[b.at].y, bp[b.at].z, BI[b.at].r);
     const kid = ORB.kids && ORB.kids[b.id]; if (kid) u.occ2.value.set(bp[kid.id].x, bp[kid.id].y, bp[kid.id].z, kid.r); }
@@ -970,6 +979,53 @@ function spaceFX(dt) { if (!R.comet) { R.comet = makeComet(R.scn, R.bpos.sun); R
   const ds = R.ship.position.distanceTo(R.bpos.sun) - 60, heat = THREE.MathUtils.clamp(1 - (ds - 25) / 160, 0, 1), ov = R.root.querySelector('#aHeat') || (() => { const d = document.createElement('div'); d.id = 'aHeat'; R.root.appendChild(d); return d; })();
   if (!R.entry && !R.ending) { ov.classList.remove('w'); ov.style.opacity = (heat * heat * .8).toFixed(3); if (heat > .35) R.cam.position.add(tmpV.set((Math.random() - .5), (Math.random() - .5), (Math.random() - .5)).multiplyScalar(heat * .12));
     if (heat > .5 && !R.heatW) { R.heatW = 1; toast('🌡️ Hull temperature rising: 1,370 °C. Parker Solar Probe survives this with a carbon heat shield.', 3500); } if (heat < .2) R.heatW = 0; } }
+/* ---------------- realism pass 15: how real spacecraft fly, orbit and come home ---------------- */
+const UPRIGHT = { 'shuttle-orbiter': 0, lm: 0 };   // everything else stands on its engines / heat shield when landed
+const CAPSULE = new Set(['orion', 'orion-capsule', 'gemini', 'apollo-soyuz']);
+// entry attitude: capsules fly heat shield first, rockets tail first (engines toward the ground), the Shuttle belly first at 40° angle of attack
+function entryAttitude(C, ship) { const id = (R.shipStat || SHIPS[0]).id;
+  if (id === 'shuttle-orbiter') { const up = C.dir, t = tmpV.set(0, 1, 0).cross(up); if (t.lengthSq() < 1e-4) t.set(1, 0, 0); t.normalize(); const nose = t.clone().multiplyScalar(Math.cos(.7)).addScaledVector(up, Math.sin(.7)).normalize(), z = nose.clone().negate(), y = up.clone().addScaledVector(z, -up.dot(z)).normalize(), x = new THREE.Vector3().crossVectors(y, z);
+    ship.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z)); }
+  else { ship.lookAt(C.c); ship.rotateZ(Math.sin(C.t * 1.7) * .05); } }   // +Z (heat shield / engine bell) faces the planet
+function entryFX(C, heat, k, dt, sz, end) { const ship = R.ship;
+  if (!C.glow) { C.glow = new THREE.PointLight(0xff6a20, 0, sz * 12, 2); R.scn.add(C.glow); }
+  if (end) { R.scn.remove(C.glow); if (C.chute) { ship.remove(C.chute); C.chute = null; } if (C.bo) toast('📻 Signal reacquired. Mission Control hears you.', 1800); return; }
+  // the plasma sheath glows on the hull from the side facing the planet
+  C.glow.position.copy(ship.position).addScaledVector(C.dir, -sz * 1.4); C.glow.intensity = heat * 60;
+  // radio blackout: the ionised gas around the ship blocks radio for a while
+  if (C.air && heat > .55 && !C.bo) { C.bo = 1; toast('📻 Radio blackout: the plasma around the ship blocks every signal…', 2200); }
+  // parachutes for capsules on worlds with air (drogues first, then the mains)
+  const id = (R.shipStat || SHIPS[0]).id; if (C.air && C.kind !== 'dive' && CAPSULE.has(id) && k > .7) { if (!C.chute) { C.chute = chutes(sz); ship.add(C.chute); toast('🪂 Parachutes deployed', 1500); sfx('whoosh'); } const g = Math.min(1, (k - .7) / .12); C.chute.scale.setScalar(.2 + g * .8); C.chute.children.forEach((c, i) => { c.rotation.z = Math.sin(C.t * 2 + i) * .06; }); } }
+function chutes(sz) { const g = new THREE.Group(), cv = document.createElement('canvas'); cv.width = 128; cv.height = 32; const x = cv.getContext('2d'); for (let i = 0; i < 8; i++) { x.fillStyle = i % 2 ? '#f4f4f2' : '#e0542a'; x.fillRect(i * 16, 0, 16, 32); }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; const m = new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: .9 }), lm = new THREE.LineBasicMaterial({ color: 0xd8d8d0, transparent: true, opacity: .7 });
+  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, c = new THREE.Group(), can = new THREE.Mesh(new THREE.SphereGeometry(sz * 1.5, 24, 8, 0, Math.PI * 2, 0, 1.1), m); can.position.y = 0; c.add(can);
+    const pts = []; for (let j = 0; j < 8; j++) { const b = j / 8 * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(b) * sz * 1.33, -sz * .45, Math.sin(b) * sz * 1.33), new THREE.Vector3(0, -sz * 5.2, 0)); } c.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lm));
+    c.position.set(Math.cos(a) * sz * 1.3, sz * 5.6, Math.sin(a) * sz * 1.3); c.rotation.set(Math.sin(a) * .25, 0, -Math.cos(a) * .25); g.add(c); }
+  g.rotation.x = -Math.PI / 2; return g; }   // chutes trail out of the top (−Z, the nose), away from the planet
+// engine plume: in vacuum the exhaust spreads into a wide, faint, glowing bell; brighter and longer with boost
+const PL2 = { m: null, u: null };
+function plume(dt, thrust, boost) { const ship = R.ship, sz = (R.shipStat || SHIPS[0]).sz;
+  if (!PL2.m) { PL2.u = { time: { value: 0 }, k: { value: 0 }, hot: { value: new THREE.Color(0xbfe0ff) } }; const geo = new THREE.CylinderGeometry(.18, 1, 1, 24, 8, true); geo.translate(0, -.5, 0); geo.rotateX(-Math.PI / 2);
+    PL2.m = new THREE.Mesh(geo, new THREE.ShaderMaterial({ uniforms: PL2.u, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: `uniform float time, k; uniform vec3 hot; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+        void main(){ float along = 1. - vUv.y, edge = pow(abs(dot(normalize(vN), normalize(vV))), 1.4), fl = .8 + .2 * sin(time * 40. + along * 30.);
+          float a = k * (1. - along) * (1. - along) * edge * fl * .55; vec3 c = mix(hot, vec3(1.), (1. - along) * .6) * (1.2 + k);
+          gl_FragColor = vec4(c, a); }` })); PL2.m.frustumCulled = false; }
+  if (PL2.m.parent !== ship) ship.add(PL2.m); const t = thrust || boost ? (boost ? 1 : .55) : 0; PL2.u.k.value += (t - PL2.u.k.value) * Math.min(1, dt * 6); PL2.u.time.value = R.t; PL2.u.hot.value.setHex(boost ? 0xffd2a0 : 0xbfe0ff);
+  const L = sz * (1.6 + 5 * PL2.u.k.value), W = sz * (.55 + .5 * PL2.u.k.value); PL2.m.scale.set(W, W, L); PL2.m.position.set(0, 0, sz * .95); PL2.m.visible = PL2.u.k.value > .02 && CAM.mode !== 'cockpit'; }
+// gravity (Newtonian mode): near a world you are pulled toward it, so you can really orbit. A predicted path shows where you'll go.
+const gS = b => 2.3 * Math.sqrt(b.r), soi = b => b.r * 8 + 40;
+function gravity(dt) { const b = ORB.dom; if (!b || b.id === 'sun') return; const c = R.bpos[b.id], d = R.ship.position.distanceTo(c); if (d > soi(b)) return; R.vel.addScaledVector(tmpV.copy(c).sub(R.ship.position).normalize(), gS(b) * (b.r / d) ** 2 * dt); }
+const OL = { line: null, t: 0, txt: '' };
+function orbitLine(dt) { const b = ORB.dom, on = SET.newton && b && b.id !== 'sun' && !R.ap && R.bpos[b.id].distanceTo(R.ship.position) < soi(b);
+  if (!OL.line) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(400 * 3), 3)); OL.line = new THREE.Line(g, new THREE.LineDashedMaterial({ color: 0x7df9ff, dashSize: 1.2, gapSize: .8, transparent: true, opacity: .75, depthWrite: false })); OL.line.frustumCulled = false; R.scn.add(OL.line); }
+  OL.line.visible = !!on; if (!on) { OL.txt = ''; return; } OL.t -= dt; if (OL.t > 0) return; OL.t = .25;
+  const c = R.bpos[b.id], p = R.ship.position.clone().sub(c), v = R.vel.clone(), arr = OL.line.geometry.attributes.position.array, h = .12; let mn = 1e9, mx = 0, n = 0, hit = false;
+  for (let i = 0; i < 400; i++) { const d = p.length(); mn = Math.min(mn, d); mx = Math.max(mx, d); arr[i * 3] = c.x + p.x; arr[i * 3 + 1] = c.y + p.y; arr[i * 3 + 2] = c.z + p.z; n = i + 1; if (d < b.r) { hit = true; break; } if (d > soi(b) * 1.3) break;
+    for (let s2 = 0; s2 < 3; s2++) { const dd = p.length(); v.addScaledVector(p, -gS(b) * (b.r / dd) ** 2 / dd * h); p.addScaledVector(v, h); } }
+  OL.line.geometry.setDrawRange(0, n); OL.line.geometry.attributes.position.needsUpdate = true; OL.line.computeLineDistances(); OL.line.material.color.setHex(hit ? 0xff6a5a : 0x7df9ff);
+  const km = d => fmtKm(realAlt(b, d) || 0); OL.txt = hit ? ' · ⚠ IMPACT TRAJECTORY' : ` · Pe ${km(mn)} · Ap ${mx > soi(b) ? 'escape' : km(mx)}`; }
 /* eye adaptation: like a real camera or a real eye, exposure drops when the Sun fills the view and opens up in a planet's shadow,
    where the stars and the Milky Way come out. Cheap: one ray test against each body per frame. */
 const EXP = { v: 1.05, f: new THREE.Vector3(), s: new THREE.Vector3(), oc: new THREE.Vector3() };
