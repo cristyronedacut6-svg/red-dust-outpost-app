@@ -13,6 +13,8 @@ import { OutputPass } from './vendor/three/postprocessing/OutputPass.js';
 import { ShaderPass } from './vendor/three/postprocessing/ShaderPass.js';
 import { makeFX, makeRings, makeWarp, CineShader, SafeShader, VisorShader, rockGeo } from './adv_fx.js';
 import { AUD } from './adv_audio.js';
+import { makeLaunch } from './adv_launch.js';
+import { makeMedia } from './adv_media.js';
 import { makeProminences, makeAurora, makeComet, makeRingField } from './adv_space.js';
 import { OCCS, planetMaterial, atmosphereMaterial, cloudMaterial, ringMaterial, updatePlanetUniforms, sunMaterial, coronaMaterial } from './adv_planet.js';
 // Every model ships as .glb (GitHub Pages / app). The preview host can't serve .glb, so each also exists as embedded glTF (.json).
@@ -175,7 +177,7 @@ const PRESETS = {
   max:    { n: 'Max',    dpr: 2,   msaa: 4, shadow: 4096, grass: 30000, rocks: 1,   tris: 14e6,  tex: 1400, full: 1.25, bloom: .45, seg: 420, fx: 1.5 } };
 const PHONE = matchMedia('(pointer:coarse)').matches;
 let GFX = G('adv_gfx', null); if (!PRESETS[GFX]) GFX = PHONE ? 'medium' : 'high'; const PRE = () => PRESETS[GFX];
-const SET = Object.assign({ cap: 60, scale: 100, fps: 0, voice: 1, newton: 0, orb: 1 }, G('adv_set', {}));
+const SET = Object.assign({ cap: 60, scale: 100, fps: 0, voice: 1, newton: 0, orb: 1, launch: 1, rec: 1 }, G('adv_set', {}));
 // compatibility: older code paths read Q
 let Q = GFX === 'max' ? 'ultra' : 'high'; const QL = { ultra: 'Max', high: 'High' };
 const ST = { on: false, scanned: new Set(G('adv_scan', [])), flags: new Set(G('adv_flags', [])), mi: G('adv_mis2', 0), seen: G('adv_seen', 0) };
@@ -195,6 +197,7 @@ function css() {
 #adv #aSuit b{color:#7df9ff;font-weight:800}#adv #aSuit .w{color:#ffcf4a}#adv #aSuit .d{color:#ff6a5a;animation:blk 1s steps(2) infinite}@keyframes blk{50%{opacity:.35}}
 #adv.helm #aSuit{left:50%;transform:translateX(-50%);bottom:auto;top:calc(86px + env(safe-area-inset-top));background:none;border:0;text-align:center;max-width:none;font-size:11.5px;color:#9ff8ff}
 #adv.cine #aDrv,#adv.cine #aHelm,#adv.cine #aSuit{display:none!important}
+#adv .crd.md .rl{display:grid;gap:10px;margin:10px 0;max-height:46vh;overflow:auto}#adv .crd.md .rc{display:grid;grid-template-columns:minmax(120px,46%) 1fr;gap:10px;align-items:center;background:rgba(255,255,255,.05);border-radius:12px;padding:8px}#adv .crd.md video{width:100%;border-radius:8px;background:#000}#adv .crd.md .rm{display:grid;gap:4px;font-size:12px}#adv .crd.md .rm span{opacity:.7}#adv .crd.md .rm div{display:flex;gap:6px}
 #adv #aMis{cursor:pointer;pointer-events:auto}#adv #aMis .dly{display:block;font-style:normal;margin-top:4px;padding-top:4px;border-top:1px solid rgba(125,249,255,.25);color:#ffcf4a;font-size:11px}
 #adv #aMis b{display:block;font-size:9.5px;letter-spacing:.14em;color:#7df9ff}
 #adv #aSpd{position:absolute;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);font:700 11px var(--disp,system-ui);color:#cfe6ff;background:rgba(10,14,30,.55);padding:4px 10px;border-radius:10px;white-space:nowrap}
@@ -261,7 +264,7 @@ function css() {
 /* ---------------- build the scene ---------------- */
 function build() {
   css(); try { MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1))); } catch (e) {} const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder); // geometry decoding runs on background threads, so loading doesn't stutter
-  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aTro" title="Trophies">🏆</button><button class="ab" id="aCo" title="Co-op: fly with a friend">👥</button><button class="ab" id="aSky" title="Star chart (K)">✨</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aCam" title="Camera (V)">🎥</button><button class="ab" id="aPhoto" title="Photo mode (P)">📷</button><button class="ab" id="aDemo" title="Demo tour">🎬 Demo</button><button class="ab" id="aX">✕ Exit</button></div>
+  const root = document.createElement('div'); root.id = 'adv'; root.innerHTML = `<canvas></canvas><div id="aLoad">🚀 Preparing the solar system…</div><div id="aMis"></div><div id="aTop"><button class="ab" id="aQ"></button><button class="ab" id="aMap">🗺 Map</button><button class="ab" id="aCod">📖 Codex</button><button class="ab" id="aHan">🛠 Hangar</button><button class="ab" id="aTro" title="Trophies">🏆</button><button class="ab" id="aCo" title="Co-op: fly with a friend">👥</button><button class="ab" id="aSky" title="Star chart (K)">✨</button><button class="ab" id="aMed" title="Postcards and replays">🎬</button><button class="ab" id="aDL" title="Download resources">⬇</button><button class="ab" id="aCam" title="Camera (V)">🎥</button><button class="ab" id="aPhoto" title="Photo mode (P)">📷</button><button class="ab" id="aDemo" title="Demo tour">🎬 Demo</button><button class="ab" id="aX">✕ Exit</button></div>
   <div id="labs"></div><div id="aJoy"><div class="k"><i></i></div></div><button class="rbtn" id="aBst">BOOST</button><button class="rbtn" id="aThr">🚀<br>THRUST</button><button class="rbtn" id="aScn">📡<br>SCAN</button><button class="ab" id="aLand"></button><button class="ab" id="aFly"></button><button class="ab" id="aDrv"></button><button class="ab" id="aHelm" title="Helmet view (V)">🪖</button><div id="aSuit"></div><div id="aScan">SCANNING…</div><div id="aSpd"></div><div id="aToast"></div><div id="aLd"></div><div id="aFps"></div><div id="aHud"><div class="atb"><span></span><i></i><i></i><i></i><i></i></div><div class="apg">◎</div><div class="ack"><div class="cp top"></div><div class="cp l"></div><div class="cp r"></div><div class="cp dash"><div class="mfd" id="mfd1"></div><div class="mfd" id="mfd2"></div><div class="mfd" id="mfd3"></div></div><svg viewBox="0 0 200 120"><path d="M70 60h22M108 60h22M100 52v-10M100 68v10" stroke="#7df9ff" stroke-width="2" fill="none"/><circle cx="100" cy="60" r="3" fill="#7df9ff"/></svg></div></div><div id="aPh">📷 PHOTO MODE · tap to exit</div>`;
   document.body.appendChild(root);
   const cv = root.querySelector('canvas'), mob = matchMedia('(pointer:coarse)').matches;
@@ -443,7 +446,7 @@ function controls() {
   const hold = (id, k) => { const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); R[k] = 1; if (k === 'thr') R.ap = null; }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(v => b.addEventListener(v, () => R[k] = 0)); };
   hold('#aThr', 'thr'); hold('#aBst', 'bst');
   $('#aScn').addEventListener('pointerdown', e => { e.preventDefault(); scan(); });
-  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aTro').onclick = () => trophyRoom(); $('#aCo').onclick = () => coPanel(); $('#aDrv').onclick = () => driveToggle(); $('#aHelm').onclick = () => helmToggle(); $('#aSky').onclick = () => skyToggle(); $('#aMis').onclick = () => dailyCard(); apodFetch().then(() => { try { if (R) misUI(); } catch (e) {} }); $('#aCam').onclick = () => camToggle(); $('#aDemo').onclick = () => demoTour(); $('#aPhoto').onclick = () => photoToggle(); $('#aPh').onclick = () => photoToggle(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
+  $('#aX').onclick = () => close(); $('#aMap').onclick = () => mapPanel(); $('#aCod').onclick = () => codex(); $('#aHan').onclick = () => hangar(); $('#aTro').onclick = () => trophyRoom(); $('#aCo').onclick = () => coPanel(); $('#aDrv').onclick = () => driveToggle(); $('#aHelm').onclick = () => helmToggle(); $('#aSky').onclick = () => skyToggle(); $('#aMed').onclick = () => media().panel(); $('#aMis').onclick = () => dailyCard(); apodFetch().then(() => { try { if (R) misUI(); } catch (e) {} }); $('#aCam').onclick = () => camToggle(); $('#aDemo').onclick = () => demoTour(); $('#aPhoto').onclick = () => photoToggle(); $('#aPh').onclick = () => photoToggle(); $('#aDL').onclick = () => { if (isApp) { toast('All resources are built into the app ✓'); return; } ST.on = false; resPanel(() => { ST.on = true; R.last = 0; requestAnimationFrame(loop); }, true); }; $('#aFly').onclick = () => flyToggle();
   // mouse look on desktop
   let drag = null; R.ren.domElement.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
   addEventListener('pointermove', e => { if (!drag || !ST.on || e.pointerId !== drag.id) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
@@ -771,16 +774,16 @@ function viewer(o, cv, panel) {
 }
 /* ---------------- landing, diving, launching ---------------- */
 function nearBody() { let best = null, bd = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = R.bpos[b.id].distanceTo(R.ship.position) - b.r, sc = d; if (d < b.r * 2 + 24 && sc < bd) { bd = sc; best = b; } } return best; }   // whichever surface is actually closest (a moon right next to you beats its giant planet)
-function landOrLaunch() { const S = R.surf.S; if (R.entry) return; if (S.on) { if (S.launch) return; if (S.mode === 'land') { R.root.classList.add('cine'); sfx('liftoff'); say('Main engine start. And lift-off!', 1); R.surf.launch(() => { R.root.classList.remove('cine'); landOrLaunch.done(); }); return; } return landOrLaunch.done(); }
+function landOrLaunch() { const S = R.surf.S; if (R.entry) return; if (S.on) { if (S.launch) return; if (S.mode === 'land') { try { media().start('Lift-off from ' + S.body.n, { title: S.body.n, sub: 'Lift-off', stamp: S.body.n }); } catch (e) {} R.root.classList.add('cine'); sfx('liftoff'); say('Main engine start. And lift-off!', 1); R.surf.launch(() => { R.root.classList.remove('cine'); landOrLaunch.done(); }); return; } return landOrLaunch.done(); }
   landOrLaunch.go(); }
-landOrLaunch.done = function () { const S = R.surf.S; { const b = S.body; R.surf.exit(); surfUI(null); const c = R.bpos[b.id]; R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); R.vel.set(0, 0, 0); toast('🚀 Back in orbit around <b>' + b.n + '</b>'); say('Orbit achieved around ' + b.n + '.'); R.rings.add(R.ship.position, 0xffd27a, 8, .8, R.cam.position); } };
+landOrLaunch.done = function () { const S = R.surf.S; try { media().stop(2200); } catch (e) {} { const b = S.body; R.surf.exit(); surfUI(null); const c = R.bpos[b.id]; R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); R.vel.set(0, 0, 0); toast('🚀 Back in orbit around <b>' + b.n + '</b>'); say('Orbit achieved around ' + b.n + '.'); R.rings.add(R.ship.position, 0xffd27a, 8, .8, R.cam.position); } };
 landOrLaunch.go = function () {
   const b = nearBody(); if (!b) return; const kind = DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null; if (!kind) return; R.ap = null; R.vel.set(0, 0, 0);
   if (kind === 'land' && SITES[b.id] && !R.site) { sitePicker(b); return; }
   const fl = (kind === 'dive' ? 'dive:' : 'land:') + b.id; dailyHit(fl); if (R.site) { const sf = 'site:' + b.id + ':' + R.site.id; if (!ST.flags.has(sf)) { ST.flags.add(sf); save(); reward(3, 30); } } if (!ST.flags.has(fl)) { ST.flags.add(fl); save(); reward(5, 50); setTimeout(checkMissions, 4800); }
   const st = R.site || null; R.site = null; startEntry(b, kind, st); };
 /* ---------------- cinematic atmospheric entry: plasma, shake and heat glow, then touchdown ---------------- */
-function startEntry(b, kind, st) { if (kind === 'dive') trophy('a_dive'); else { trophy('a_land'); if ([...ST.flags].filter(f => f.startsWith('land:')).length >= 5) trophy('a_land5'); } const W = WORLD[b.id], air = kind === 'dive' || !!(W && W.air && W.air !== 'None'), c = R.bpos[b.id].clone(), dir = R.ship.position.clone().sub(c).normalize();
+function startEntry(b, kind, st) { try { media().start((kind === 'dive' ? 'Dive into ' : 'Landing on ') + b.n, { title: b.n, sub: kind === 'dive' ? 'Into the clouds' : 'Atmospheric entry and landing', stamp: b.n }); } catch (e) {} if (kind === 'dive') trophy('a_dive'); else { trophy('a_land'); if ([...ST.flags].filter(f => f.startsWith('land:')).length >= 5) trophy('a_land5'); } const W = WORLD[b.id], air = kind === 'dive' || !!(W && W.air && W.air !== 'None'), c = R.bpos[b.id].clone(), dir = R.ship.position.clone().sub(c).normalize();
   R.entry = { t: 0, T: air ? 3.4 : 2.6, b, kind, st, air, c, dir, r0: Math.max(R.ship.position.distanceTo(c), b.r + 6) }; R.ap = null; R.vel.set(0, 0, 0); R.root.classList.add('cine');
   let ov = R.root.querySelector('#aHeat'); if (!ov) { ov = document.createElement('div'); ov.id = 'aHeat'; R.root.appendChild(ov); } ov.style.opacity = 0;
   toast(air ? `🔥 Entering the atmosphere of <b>${b.n}</b>` : `🛬 Powered descent to <b>${b.n}</b>`, 2200); say(kind === 'dive' ? 'Entering the clouds of ' + b.n + '. Hold on.' : air ? 'Entry interface. Heat shield is taking the load.' : 'Beginning powered descent to ' + b.n + '.', 1); sfx(kind === 'dive' ? 'whoosh' : air ? 'burst' : 'land'); }
@@ -797,7 +800,7 @@ function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || S
   for (const e2 of R.objs) R.placeObj(e2, R.t); updatePlanetUniforms(R.PL, R.bpos.sun, R.t); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
   entryFX(C, heat, k, dt, sz);
   if (C.air && heat > .92 && !C.pk) { C.pk = 1; say('Peak heating.'); }
-  if (k >= 1) { entryFX(C, 0, 1, 0, sz, true); const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
+  if (k >= 1) { entryFX(C, 0, 1, 0, sz, true); try { media().stop(2600); } catch (e) {} const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
 /* ---------------- mission-control voice callouts (speech synthesis behind a radio chirp) ---------------- */
 let VQ = 0; function say(text, prio) { if (!SET.voice || !window.speechSynthesis) return; const now = Date.now(); if (!prio && now < VQ) return; VQ = now + 2500;
   try { const a = typeof ac === 'function' ? ac() : null; if (a && typeof BUS !== 'undefined' && BUS) { const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = 'square'; o.frequency.setValueAtTime(1850, t); o.frequency.setValueAtTime(1400, t + .05); g.gain.setValueAtTime(.025, t); g.gain.exponentialRampToValueAtTime(.0001, t + .11); o.connect(g); g.connect(BUS.sfx || a.destination); o.start(t); o.stop(t + .12); } } catch (e) {}
@@ -979,6 +982,20 @@ function spaceFX(dt) { if (!R.comet) { R.comet = makeComet(R.scn, R.bpos.sun); R
   const ds = R.ship.position.distanceTo(R.bpos.sun) - 60, heat = THREE.MathUtils.clamp(1 - (ds - 25) / 160, 0, 1), ov = R.root.querySelector('#aHeat') || (() => { const d = document.createElement('div'); d.id = 'aHeat'; R.root.appendChild(d); return d; })();
   if (!R.entry && !R.ending) { ov.classList.remove('w'); ov.style.opacity = (heat * heat * .8).toFixed(3); if (heat > .35) R.cam.position.add(tmpV.set((Math.random() - .5), (Math.random() - .5), (Math.random() - .5)).multiplyScalar(heat * .12));
     if (heat > .5 && !R.heatW) { R.heatW = 1; toast('🌡️ Hull temperature rising: 1,370 °C. Parker Solar Probe survives this with a carbon heat shield.', 3500); } if (heat < .2) R.heatW = 0; } }
+/* ---------------- launch from Earth, replays and postcards ---------------- */
+let MEDIA = null;
+function curScene() { return R.launch ? R.launch.scn : R.surf && R.surf.S.on ? R.surf.S.scn : R.scn; }
+function placeInfo() { if (R.launch) return { title: 'Kennedy Space Center', sub: 'Launch Complex 39B · Florida', stamp: 'KSC' };
+  const S = R.surf && R.surf.S; if (S && S.on && S.body) { const W = WORLD[S.body.id] || {}; return { title: S.body.n.replace(/^The /, ''), sub: S.mode === 'dive' ? 'Inside the clouds' : (S.site ? S.site.n : (W.site || 'Surface')), stamp: S.body.n.replace(/^The /, '') }; }
+  let best = null, bd = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = R.bpos[b.id].distanceTo(R.ship.position) - b.r; if (d < bd) { bd = d; best = b; } }
+  if (best && bd < best.r * 5) { const km = realAlt(best, bd + best.r); return { title: best.n.replace(/^The /, ''), sub: 'In orbit' + (km ? ' · ' + fmtKm(km) + ' up' : ''), stamp: best.n.replace(/^The /, '') }; }
+  const au = R.ship.position.distanceTo(R.bpos.sun) / 520; return { title: 'The Solar System', sub: au.toFixed(1) + ' AU from the Sun', stamp: 'Deep space' }; }
+function media() { if (!MEDIA) MEDIA = makeMedia({ canvas: R.ren.domElement, render: () => draw(curScene()), place: placeInfo, toast, sfx, root: R.root, enabled: () => SET.rec !== 0, setEnabled: v => { SET.rec = v ? 1 : 0; P('adv_set', SET); } }); return MEDIA; }
+function launchSeq(done) { if (R.launch) return; R.root.classList.add('cine'); const em = R.bmesh.earth, cl = em.userData.clouds;
+  R.launch = makeLaunch({ cam: R.cam, root: R.root, loader: R.ship.userData.loader, fixMat, say, sfx, env: 1, starTex: () => R.starTex || (STARSPHERE && STARSPHERE.material.uniforms && STARSPHERE.material.uniforms.map.value), earthMap: em.material.uniforms ? em.material.uniforms.map.value : em.material.map,
+    cloudMap: cl && cl.material.uniforms && cl.material.uniforms.useR.value ? cl.material.uniforms.map.value : null, audio: o => { try { AUD.set(o); } catch (e) {} },
+    onDone: () => { R.launch = null; R.root.classList.remove('cine'); R.cam.fov = 60; R.cam.updateProjectionMatrix(); try { media().stop(400); AUD.set({ eng: 0, boost: 0, wind: 0, dt: .1 }); } catch (e) {} trophy('a_launch'); done && done(); } });
+  try { media().start('Launch from Earth', { title: 'Kennedy Space Center', sub: 'Launch Complex 39B · Florida', stamp: 'KSC' }); } catch (e) {} }
 /* ---------------- realism pass 15: how real spacecraft fly, orbit and come home ---------------- */
 const UPRIGHT = { 'shuttle-orbiter': 0, lm: 0 };   // everything else stands on its engines / heat shield when landed
 const CAPSULE = new Set(['orion', 'orion-capsule', 'gemini', 'apollo-soyuz']);
@@ -1040,6 +1057,8 @@ function settings() { const p = document.createElement('div'); p.className = 'pn
   <h4 class="sh">QUALITY PRESET</h4><div class="seg">${Object.entries(PRESETS).map(([k, v]) => opt('g', k, v.n)).join('')}</div>
   <h4 class="sh">FRAME RATE</h4><div class="seg">${[30, 45, 60].map(v => opt('cap', v, v + ' FPS')).join('')}</div>
   <h4 class="sh">RENDER RESOLUTION · <span id="rsV">${SET.scale}%</span></h4><input type="range" id="rs" min="50" max="100" step="5" value="${SET.scale}" style="width:100%">
+  <h4 class="sh">LAUNCH FROM EARTH</h4><div class="seg">${opt('launch', 1, 'Every journey')}${opt('launch', 0, 'Off')}</div>
+  <h4 class="sh">AUTO-RECORD HIGHLIGHTS</h4><div class="seg">${opt('rec', 1, 'On')}${opt('rec', 0, 'Off')}</div>
   <h4 class="sh">FLIGHT PHYSICS</h4><div class="seg">${opt('newton', 0, 'Assisted')}${opt('newton', 1, 'Newtonian (real)')}</div>
   <h4 class="sh">MOVING PLANETS</h4><div class="seg">${opt('orb', 1, 'Orbiting')}${opt('orb', 0, 'Frozen')}</div>
   <h4 class="sh">SHOW FPS COUNTER</h4><div class="seg">${opt('fps', 0, 'Off')}${opt('fps', 1, 'On')}</div>
@@ -1049,12 +1068,13 @@ function settings() { const p = document.createElement('div'); p.className = 'pn
   R.root.appendChild(p); const save2 = () => P('adv_set', SET);
   p.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { setGfx(b.dataset.g); p.remove(); settings(); });
   p.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { SET.cap = +b.dataset.cap; save2(); p.remove(); settings(); });
-  p.querySelectorAll('[data-fps]').forEach(b => b.onclick = () => { SET.fps = +b.dataset.fps; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-newton]').forEach(b => b.onclick = () => { SET.newton = +b.dataset.newton; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-orb]').forEach(b => b.onclick = () => { SET.orb = +b.dataset.orb; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-voice]').forEach(b => b.onclick = () => { SET.voice = +b.dataset.voice; save2(); p.remove(); settings(); if (SET.voice) say('Voice callouts on.', 1); });
+  p.querySelectorAll('[data-fps]').forEach(b => b.onclick = () => { SET.fps = +b.dataset.fps; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-launch]').forEach(b => b.onclick = () => { SET.launch = +b.dataset.launch; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-rec]').forEach(b => b.onclick = () => { SET.rec = +b.dataset.rec; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-newton]').forEach(b => b.onclick = () => { SET.newton = +b.dataset.newton; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-orb]').forEach(b => b.onclick = () => { SET.orb = +b.dataset.orb; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-voice]').forEach(b => b.onclick = () => { SET.voice = +b.dataset.voice; save2(); p.remove(); settings(); if (SET.voice) say('Voice callouts on.', 1); });
   p.querySelector('#rs').oninput = e => { SET.scale = +e.target.value; p.querySelector('#rsV').textContent = SET.scale + '%'; }; p.querySelector('#rs').onchange = () => { save2(); DR.s = 1; R.ren.setPixelRatio(dprCap()); resize(); };
   p.querySelector('#stX').onclick = () => p.remove(); }
 function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last < 1000 / SET.cap - 3) { requestAnimationFrame(loop); return; } const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); fpsUI(dt); R.ren.info.reset(); padAdv(dt); try { coStep(dt); } catch (e) {} R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
   try {   // one bad frame must never freeze the game: report it and keep the loop alive
   if (sf) { if (!pnl) { if (R.surf.S.launch) { R.surf.step(dt, {}); } else surfStep(dt); if (R.surf.S.scn) draw(R.surf.S.scn); } }
+  else if (R.launch) { R.launch.step(dt); if (R.launch) draw(R.launch.scn); }
   else if (R.ending) { stepEnding(dt); draw(R.scn); }
   else if (R.intro) { stepIntro(dt); draw(R.scn); }
   else if (R.entry) { stepEntry(dt); draw(R.scn); }
@@ -1063,7 +1083,7 @@ function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last 
   try { adapt(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
 const MC = 'rdo-models-2', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
-const DLV = 74;
+const DLV = 77;
 function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== DLV; }
 function resPanel(done, fromGame) {
   const o = document.createElement('div'); o.id = 'advDL'; o.innerHTML = `<style>#advDL{position:fixed;inset:0;z-index:99999;background:radial-gradient(ellipse at 50% 30%,#14204a,#02040c 70%);color:#eaf2ff;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -1093,7 +1113,7 @@ function resPanel(done, fromGame) {
     $('#dF').onclick = () => run(full, 'full'); $('#dL').onclick = () => run(light, 'light');
   }).catch(() => { $('#dlT').textContent = 'Resources are built into this version, so no download is needed.'; $('#dlB').innerHTML = '<div class="row" style="margin-top:12px"><button class="pr" id="dGo">🚀 Launch</button></div>'; $('#dGo').onclick = () => { open.skipDL = 1; o.remove(); done && done(); }; });
 }
-function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); if (!open.shown) { open.shown = 1; openingShot(); } else if (!G('adv_seen', 0)) intro(); }
+function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); const after = () => { if (!open.shown) { open.shown = 1; openingShot(); } else if (!G('adv_seen', 0)) intro(); }; if (SET.launch !== 0) launchSeq(after); else after(); }
 function close() { try { AUD.stop(); } catch (e) {} try { coLeave(true); } catch (e) {} ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
 window.ADV = { open, close, goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R, _CO: () => CO, toast: (m) => R && toast(m), trophyToast };
 export { open, close };

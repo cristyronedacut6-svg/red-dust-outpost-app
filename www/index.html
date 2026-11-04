@@ -496,6 +496,7 @@ body.bossOn #bossb{background:linear-gradient(90deg,#8a0f1c,#c3202f)!important}
 <div id="toast" hidden></div><div id="fade"></div>
 </div>
 <script type="importmap">{"imports":{"three":"./js/vendor/three/three.module.min.js"}}</script>
+<script src="js/noemoji.js"></script>
 <script src="config.js"></script>
 <script src="js/net.js"></script>
 <script src="js/coop.js"></script>
@@ -723,7 +724,7 @@ const ACH=[
 {id:'a_land',ic:'🛬',n:'Touchdown',d:'Adventure: land on another world',adv:1},{id:'a_land5',ic:'🌍',n:'World hopper',d:'Adventure: land on 5 different worlds',adv:1},{id:'a_dive',ic:'🌀',n:'Storm chaser',d:'Adventure: dive into a gas giant',adv:1},{id:'a_fly',ic:'✈️',n:'Test pilot',d:'Adventure: fly a NASA aircraft over Earth',adv:1},
 {id:'a_heli',ic:'🚁',n:'Mars helicopter pilot',d:'Adventure: fly Ingenuity on Mars',adv:1},{id:'a_ship',ic:'🛠',n:'New ride',d:'Adventure: unlock a new ship in the Hangar',adv:1},{id:'a_sun',ic:'☀️',n:'Icarus',d:'Adventure: fly close enough to the Sun to feel its heat',adv:1},{id:'a_boots',ic:'👣',n:'One small step',d:'Adventure: leave 100 bootprints on the Moon',adv:1},
 {id:'a_sunset',ic:'🌅',n:'Blue sunset',d:'Adventure: watch the Sun set on Mars',adv:1},{id:'a_cockpit',ic:'🎥',n:'Flight deck',d:'Adventure: fly from the Space Shuttle cockpit',adv:1},{id:'a_photo',ic:'📷',n:'Space photographer',d:'Adventure: use photo mode',adv:1},{id:'a_demo',ic:'🎬',n:'Grand tour',d:'Adventure: watch the full demo tour',adv:1},
-{id:'a_rover',ic:'🚙',n:'Moon buggy',d:'Adventure: drive a rover on the Moon or Mars',adv:1},{id:'a_daily',ic:'🛰',n:'Mission of the day',d:'Adventure: complete a NASA daily mission',adv:1},{id:'a_coop',ic:'👥',n:'Wingmate',d:'Adventure: fly together with a friend',adv:1},{id:'a_signal',ic:'🟣',n:'The Purple Signal',d:'Scan the signal in the asteroid belt',adv:1},{id:'a_door',ic:'🚪',n:'The seventh door',d:'See the true ending of the story',adv:1}];
+{id:'a_launch',ic:'🚀',n:'Lift-off',d:'Adventure: launch from Earth on the SLS',adv:1},{id:'a_rover',ic:'🚙',n:'Moon buggy',d:'Adventure: drive a rover on the Moon or Mars',adv:1},{id:'a_daily',ic:'🛰',n:'Mission of the day',d:'Adventure: complete a NASA daily mission',adv:1},{id:'a_coop',ic:'👥',n:'Wingmate',d:'Adventure: fly together with a friend',adv:1},{id:'a_signal',ic:'🟣',n:'The Purple Signal',d:'Scan the signal in the asteroid belt',adv:1},{id:'a_door',ic:'🚪',n:'The seventh door',d:'See the true ending of the story',adv:1}];
 let ACHS=new Set(LS.get('ach',[])),STAT=LS.get('stat',{calls:0,quiz:0,drive:0});
 function ach(id){if(ACHS.has(id))return;const a=ACH.find(x=>x.id==id);if(!a)return;ACHS.add(id);LS.set('ach',[...ACHS]);LS.set('stat',STAT);const t=$('#toast');if(window.ADV_ON){try{ADV.trophyToast(a)}catch(e){}snd('ach');cosCheck();return}
  t.innerHTML=`<span class="ti">${a.ic}</span><div><span class="lab">Achievement unlocked</span><b>${a.n}</b><small>${a.d}</small></div>`;t.hidden=false;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');clearTimeout(ach.t);ach.t=setTimeout(()=>t.hidden=true,3800);snd('ach');vib([30,40,30]);cosCheck()}

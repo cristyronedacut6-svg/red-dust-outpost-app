@@ -828,3 +828,20 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Plasma glow:** the glowing plasma lights the hull orange from below.
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
+
+## v77 — Launch from Earth, replays and postcards, clean icons
+
+- **Launch from Earth (every journey).** Each trip into Adventure Mode now starts on the pad at Kennedy Space Center, Launch Complex 39B, with NASA's SLS Block 1. The rocket is NASA's 3D model, split into its real stages (two solid boosters, the orange core stage, the upper stage with Orion) so they really separate. It plays like a broadcast, with hard camera cuts:
+  - **Countdown at sunrise:** a wide shot of the pad, the 118 m lattice tower with its crew access arm, venting vapour, and the VAB on the horizon.
+  - **Main engine start:** a low shot as four RS-25 engines light, igniter sparks spray and the steam cloud explodes out of the flame trench.
+  - **Booster ignition and lift-off:** the camera looks straight down the tower as the rocket clears it, shaking with the thrust, the pad lit orange.
+  - **The climb:** a long-lens tracking shot from 2 km away, with the pitch-over toward the Atlantic and Mach diamonds in the exhaust.
+  - **Max-Q:** the white vapour cone forms around the rocket.
+  - **Booster separation:** an onboard view looking back as the boosters fire their separation motors and tumble away.
+  - **Core stage cutoff and separation, then upper-stage ignition:** in vacuum the plumes balloon wide, the sky turns black, stars come out, and the curve of the Earth (the HD pack's 4K Blue Marble with real clouds and a blue limb) fills the view.
+  - **Throughout:** a mission clock, altitude and speed follow the real SLS ascent profile (T+08:29, about 164 km, about 28,000 km/h at orbit). Mission Control calls each event, and the roar fades to silence in vacuum.
+  - **Afterwards:** the opening sunrise over Earth plays and your journey begins. It can be skipped any time, or turned off in Settings. New trophy: *Lift-off*.
+- **Replays.** Launches, every atmospheric entry and landing, and every lift-off are recorded automatically from the game as short video clips (the last five are kept in the session). The new **Media** button (film icon) lets you watch them and Save or Share them (the phone share sheet where available). Auto-record can be switched off in Settings or in the Media panel.
+- **Postcards.** "Take a postcard" frames the current view with a thin inset border, "Greetings from" with the place (the world and landing site, your orbit altitude, or your distance from the Sun), the RED DUST OUTPOST wordmark, the date and a postmark. Save it or share it.
+- **Clean icons instead of emoji.** Every emoji in the interface, in both Story Mode and Adventure Mode, is replaced by one consistent set of line icons where an icon carries meaning (coins, ore, power, map, codex, trophies, camera…), or removed where it was decoration. This covers text drawn on the game canvas too, so the whole game reads as one designed product.
+- **HD pack updated** (downloaded before the journey): the 4K Earth, the SLS stages and the Vehicle Assembly Building.
