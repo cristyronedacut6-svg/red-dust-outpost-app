@@ -420,7 +420,7 @@ body.bossOn #bossb{background:linear-gradient(90deg,#8a0f1c,#c3202f)!important}
 .btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.28)}
 .box{border-radius:16px}
 .big{border-radius:16px}
-.big.adv{background:linear-gradient(180deg,#8ff6ff,#2f8fd8);color:#03101c;box-shadow:0 6px 22px rgba(80,200,255,.4),inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 #1a4f80}
+.big.adv small{display:block;font:600 11px/1.1 var(--disp);letter-spacing:.06em;opacity:.78;margin-top:2px}.big.adv{font-size:22px;padding:10px 28px 9px;animation:advGlow 2.6s ease-in-out infinite}@keyframes advGlow{50%{box-shadow:0 6px 30px rgba(80,200,255,.75),inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 #1a4f80}}@media (prefers-reduced-motion:reduce){.big.adv{animation:none}}.big.adv{background:linear-gradient(180deg,#8ff6ff,#2f8fd8);color:#03101c;box-shadow:0 6px 22px rgba(80,200,255,.4),inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 #1a4f80}
 /* lighter HUD: the world first, numbers second */
 #rkb,#disc{display:none!important}
 #res{background:rgba(34,28,78,.8)!important;border-radius:14px!important;border:1.5px solid rgba(255,255,255,.18)!important}
@@ -803,10 +803,10 @@ function onSol(){const s=S.sol;S.wT=2.6;if(s==SPL)cine({k:'final',dur:2.6,ic:'�
 function wb(t,sub,low){if(S&&S.net==='host')HOOK('wb',t,sub,low);const e=$('#wb');e.innerHTML=t+(sub?`<small>${sub}</small>`:'');e.className=low?'on low':'on';clearTimeout(wb.t);wb.t=setTimeout(()=>e.className='',2300)}
 
 /* ---------- simulation ---------- */
-function tick(){grid();const r=S.res,L=S.L,sf=S.storm>0?(hasT('eds')?Math.max(L.ss,.6):L.ss):1,sun=night()?0:sf*L.sun*S.solMod*(hasT('rosa')?1.25:1);
+function tick(){grid();const r=S.res,L=S.L,sf=S.storm>0?(hasT('eds')?Math.max(L.ss,.6):L.ss):1,sun=night()?0:sf*L.sun*S.solMod*(hasT('rosa')?1.25:1)*(window.SR?SR.sunK():1);
  let gen=1,use=0,cap=100+40*pk('bat'),sh=0,o2=0,fd=0,heal=0,solG=0;
- S.b.forEach(b=>{if(b.nc||b.dis)return;const m=LM[b.lv-1],k=b.bon||1;switch(b.t){case'solar':{const g=2*sun*m*k;gen+=g;solG+=g;break}case'rtg':gen+=3*m;break;case'reactor':gen+=7*m;break;case'battery':cap+=50*m;break;case'shield':sh+=10*m*k*(hasT('shelter')?1.5:1);break;case'o2':use+=1.5;break;case'farm':use+=1;break;case'turret':case'medbay':case'drill':case'habitat':use+=.5;break;case'tesla':use+=1;break}});
- S.solGen=solG;const net=gen-use;r.pw=clamp(r.pw+net,0,cap);S.cap=cap;const on=r.pw>.01;
+ S.b.forEach(b=>{if(b.nc||b.dis)return;const m=LM[b.lv-1],k=b.bon||1;switch(b.t){case'solar':{const g=2*sun*m*k*(1-.6*Math.min(.85,b.dust||0));gen+=g;solG+=g;break}case'rtg':gen+=3*m;break;case'reactor':gen+=7*m;break;case'battery':cap+=50*m;break;case'shield':sh+=10*m*k*(hasT('shelter')?1.5:1);break;case'o2':use+=1.5;break;case'farm':use+=1;break;case'turret':case'medbay':case'drill':case'habitat':use+=.5;break;case'tesla':use+=1;break}});
+ if(window.SR){const hl=SR.heat();use+=hl}S.solGen=solG;const net=gen-use;r.pw=clamp(r.pw+net,0,cap);S.cap=cap;const on=r.pw>.01;
  S.b.forEach(b=>{b.off=!on&&BT[b.t]&&BT[b.t].pw});
  const mm=morM();if(on)S.b.forEach(b=>{if(b.nc||b.dis)return;const m=LM[b.lv-1]*(b.bon||1);if(b.t=='o2')o2+=1.4*m*mm*(hasT('moxie')?1.35:1);if(b.t=='farm')fd+=.6*m*mm*(1+.25*jc('bot'))*(hasT('veggie')?1.3:1);if(b.t=='medbay')heal+=1.5*LM[b.lv-1]});
  const dr=hasT('ws')?.85:1,or=o2-S.crew*.6*(S.mod.o2||1)*dr,fr=fd-S.crew*.3*dr*(S.mod.fd||1);r.o2=clamp(r.o2+or,0,100);r.fd=clamp(r.fd+fr,0,100);S.rate={pw:net,o2:or,fd:fr};
@@ -818,7 +818,7 @@ function tick(){grid();const r=S.res,L=S.L,sf=S.storm>0?(hasT('eds')?Math.max(L.
  if(r.o2<=0){bad=1;hurt(4,'The crew ran out of oxygen.','Oxygen generators need power. When batteries die at night or in a storm, life support stops. Build extra solar panels and keep a power reserve.')}
  if(r.fd<=0){bad=1;hurt(2,'The crew ran out of food.','Food needs farms and power. Build more greenhouses before the crew grows.')}
  if(r.rad>70&&S.shel<=0){bad=1;hurt(3,'Radiation exposure was too high.',L.rt)}
- if(!bad)S.hp=Math.min(100,S.hp+.4);if(on)S.hp=Math.min(100,S.hp+heal+.3*pk('med')+.35*jc('med'));moraleTick();misTick();unconnectedTip();recHist()}
+ if(window.SR)SR.tick(r);if(!bad)S.hp=Math.min(100,S.hp+.4);if(on)S.hp=Math.min(100,S.hp+heal+.3*pk('med')+.35*jc('med'));moraleTick();misTick();unconnectedTip();recHist()}
 function update(dt){if(!(dt>=0))dt=0;if(S.hs>0){S.hs-=dt;return}if(S.smo>0){S.smo-=dt;dt*=.3}if(S.arr){arrStep(dt);return}jumpStep(dt);emoteStep(dt);dodgeStep(dt);bossStatStep(dt);combatFxStep(dt);if(S.cin){cineStep(dt);return}S.b.forEach(b=>{if(b.pop!=null&&b.pop<.6)b.pop+=dt});
  if(S.land>0){if(!S.lsnd){S.lsnd=1;snd('land')}S.land-=dt;fx(dt);if(S.land<=1.05&&!S.landed){S.landed=1;boom(S.lp.x,S.lp.y,26,S.L.bg[4]);boom(S.lp.x,S.lp.y,10,'#ffb347');S.shk=9;snd('thud');vib(60)}if(S.land<=.55&&!S.out){S.out=1;S.p.x=clamp(S.lp.x+14,6,WW-6);sparkle(S.p.x,S.p.y);snd('hiss')}return}
  if(S.winT>0){S.winT-=dt;fx(dt);if(Math.random()<dt*5)firework();if(S.flag)S.flag.h=Math.min(24,S.flag.h+dt*28);if(S.winT<=0)showDone();return}
@@ -954,7 +954,7 @@ function drawP(){const p=S.p,w=Math.floor((S.walk||0)*10)%2,fx=S.face.x<0?-1:1;G
  R('#5a5a66',p.x+(fx>0?3:-8),p.y,6,2);R(WP[S.wp].col,p.x+(fx>0?8:-9),p.y,2,2)}
 
 /* ---------- render ---------- */
-function draw(){if(!S)return;if(window.R3&&!R3.want){const w=!!(CIN3D&&S.cin&&!S.photo&&c3ok());if(w!==R3.tmpOn)R3.tmp(w)}if(window.R3&&R3.on()){camUp();R3.draw();if(R3.on())return}if(cv.width!==W){cv.width=W;cv.height=H}G=X;camUp();const ox=Math.round(CAM.x),oy=Math.round(CAM.y);X.save();if(S.shk>0&&SHK)X.translate(rnd(-1,1)*S.shk*.6,rnd(-1,1)*S.shk*.6);X.save();X.translate(-ox,-oy);X.drawImage(bg,ox,oy,W,H,ox,oy,W,H);drawPOIs();drawRover();
+function draw(){if(!S)return;if(window.R3&&!R3.want){const w=!!(CIN3D&&S.cin&&!S.photo&&c3ok());if(w!==R3.tmpOn)R3.tmp(w)}if(window.R3&&R3.on()){camUp();R3.draw();if(R3.on())return}if(cv.width!==W){cv.width=W;cv.height=H}G=X;camUp();const ox=Math.round(CAM.x),oy=Math.round(CAM.y);X.save();if(S.shk>0&&SHK)X.translate(rnd(-1,1)*S.shk*.6,rnd(-1,1)*S.shk*.6);X.save();X.translate(-ox,-oy);X.drawImage(bg,ox,oy,W,H,ox,oy,W,H);if(typeof drawPrints==='function')drawPrints();drawPOIs();drawRover();
  S.rocks.forEach(r=>{if(r.met){R('rgba(0,0,0,.3)',r.x-5,r.y+3,11,2);R('#2a2420',r.x-5,r.y-3,10,7);R('#4a3c34',r.x-4,r.y-4,7,3);R(Math.floor(TT*4)%2?'#ff9a3d':'#ffcf4a',r.x-1,r.y-1,2,2);R('#ff6a3d',r.x+2,r.y+1,1,1)}else if(r.sup){R('rgba(0,0,0,.3)',r.x-6,r.y+5,13,2);R('#e9eef3',r.x-6,r.y-6,12,11);R('#2a6bd8',r.x-6,r.y-2,12,3);R('#3fbf5a',r.x-1,r.y-2,2,2);R('#c9d2dc',r.x-6,r.y+3,12,2);if(Math.floor(TT*3)%2)R('#fff',r.x-7,r.y-7,2,2)}else if(r.c){R('rgba(0,0,0,.3)',r.x-5,r.y+4,11,2);R('#9a5a10',r.x-5,r.y-5,10,9);R('#ffcf4a',r.x-5,r.y-5,10,2);R('#fff3b0',r.x-1,r.y-4,2,8)}else{R('rgba(0,0,0,.3)',r.x-5,r.y+2,10,2);R('#4d5058',r.x-5,r.y-2,10,5);R('#9aa3ad',r.x-4,r.y-3,6,3);R('#d8e2ea',r.x-3,r.y-3,2,1)}});
  drawSecrets();drawPortals();drawHaz();S.strikes.forEach(drawReticle);if(S.lp&&S.land<=1.05)drawPod(S.lp.x,S.lp.y,0,'land');drawCables();
  S.b.forEach(b=>{if(b.pop!=null&&b.pop<0)return;const pp=b.pop!=null&&b.pop<.4?easeBack(b.pop/.4):1;if(pp!==1){G.save();G.translate(b.x+b.w/2,b.y+b.w);G.scale(pp,pp);G.translate(-(b.x+b.w/2),-(b.y+b.w))}R('rgba(0,0,0,.3)',b.x+2,b.y+b.w-1,b.w,3);if(b.hit>0||b.dis){G.globalAlpha=b.dis?.42:.6}SP[b.t](b.x,b.y,b);G.globalAlpha=1;if(pp!==1)G.restore();
@@ -1046,7 +1046,7 @@ function how(back){show(`<div class="eyebrow">Field manual</div><h2>How to play<
  <div class="box"><h3>CREW</h3><p style="margin:0">Your astronauts walk around the base doing their jobs. Tap 👩‍🚀 at the top to change jobs: Engineers repair, Medics heal, Scientists boost discoveries, Botanists grow food, Pilots speed up the rover and Earth help, and Miners dig more ore. A new astronaut arrives on wave 4 (up to 6). More crew means more air and food needed.</p></div>
  <div class="box"><h3>3D CAMERA</h3><p style="margin:0">In 3D, tap 🎥 to switch the camera: top view, behind your astronaut, or first person (through your astronaut’s eyes). Behind you and in first person, push the joystick up to walk and left or right to turn. Drag the screen to look around. Keyboard: G switches the camera, A and D turn.</p></div>
  <div class="box"><h3>EARTH SUPPORT</h3><p style="margin:0">The 🌍 EARTH button charges over time and when you defeat aliens. Tap it to call help from home: a supply pod, an orbital laser, a robot ally or a shield dome. Keyboard: Z, X, C, V.</p></div>
- <div class="box"><h3>THE BALANCE</h3><p style="margin:0">⚡ Power runs everything. Solar works only in daylight, batteries store it, RTGs make it all the time.<br>💨 Air and 🌽 food come from O2 generators and farms, which both use power.<br>☢ Radiation rises in storms. Shields block it.<br>❤ Crew health drops when air, food or shielding runs out.</p></div>
+ <div class="box"><h3>THE BALANCE</h3><p style="margin:0">⚡ Power runs everything. Solar works only in daylight, batteries store it, RTGs make it all the time.<br>💨 Air and 🌽 food come from O2 generators and farms, which both use power.<br>☢ Radiation rises in storms. Shields block it.<br>❤ Crew health drops when air, food or shielding runs out.</p></div><div class="box"><h3>LIVING ON A REAL WORLD</h3><p style="margin:0">☀ Solar panels make the most when the Sun is high, and little at dawn and dusk.<br>🌡 Each world has its real temperature. In the cold, heaters use power (RTGs give off heat that helps). On Mercury's hot days, radiators do.<br>🟫 Dust settles on solar panels on the Moon, Mars, Mercury and Ceres. Walk up to a panel to brush it clean.<br>📡 Help from Earth waits for the radio signal, which travels at the speed of light: seconds from the Moon, much longer from Jupiter and Saturn.<br>☢ The number under radiation is your crew's total dose. NASA limits a whole career to 600 mSv.<br>📈 Moonquakes, marsquakes and ice quakes shake the base now and then.<br>👣 Footprints last forever on airless worlds, but blow away on Mars and Titan.<br>🔇 Sound is muffled in thin air, and on airless worlds you only hear what your suit carries.</p></div>
  <div class="box"><h3>DECISIONS</h3><p style="margin:0">Mission Control will call with problems. Each answer helps one system and costs another. Read the engineering note after you choose.</p></div>
  <div class="acts"><button class="big" id="bk">Back</button></div>`);$('#bk').onclick=back}
 function pause(){photoClose();if(!S||!S.run||S.over)return;snd('open');show(`<div class="eyebrow">${S.L.n} · Wave ${S.sol}/${SPL}</div><h2>Paused</h2>
@@ -1164,6 +1164,10 @@ document.querySelectorAll('.ci').forEach(b=>b.onclick=()=>callIn(b.dataset.id));
 function trayUp(){document.querySelectorAll('.ci').forEach(b=>{const c=CI.find(x=>x.id==b.dataset.id);b.disabled=!S||S.up<c.c})}
 function callIn(id,who){if(!S||!S.run||S.land>0||S.winT>0)return;if(!who&&S.pz)return;if(S.net==='guest'){$('#tray').hidden=true;HOOK('act',{k:'call',id});snd('comms');return}const c=CI.find(c=>c.id==id);if(S.up<c.c){snd('no');say(`Earth uplink needs ${c.c} 📡. Defeat aliens to charge it faster.`);return}dqAdd('call');
  S.up-=c.c;S.called=1;if(!who)$('#tray').hidden=true;const p=who||S.p;
+ if(window.SR&&S.tu==null&&SR.queueCall(id,who,c)){hudUp();return}
+ callFx(id,p,c)}
+/* what Earth's help does once the signal arrives (immediately on the tutorial) */
+function callFx(id,p,c){
  if(id=='drop')pod('drop',clamp(p.x+rnd(-24,24),16,WW-16),clamp(p.y-26,30,WH-30));
  if(id=='bot')pod('bot',clamp(p.x+28,16,WW-16),clamp(p.y,30,WH-30));
  if(id=='strike'){let best=null,bn=0;S.al.forEach(a=>{const n=S.al.filter(o=>dist(o,a)<45).length;if(n>bn){bn=n;best=a}});const t=best||{x:clamp(p.x+60,30,WW-30),y:p.y};S.strikes.push({x:t.x,y:t.y,t:0});snd('charge')}
@@ -1347,7 +1351,7 @@ function exploreStep(dt){const p=S.p;S.revT=(S.revT||0)-dt;if(S.revT<=0){S.revT=
  S.pois.forEach(q=>{if(!q.found&&Math.hypot(q.x-p.x,q.y-p.y)<34)discover(q)});secretsStep(dt);
  S.devils.forEach(d=>{d.x+=d.vx*dt;d.y+=d.vy*dt;if(d.x<60||d.x>WW-60)d.vx*=-1;if(d.y<60||d.y>WH-60)d.vy*=-1;if(Math.random()<dt*.5){d.vx=rnd(-25,25);d.vy=rnd(-18,18)}
   for(let i=0;i<2;i++){const a=rnd(0,6.283),r=rnd(2,10);S.pt.push({x:d.x+Math.cos(a)*r,y:d.y+Math.sin(a)*r*.5,vx:-Math.sin(a)*40,vy:-25,l:.5,ml:.5,c:pick(['#d98a5a','#b8653a','#e8b08a']),s:2})}
-  S.b.forEach(b=>{if(b.t=='solar'&&!b.cln&&Math.hypot(b.x+8-d.x,b.y+8-d.y)<24){b.cln=1;S.solMod=Math.min(1.6,S.solMod+.04);ftxt(b.x+8,b.y-4,'Panel cleaned! ☀️','#9fe8ff');tip('dd','A dust devil just blew the dust off a solar panel! The Spirit and Opportunity rovers got extra years of power from lucky gusts like this.')}})});
+  S.b.forEach(b=>{if(b.t=='solar'&&!b.cln&&Math.hypot(b.x+8-d.x,b.y+8-d.y)<24){b.cln=1;b.dust=0;S.solMod=Math.min(1.6,S.solMod+.04);ftxt(b.x+8,b.y-4,'Panel cleaned! ☀️','#9fe8ff');tip('dd','A dust devil just blew the dust off a solar panel! The Spirit and Opportunity rovers got extra years of power from lucky gusts like this.')}})});
  const pl=S.pois.find(q=>q.spr=='plume');if(pl&&Math.random()<.8)S.pt.push({x:pl.x+rnd(-2,2),y:pl.y-4,vx:rnd(-6,6),vy:rnd(-75,-40),l:rnd(.6,1.1),ml:1.1,c:pick(['#e8f6ff','#bfe4ff','#ffffff']),s:2})}
 function discover(q){q.found=1;S.disc++;addRP(2);addXP(20);dqAdd('disc');let rw='';if(q.rw!='rad')q.amt=Math.round(q.amt*(1+.5*jc('sci')));
  switch(q.rw){case'cr':S.cr+=q.amt;rw=`+${q.amt} 💰`;break;case'o2':S.res.o2=clamp(S.res.o2+q.amt,0,100);rw=`+${q.amt} 💨 air`;break;case'ore':S.mats+=q.amt;rw=`+${q.amt} 🪨`;break;case'up':S.up=Math.min(100,S.up+q.amt);rw=`+${q.amt} 📡 Earth uplink`;break;case'rad':S.radB+=q.amt;rw=`radiation −${q.amt} for the rest of this world`;break;case'pw':S.res.pw=Math.min(S.cap,S.res.pw+q.amt);rw=`+${q.amt} ⚡`;break}
@@ -2713,7 +2717,7 @@ function titleNew(has,L){const n=secOpen()?7:6,st=STARS[TW]||0,corr=CORR();
  <div class="worlds2" role="group" aria-label="Pick a world">${ws}</div>
  <div class="tsel"><div class="tsh"><b>${L.n}</b><span class="tpl">${L.pl}</span><span class="stars">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span></div><p>${L.brief}</p></div>
  ${!secOpen()&&mx>=5?'<p class="sub" style="font-size:13px;margin:2px 0">📡 Mission Control picked up a strange signal… Get 3 stars on all six worlds to find where it comes from.</p>':''}
- <div class="acts tplay"><button class="big" id="play">${has?'▶ Continue on '+L.n:'▶ Start on '+L.n}</button><button class="big adv" id="advB">🚀 Adventure</button><div class="seg" role="group" aria-label="Difficulty">${[['Easy',.75],['Normal',1],['Hard',1.3]].map(d=>`<button data-d="${d[1]}" class="${DF==d[1]?'on':''}">${d[0]}</button>`).join('')}</div><div class="seg" id="vseg" role="group" aria-label="View">${['2D','3D','HD ✨','Real 🎬'].map((t,i)=>`<button data-v="${i}" class="${viewMode()===i?'on':''}">${t}</button>`).join('')}</div></div>
+ <div class="acts tplay"><button class="big" id="play">${has?'▶ Continue on '+L.n:'▶ Start on '+L.n}</button><button class="big adv" id="advB">🚀 Adventure<small>Fly the real solar system</small></button><div class="seg" role="group" aria-label="Difficulty">${[['Easy',.75],['Normal',1],['Hard',1.3]].map(d=>`<button data-d="${d[1]}" class="${DF==d[1]?'on':''}">${d[0]}</button>`).join('')}</div><div class="seg" id="vseg" role="group" aria-label="View">${['2D','3D','HD ✨','Real 🎬'].map((t,i)=>`<button data-v="${i}" class="${viewMode()===i?'on':''}">${t}</button>`).join('')}</div></div>
  ${TW===6?'<div class="acts"><button class="btn okb" id="fbB">⏩ Final battle</button><button class="btn okb" id="gbB">🌀 Gate battle (the very end)</button><button class="btn" id="weB">🎬 Watch the twist</button><p class="sub" style="font-size:13px;width:100%;margin:2px 0 0">💜 Bosses spared: '+SPN()+'/6. Spare all six bosses in the campaign for the true ending.</p></div>':''}
  <div class="acts tq"><button class="btn okb" id="dmoB">🎬 Showcase demo (4–5 min)</button><button class="btn" id="bfB">⚔️ Boss fight</button><button class="btn" id="qCoop">🤝 Co-op</button><button class="btn" id="qDaily">📅 Daily</button><button class="btn" id="moreB" aria-expanded="${TMORE?'true':'false'}">${TMORE?'✕ Less':'☰ More'}</button></div>
  <div id="tmore"${TMORE?'':' hidden'}>
@@ -3474,7 +3478,7 @@ let SQ_SEL=0;
 
 /* ---------- v50: Adventure Mode entry (loads three.js + NASA models only when opened) ---------- */
 window.LS=LS;
-function advOpen(){if(window.ADV){ADV.open();return}const b=$('#advB');if(b)b.textContent='🚀 Loading…';import('./js/adventure.js').then(()=>{if(b)b.textContent='🚀 Adventure';ADV.open()}).catch(e=>{console.warn('adventure',e);if(b)b.textContent='🚀 Adventure';say&&0;if(b)b.textContent='🚀 Adventure (could not load)'})}
+function advOpen(){if(window.ADV){ADV.open();return}const b=$('#advB');if(b)b.innerHTML='🚀 Loading…<small>NASA models and maps</small>';import('./js/adventure.js').then(()=>{if(b)b.innerHTML='🚀 Adventure<small>Fly the real solar system</small>';ADV.open()}).catch(e=>{console.warn('adventure',e);if(b)b.innerHTML='🚀 Adventure<small>Fly the real solar system</small>';say&&0;if(b)b.textContent='🚀 Adventure (could not load)'})}
 document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('#advB');if(t){e.preventDefault();ac();advOpen()}},true);
 
 const TRG=$('#tring');
@@ -3485,7 +3489,7 @@ function frame(t){if(window.ADV_ON){last=t;requestAnimationFrame(frame);return}c
  if(MODE==='game'){if(S&&S.run&&!S.pz){if(S.net==='guest')HOOK('guestUpdate',dt);else update(dt)}HOOK('frame',dt);draw();bcardStep(dt);hudT-=dt;if(hudT<=0){hudT=.15;hudUp()}}else if(MODE==='cut'){cutStep(dt);drawCut()}else drawSpace();
  requestAnimationFrame(frame)}
 mkIcons();P=(CP&&CP.lv===TW)?CP:newP(Math.min(TW,mx));TW=P.lv;fit();init();fit();splash();requestAnimationFrame(frame);
-</script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
+</script><script src="js/story_real.js"></script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
 <div class="mi-moon"><svg viewBox="0 0 900 420"><defs><mask id="mnM"><rect x="0" y="0" width="900" height="420" fill="#fff"/><circle cx="270" cy="200" r="103" fill="#000"/></mask></defs>
 <g class="mn-cres"><circle cx="232" cy="214" r="122" fill="#fff" mask="url(#mnM)"/></g>
 <path class="mn-trail" d="M178 243 Q262 222 322 186" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="round"/>

@@ -829,6 +829,40 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v82 — Story mode realism update
+
+Story mode now runs on real numbers from NASA missions, in every view (2D, 3D, HD and Real).
+
+1. **The Sun really moves:** solar output follows the Sun's height, so panels are weak at dawn and dusk and strongest at noon.
+2. **Real sun shadows** in the HD and Real views. Every building, rover, astronaut and alien casts a shadow from the moving Sun: long at dawn, short at noon.
+3. **Temperature and heaters:**
+   - Each world has its real temperature range: the Moon −173 to +121 °C, Mercury up to 427 °C, Europa about −160 °C.
+   - In the cold, the habitat, farm, medbay and life support need heater power. RTGs and reactors give off heat that offsets this, as Curiosity's RTG does.
+   - On Mercury's hot days, radiators need power instead.
+   - Martian dust storms warm the nights and cool the days.
+   - A new temperature chip on the HUD shows the reading.
+4. **Dust on solar panels** on the Moon, Mars, Mercury and Ceres. Panels slowly turn the colour of the ground and lose power, faster in Martian dust storms. Walk up to a panel to brush it clean; dust devils still clean them, and the Dust Shield research slows the build-up.
+5. **Light-speed delay:** help from Earth waits for the radio signal. That is 2.6 s for the Moon's real round trip, and scaled delays for Mars, Mercury, Ceres, Europa and Titan.
+6. **Radiation dose:** the crew's total dose is shown in millisieverts. It is compared with NASA's 600 mSv career limit and listed on the end-of-world report.
+7. **Real skies:**
+   - Earth hangs low over the lunar south pole (where Artemis will land) and goes through phases.
+   - Jupiter fills 12° of Europa's sky, with its bands and Great Red Spot, and Io sits nearby.
+   - On Mars, Phobos crosses the sky backwards (west to east) and Deimos barely moves.
+   - The Sun has its real relative size on each world, from 2.6× on Mercury to tiny on Titan.
+   - Earthshine lights lunar nights, and Jupitershine lights Europa.
+8. **Quakes**, with real seismometer facts:
+   - Moonquakes ring for a long time, as Apollo recorded.
+   - Marsquakes follow InSight's record, including the M4.7 quake of May 2022.
+   - Mercury quakes come from the planet shrinking.
+   - Ice quakes on Europa and tidal quakes on Titan.
+   - The ground shakes, and nearby modules take light damage.
+9. **Footprints and rover tracks** stay forever on airless worlds, like Apollo's boot prints, and blow away on Mars and Titan.
+10. **Sound through the air:** on Mars sound is muffled and about 20 dB quieter, as Perseverance's microphones heard it. On airless worlds you only hear what your suit carries, and Titan's thick air is louder.
+
+**Also:**
+- Adventure is a bigger, glowing hero button on the title screen.
+- How to play has a new "Living on a real world" box.
+
 ## v80 — Phone layout
 
 - Top bar: small icon buttons in one row at the top-right edge, with no text labels on phones. In portrait, the extra tools (graphics, hangar, trophies, co-op, star chart, media, downloads, camera, demo) fold into a menu button.
