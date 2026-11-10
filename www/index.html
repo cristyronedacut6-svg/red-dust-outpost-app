@@ -830,7 +830,7 @@ function update(dt){if(!(dt>=0))dt=0;if(S.hs>0){S.hs-=dt;return}if(S.smo>0){S.sm
  if(sol>SPL){if(S.al.some(a=>a.boss)){S.t=SPL*DAY-.001;sol=SPL;if(!S.nag){S.nag=1;say('Defeat the boss to secure the outpost!')}}else{levelDone();return}}
  if(sol!==S.sol){S.sol=sol;onSol()}
  const p=S.p,k=keys;let dx=(k.d||k.arrowright?1:0)-(k.a||k.arrowleft?1:0)+S.jx,dy=(k.s||k.arrowdown?1:0)-(k.w||k.arrowup?1:0)+S.jy;if(window.R3){[dx,dy]=R3.rot(dx,dy,dt);if(R3.fpl()){const f=R3.fwd();S.face={x:f[0],y:f[1]}}}const l=Math.hypot(dx,dy);
- if(l>.12){const sp=78*(1+.15*S.spd)*(S.drive?(2.1+.3*jc('pil'))*(hasT('autonav')?1.4:1):1)*(S.slow>0?.55:1)*(S.carry&&!S.drive?.8:1)*(S.L.lowg&&!S.drive?1.15:1)*Math.min(1,l)*dt;if(S.L.lowg&&!S.drive){const pv=S.pv=S.pv||{x:0,y:0},kk=Math.min(1,dt*3);pv.x+=(dx/l*sp/dt-pv.x)*kk;pv.y+=(dy/l*sp/dt-pv.y)*kk}else{const mv=S.mv=S.mv||{x:0,y:0},kk=Math.min(1,dt*16);mv.x+=(dx/l*sp/dt-mv.x)*kk;mv.y+=(dy/l*sp/dt-mv.y)*kk}S.face={x:dx/l,y:dy/l};S.walk=(S.walk||0)+dt;S.dustT-=dt;if(S.dustT<=0){S.dustT=.13;if(!S.drive&&(S.stp=!S.stp))snd('step');S.pt.push({x:p.x+rnd(-2,2),y:p.y+6,vx:rnd(-10,10),vy:rnd(-8,-2),l:.35,ml:.35,c:S.L.bg[4],s:2})}}
+ if(l>.12){const sp=(S.drive?78:56)*(1+(S.drive?.15:.1)*S.spd)*(S.drive?(2.1+.3*jc('pil'))*(hasT('autonav')?1.4:1):1)*(S.slow>0?.55:1)*(S.carry&&!S.drive?.8:1)*(S.L.lowg&&!S.drive?1.15:1)*Math.min(1,l)*dt;if(S.L.lowg&&!S.drive){const pv=S.pv=S.pv||{x:0,y:0},kk=Math.min(1,dt*3);pv.x+=(dx/l*sp/dt-pv.x)*kk;pv.y+=(dy/l*sp/dt-pv.y)*kk}else{const mv=S.mv=S.mv||{x:0,y:0},kk=Math.min(1,dt*16);mv.x+=(dx/l*sp/dt-mv.x)*kk;mv.y+=(dy/l*sp/dt-mv.y)*kk}S.face={x:dx/l,y:dy/l};S.walk=(S.walk||0)+dt;S.dustT-=dt;if(S.dustT<=0){S.dustT=.13;if(!S.drive&&(S.stp=!S.stp))snd('step');S.pt.push({x:p.x+rnd(-2,2),y:p.y+6,vx:rnd(-10,10),vy:rnd(-8,-2),l:.35,ml:.35,c:S.L.bg[4],s:2})}}
  if(!(S.L.lowg&&!S.drive)&&S.mv){if(!(Math.hypot(dx,dy)>.12)){const d_=Math.pow(.0004,dt);S.mv.x*=d_;S.mv.y*=d_}p.x=clamp(p.x+S.mv.x*dt,6,WW-6);p.y=clamp(p.y+S.mv.y*dt,8,WH-6)}
  if(S.L.lowg&&!S.drive&&S.pv){if(!(Math.hypot(dx,dy)>.12)){S.pv.x*=Math.pow(.3,dt);S.pv.y*=Math.pow(.3,dt)}p.x=clamp(p.x+S.pv.x*dt,6,WW-6);p.y=clamp(p.y+S.pv.y*dt,8,WH-6)}
  gibStep(dt);v22Step(dt);v23Step(dt);exploreStep(dt);npcStep(dt);expStep(dt);if(!S.scen)emStep(dt);scnStep(dt);if(S.net==='host')HOOK('hostUpdate',dt);
@@ -1096,7 +1096,7 @@ const SHOP=[
 {n:'💱 Sell 10 ore',d:'Get 12 credits for 10 ore',p:()=>0,ok:()=>S.mats>=10,f:()=>{S.mats-=10;S.cr+=12}},
 {n:'🎯 Weapon damage',d:()=>`Level ${S.lvl+1} → ${S.lvl+2}`,p:()=>40+S.lvl*30,max:()=>S.lvl>=3,f:()=>{S.lvl++}},
 {n:'⏱ Fire rate',d:()=>`Level ${S.fr+1} → ${S.fr+2}`,p:()=>50+S.fr*40,max:()=>S.fr>=3,f:()=>{S.fr++}},
-{n:'🥾 Speed boots',d:'Walk 15% faster',p:()=>45+S.spd*40,max:()=>S.spd>=2,f:()=>{S.spd++}},
+{n:'🥾 Speed boots',d:'Walk 10% faster',p:()=>45+S.spd*40,max:()=>S.spd>=2,f:()=>{S.spd++}},
 {n:'💥 Scatter gun',d:'Fires 3 shots at once',p:()=>60,max:()=>S.wo[1],f:()=>{S.wo[1]=1;S.wp=1}},
 {n:'🟦 Plasma rifle',d:'Big shots that pierce through aliens',p:()=>120,max:()=>S.wo[2],f:()=>{S.wo[2]=1;S.wp=2}},
 {n:'🛸 Defense drone',d:'Follows you and shoots aliens',p:()=>150,max:()=>S.drone,f:()=>{S.drone=1}}];
