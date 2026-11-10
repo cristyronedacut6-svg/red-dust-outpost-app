@@ -829,6 +829,30 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v88 — A connected, safer, translated game (unreleased, on the dev branch)
+The first stage of the full-game roadmap: make the systems work together, protect player data, and finish the v85–v87 work properly.
+- **Save safety:**
+  - Saves now have a version number. Older saves are kept exactly as they were, and a backup is taken first.
+  - Automatic backups are taken at launch, on the title screen, after each world and every 2 minutes of play.
+  - A damaged value is recovered from the backup instead of being lost.
+  - Settings → Gameplay has **Back up now, Restore last backup, Export save file, Import save file**.
+- **Translations:** 204 new translated lines and 27 patterns cover the v85–v88 interface in all 12 languages: main menu, planet cards, settings tabs and explanations, the status panel, build details, Mission Control, scanning and the base interior. The science texts follow the existing rule: Filipino and Spanish.
+- **Cause and effect:** the outpost status panel now explains *why* each number is moving and what to do. For example: "Power is falling because it is night, so the solar panels make nothing. At this rate the batteries last about 40 s. Build a battery or an RTG, or switch off a module you do not need tonight."
+- **A living crew:**
+  - Mission Control's Crew tab shows what each person is doing right now, from the live game state: repairing a damaged module, treating the crew, tending crops, running the drill.
+  - Inside the outpost, crew members work in the room that matches their job.
+  - The interior reflects the base. Rooms go dark with red emergency lights when power runs out. Greenhouse plants shrink and yellow when food is falling. A patient lies in the medbay when the crew is hurt.
+- **Two modes, one mission:**
+  - A new **Journal** tab in Mission Control turns Adventure mode discoveries into Story research. Scan a world (or its rovers and spacecraft) in Adventure mode, and its Story outpost gets a one-time +3 research insight.
+  - Neither mode is required for the other.
+- **Living outpost visuals (HD/Real):** pressurised walkway tubes with windows (lit at night) and orange utility pipes now connect the core to the habitat, oxygen, farm and medbay modules.
+- **Mission report:** the world result screen shows science sites scanned, modules built, crew and decisions made.
+- **New achievements:** First sample, Full survey, Planetary scientist (all 36), Two worlds one mission, Home sweet dome.
+- **Quality:**
+  - `npm test` (tests/run.mjs) runs 328 automated checks: every script parses, the offline cache lists every script, every translation row has 12 languages, the science data matches SCIENCE.md, and save migration and recovery work.
+  - The Android build workflow now runs these checks first.
+  - The third-party asset list is in [ASSETS.md](ASSETS.md).
+
 ## v87 — Mission Control, science scanning, walking inside, and grounded astronaut moves (unreleased, on the dev branch)
 - **Mission Control hub** (title menu, pause menu, status panel, or key **N**). Five tabs:
   - **Objectives:** live goals, discovery sites, expeditions and today's quests.

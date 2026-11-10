@@ -11,7 +11,7 @@
   'use strict';
   if (typeof show !== 'function') return;
   const $q = s => document.querySelector(s), esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const VER = 'v86';
+  const VER = 'v88';
   /* ---------- one icon system: simple 24px outline icons, 1.8px strokes ---------- */
   const IP = {
     bolt: 'M13 2 4 14h7l-1 8 9-12h-7z', wind: 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h8', leaf: 'M5 21c0-9 5-15 15-16-1 10-7 15-15 16zM5 21l7-8',
@@ -44,7 +44,7 @@
     return `<div class="u-pc"><div class="u-pcv"><span class="u-sph" style="${plCss(i)}"></span></div><div class="u-pcb">
       <div class="u-pch"><b>${esc(L.n)}</b><span>${esc(w.type)}</span><span class="u-st" aria-label="${st} of 3 stars">${'★'.repeat(st)}<i>${'★'.repeat(3 - st)}</i></span></div>
       <div class="u-grid"><div><small>Gravity</small><b>${w.g}</b><span>${w.gk}</span></div><div><small>Temperature</small><b>${w.t}</b></div><div><small>Day length</small><b>${w.d}</b></div><div class="u-wide"><small>Atmosphere</small><b>${w.a}</b></div></div>
-      <details class="u-mis"><summary>${ic('flag', 14)} Missions on ${esc(L.n)} · <span>${esc(stat)}</span></summary><ul>${mis}</ul></details></div></div>`;
+      <details class="u-mis"><summary>${ic('flag', 14)}<span>Missions on ${esc(L.n)}</span> · <span>${esc(stat)}</span></summary><ul>${mis}</ul></details></div></div>`;
   }
   function credits(back) {
     show(`<div class="eyebrow">Credits</div><h2>Red Dust Outpost</h2><p class="sub">A game by <b>Moon Productions</b>.</p>
@@ -132,14 +132,15 @@
     const cnt = {}; S.b.forEach(b => { if (!(b.pop != null && b.pop < 0)) cnt[b.t] = (cnt[b.t] || 0) + 1; });
     const cats = UCATS.map(([ck, nm, , list]) => { const n = list.reduce((s, k) => s + (cnt[k] || 0), 0); return n ? `<span>${nm} <b>${n}</b></span>` : ''; }).join('');
     let tmp = ''; try { if (window.SR && SR.temp) { const t = SR.temp(); tmp = Math.round(typeof t === 'number' ? t : t.c != null ? t.c : t) + ' °C'; } } catch (e) { tmp = ''; }
-    const dose = S.dose != null ? `${S.dose.toFixed(1)} mSv so far` : '';
-    return `<div class="u-ph"><b>${ic('home', 15)} ${esc(S.L.n)} outpost</b><span>Wave ${Math.min(S.sol, SPL)} of ${SPL} · ${night() ? 'night' : 'day'}</span><button class="u-x" id="u-stX" aria-label="Close status">${ic('x', 16)}</button></div>
+    const dose = S.dose != null ? `${S.dose.toFixed(1)} mSv` : '';
+    return `<div class="u-ph"><b>${ic('home', 15)}<span>${esc(S.L.n)} outpost</span></b><span><span>Wave ${Math.min(S.sol, SPL)} of ${SPL}</span> · <span>${night() ? 'Night' : 'Day'}</span></span><button class="u-x" id="u-stX" aria-label="Close status">${ic('x', 16)}</button></div>
       <div class="u-sec">Life support</div>
       ${statRow('bolt', 'Power', `${Math.round(r.pw)} / ${S.cap || 0}`, rt.pw, CT.pw || '')}
       ${statRow('wind', 'Air', `${Math.round(r.o2)}%`, rt.o2, CT.o2 || '')}
       ${statRow('leaf', 'Food', `${Math.round(r.fd)}%`, rt.fd, CT.fd || '')}
-      ${statRow('rad', 'Radiation', `${Math.round(r.rad)}`, null, (CT.rad || '') + (dose ? ' Crew dose: ' + dose + '.' : ''))}
+      ${statRow('rad', 'Radiation', `${Math.round(r.rad)}`, null, esc(CT.rad || '') + (dose ? ` <span>Crew dose so far</span>: <b>${dose}</b>` : ''))}
       ${statRow('heart', 'Crew health', `${Math.round(S.hp)}`, null, CT.hp || '')}
+      ${window.WHY88 ? WHY88() : ''}
       <div class="u-sec">Base</div><div class="u-tags">${cats || '<span>No modules yet</span>'}<span>Crew <b>${S.crew}</b> / ${typeof crewCap === 'function' ? crewCap() : '?'} beds</span><span>Ore <b>${S.mats}</b></span><span>Coins <b>${S.cr}</b></span>${S.solGen != null ? `<span>Solar now <b>${S.solGen.toFixed(1)}/s</b></span>` : ''}</div>
       ${w ? `<div class="u-sec">Environment</div><div class="u-tags">${tmp ? `<span>${ic('thermo', 13)} <b>${tmp}</b></span>` : ''}<span>Gravity <b>${w.gk}</b></span><span>Day <b>${w.d}</b></span><span>Air <b>${esc(w.a)}</b></span></div>` : ''}
       <div class="u-pa"><button class="btn" id="u-go">${ic('flag', 14)} Goals</button>${researchOpen() ? `<button class="btn" id="u-rs">${ic('flask', 14)} Research</button>` : ''}<button class="btn" id="u-sq">${ic('users', 14)} Squad</button><button class="btn" id="u-fg">${ic('book', 14)} Field guide</button></div>`;
@@ -200,7 +201,7 @@
     let p = $q('#u-bdet'); if (!p) { p = document.createElement('div'); p.id = 'u-bdet'; p.className = 'ui'; p.setAttribute('aria-live', 'polite'); $q('#stage').appendChild(p); }
     const tx = typeof tx_ === 'function' ? tx_ : (x => x);
     p.innerHTML = `<div class="u-bh"><img src="${ICON[k]}" alt=""><div><small>${cat ? cat[1] : 'Building'}</small><b>${esc(b.n)}</b></div><span class="u-av ${avc}">${av}</span></div>
-      <p>${esc(tx(b.info))}</p><div class="u-bs"><span><small>Cost</small><b>${costOf(k)} ore${b.cr ? ' + ' + b.cr + ' coins' : ''}</b></span><span><small>Level 1</small><b>${esc(tx(b.eff(LM[0])))}</b></span>${f.use ? `<span><small>Uses</small><b>${esc(strip(tx(f.use)))}</b></span>` : ''}</div>${up ? `<p class="u-up">${ic('star', 12)} Upgrade a built one: ${esc(tx(up))}</p>` : ''}`;
+      <p>${esc(tx(b.info))}</p><div class="u-bs"><span><small>Cost</small><b>${costOf(k)} <span>ore</span>${b.cr ? ' + ' + b.cr + ' <span>coins</span>' : ''}</b></span><span><small>Level 1</small><b>${esc(tx(b.eff(LM[0])))}</b></span>${f.use ? `<span><small>Uses</small><b>${esc(strip(tx(f.use)))}</b></span>` : ''}</div>${up ? `<p class="u-up">${ic('star', 12)} Upgrade a built one: ${esc(tx(up))}</p>` : ''}`;
     p.classList.add('on'); clearTimeout(dT); if (sticky) detailHide(6500);
   }
   function detailHide(ms) { clearTimeout(dT); dT = setTimeout(() => { const p = $q('#u-bdet'); if (p) p.classList.remove('on'); }, ms || 0); }

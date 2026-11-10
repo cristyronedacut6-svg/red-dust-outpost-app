@@ -172,7 +172,7 @@
     const k = norm(core), row = MAP.get(k);
     if (row) return lead + row[li] + m[3];
     if (window.I18N_FACTS) { const f = I18N_FACTS.get(core, LANG); if (f) return lead + f + m[3]; }
-    for (const [re, out] of PT) { const mm = k.match(re); if (mm) return lead + out[li - 1].replace(/\$(\d)/g, (_, d) => mm[+d]) + m[3]; }
+    for (const [re, out] of PT) { const mm = k.match(re); if (mm) return lead + out[li - 1].replace(/\$(\d)/g, (_, d) => { const r2 = MAP.get(norm(mm[+d] || '')); return r2 ? r2[li] : mm[+d]; }) + m[3]; }
     return null;
   }
   const ORIG = new WeakMap(); let busy = false;
@@ -190,5 +190,8 @@
     if (!l) { const n = (navigator.language || 'en').toLowerCase(); l = n.startsWith('tl') || n.startsWith('fil') ? 'fil' : n.startsWith('ceb') ? 'ceb' : (LANGS.find(x => n.startsWith(x[0])) || ['en'])[0]; }
     obs.observe(document.body, { childList: true, subtree: true, characterData: true }); if (l !== 'en') set(l); else LANG = 'en';
   }
-  window.I18N = { LANGS, set, tr, cur: () => LANG, start };
+  // later files (i18n_ui.js) add rows: [English, fil, ceb, es, fr, pt, de, id, ja, zh, ko, hi] and patterns [regex, [11 outputs]]
+  function add(rows, pats) { (rows || []).forEach(r => { if (r && r.length === LANGS.length) MAP.set(norm(r[0]), r); }); (pats || []).forEach(p => PT.push(p)); if (LANG !== 'en' && document.body) { busy = true; try { walk(document.body); } finally { busy = false; } } }
+  function missing(lang) { const li = IDX[lang]; const out = []; MAP.forEach((r, k) => { if (!r[li] || !String(r[li]).trim()) out.push(k); }); return out; }
+  window.I18N = { LANGS, set, tr, cur: () => LANG, start, add, missing, size: () => MAP.size };
 })();

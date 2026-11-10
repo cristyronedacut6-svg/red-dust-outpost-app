@@ -67,3 +67,48 @@ All three text fixes were also made in the Filipino and Spanish translations.
 2. Split `index.html` into modules.
 3. Add a WebGL context-restore path for the Story renderer.
 4. Add new worlds (Enceladus, Ganymede, Vesta) only after the judging.
+
+---
+
+# v88 audit (10 November 2026): feature status for the full-game roadmap
+
+Branch `dev-v84`, starting from commit `bf5c74d` (v87). The public website and Android build are still **v83**. This was checked: `main` has no v85+ commits, and the latest release is build-33.
+
+## How each feature was checked
+
+| Feature | Status | Where | How it was checked |
+|---|---|---|---|
+| Redesigned main menu, planet cards | Implemented | `js/ui86.js` `titleUI`, `pcard` | Headless browser, three screen sizes; functional test (22 checks) |
+| Objective line, status panel | Implemented | `ui86.js` `hudUI`, `statHTML` | Browser test |
+| Cause-and-effect explanations | **New in v88** | `js/play88.js` `why` | Browser test (status panel shows "Why it is changing") |
+| Build categories, detail card | Implemented | `ui86.js` `catBar`, `detail` | Browser test: filter, select, place, number keys |
+| Settings tabs | Implemented | `ui86.js` `settingsUI` | Browser test: tabs, toggle persists, sliders |
+| Mission Control (6 tabs, with the new Journal) | Implemented | `js/features87.js` `hub` | Browser test, all tabs |
+| 36 scans | Implemented | `features87.js` `SCI`, `scanStep` | Browser test (2D and Real); data test (6×6, unique, text) |
+| Base interior | Implemented, made live in v88 | `features87.js` `enter`, `intFrame` | Browser test: enter, walk through rooms, leave |
+| Astronaut animations | Implemented (HD/Real Story) | `js/render3d.js` pose block | Screenshot (kneel); not checked frame by frame |
+| Cross-mode research insight | **New in v88** | `features87.js` `LINK`, `claim` | Browser test: claim gives +3 research once, achievement unlocked |
+| Save version, backup, recovery | **New in v88** | `index.html` `LS`, `js/save88.js` | Automated test (fake storage) and browser test |
+| Translations of v85–v88 labels | **New in v88** | `js/i18n_ui.js`, plus rows in `save88.js` / `play88.js` | Automated: all 12 languages per row. Browser: German and Japanese screens |
+| High contrast, one-handed modes | Implemented (v84) | `index.html` `body.hc`, `story_real.js` auto-fire | Earlier tests; unchanged |
+| Android build | **Not checked in v88** | `.github/workflows/build.yml` | Builds only from `main`. No APK was built for v85–v88, and no real device was tested. |
+| Offline | **Checked by reading code only** | `sw.js` (`rdo-v88` cache, every script listed; automated check) | Not tested with the network actually cut |
+
+## Remaining English text on the new screens
+
+Measured with the browser check: German, Japanese.
+
+Not translated yet, all **older game content** rather than v85–v88 labels:
+- mission and daily-quest sentences
+- the long resource help texts
+- building descriptions and building effect lines
+- rank names
+
+Proper names are left as they are on purpose: world names, crew names, Moon Productions.
+
+## Known limitations
+
+- Mission Control decision cards (v85) are in English. This matches the existing decision cards.
+- The base interior is a 2D cut-away. It is not a 3D walkable space.
+- Walkway tubes connect only modules within about 230 px of the core.
+- No real Android device has been tested on v85–v88.

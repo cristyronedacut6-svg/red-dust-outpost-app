@@ -509,7 +509,7 @@ window.RDO_LAZY=(function(){var L=['js/models.js','js/worm.js','js/boss_golem.js
 (function(){var c=navigator.connection||{},slow=c.saveData||/(^|-)2g|3g/.test(c.effectiveType||'');try{if(/viewhd|view3d/.test(Object.keys(localStorage).join()))slow=false}catch(e){}if(!slow)window.addEventListener('load',function(){setTimeout(function(){(window.requestIdleCallback||function(f){setTimeout(f,1)})(function(){RDO_LAZY()},{timeout:3000})},2500)})})();</script>
 <script src="js/render3d.js"></script>
 <script src="js/cut3d.js"></script>
-<script src="js/i18n.js"></script><script src="js/i18n_facts.js"></script><script src="js/gamepad.js"></script>
+<script src="js/i18n.js"></script><script src="js/i18n_facts.js"></script><script src="js/i18n_ui.js"></script><script src="js/gamepad.js"></script>
 <script>
 'use strict';
 const HOOK=(k,...a)=>{const h=window.RDO_HOOKS&&window.RDO_HOOKS[k];if(!h)return;try{return h(...a)}catch(e){console.error('hook '+k,e)}};
@@ -518,7 +518,7 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const cv=$('#c'),X=cv.getContext('2d');let W=480,H=320,G=X;const WW=1400,WH=900,CAM={x:0,y:0};
 const bg=document.createElement('canvas'),BX=bg.getContext('2d'),lc=document.createElement('canvas'),LX=lc.getContext('2d');bg.width=WW;bg.height=WH;const FOG=document.createElement('canvas'),FX=FOG.getContext('2d',{willReadFrequently:true});FOG.width=WW/10;FOG.height=WH/10;
 const DAY=50,SPL=5,LM=[1,1.5,2];
-const LS={get(k,d){try{const v=localStorage.getItem('rdo2-'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('rdo2-'+k,JSON.stringify(v))}catch(e){}HOOK('saved',k)}};
+const LS={bad:[],err:0,get(k,d){let v=null;try{v=localStorage.getItem('rdo2-'+k);return v==null?d:JSON.parse(v)}catch(e){/* v88: a damaged value is recovered from the last backup instead of silently lost */try{const b=JSON.parse(localStorage.getItem('rdo2bak')||'null'),r=b&&b.d&&b.d['rdo2-'+k];if(r!=null){localStorage.setItem('rdo2-'+k,r);LS.bad.push(k);return JSON.parse(r)}}catch(e2){}LS.bad.push(k);return d}},set(k,v){try{localStorage.setItem('rdo2-'+k,JSON.stringify(v))}catch(e){LS.err++;try{HOOK('saveFail',k)}catch(e3){}}HOOK('saved',k)}};
 
 /* ---------- data ---------- */
 const BT={
@@ -3543,7 +3543,7 @@ function frame(t){if(window.ADV_ON){last=t;requestAnimationFrame(frame);return}c
  if(MODE==='game'){if(S&&S.run&&!S.pz){if(S.net==='guest')HOOK('guestUpdate',dt);else update(dt)}HOOK('frame',dt);draw();bcardStep(dt);hudT-=dt;if(hudT<=0){hudT=.15;hudUp()}}else if(MODE==='cut'){cutStep(dt);drawCut()}else drawSpace();
  requestAnimationFrame(frame)}
 mkIcons();P=(CP&&CP.lv===TW)?CP:newP(Math.min(TW,mx));TW=P.lv;fit();init();fit();splash();requestAnimationFrame(frame);
-</script><script src="js/story_real.js"></script><script src="js/ui86.js"></script><script src="js/features87.js"></script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
+</script><script src="js/story_real.js"></script><script src="js/ui86.js"></script><script src="js/features87.js"></script><script src="js/save88.js"></script><script src="js/play88.js"></script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
 <div class="mi-moon"><svg viewBox="0 0 900 420"><defs><mask id="mnM"><rect x="0" y="0" width="900" height="420" fill="#fff"/><circle cx="270" cy="200" r="103" fill="#000"/></mask></defs>
 <g class="mn-cres"><circle cx="232" cy="214" r="122" fill="#fff" mask="url(#mnM)"/></g>
 <path class="mn-trail" d="M178 243 Q262 222 322 186" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="round"/>

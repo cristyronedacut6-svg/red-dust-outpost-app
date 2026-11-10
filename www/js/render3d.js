@@ -267,6 +267,23 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     gl.bindBuffer(gl.ARRAY_BUFFER, sb); gl.bufferData(gl.ARRAY_BUFFER, buf.subarray(0, n * FL), gl.STATIC_DRAW); staticN = n; staticLv = S.lv + ':' + S.L.n + ':' + HQ + ':' + HDM + REAL + TERK + ':' + (R3.mv || 0); n = 0;
   }
 
+  /* ---------- v88: pressurised walkways and utility pipes link the core to the modules people live and work in ---------- */
+  const WLK = {}, WLT = { habitat: 1, o2: 1, farm: 1, medbay: 1, lab: 1 };
+  function walkways() {
+    const c = S.b.find(b => b.t === 'core'); if (!c) return; const cx = c.x + c.w / 2, cz = c.y + c.w / 2, nt = DKn > .3;
+    const L = S.b.filter(b => WLT[b.t] && !b.ghost && !(b.pop != null && b.pop < .9) && Math.hypot(b.x + b.w / 2 - cx, b.y + b.w / 2 - cz) < 230);
+    const key = L.map(b => b.t + (b.x | 0) + ',' + (b.y | 0)).join('|') + (nt ? 'n' : 'd') + c.w;
+    cached(WLK, key, () => { for (const b of L) { const bx = b.x + b.w / 2, bz = b.y + b.w / 2, dx = bx - cx, dz = bz - cz, d = Math.hypot(dx, dz), ux = dx / d, uz = dz / d;
+        const r0 = c.w * .62, r1 = b.w * .5, len = d - r0 - r1; if (len < 6) continue; const a = Math.atan2(dz, dx), mx = cx + ux * (r0 + len / 2), mz = cz + uz * (r0 + len / 2);
+        put(BOX, mx, 0, mz, len, 1.2, 9.5, -a, 0, '#5a5f68', 0);                       // footing
+        put(BOX, mx, 1.2, mz, len, 6.5, 7.5, -a, 0, '#d6dbe2', 0);                    // tube body
+        put(BOX, mx, 7.7, mz, len, 1.4, 6, -a, 0, '#b9c0ca', 0);                      // roof
+        put(BOX, mx, 4.2, mz, len, .9, 7.7, -a, 0, '#2b3442', 0);                      // window band
+        const nw = Math.max(1, Math.floor(len / 9)); for (let i = 0; i < nw; i++) { const t = (i + .5) / nw - .5, wx = mx + ux * t * len, wz = mz + uz * t * len;
+          put(BOX, wx, 4.1, wz, 2.6, 1.1, 7.9, -a, 0, nt ? '#ffe2a8' : '#7fb8d8', nt ? 2.2 : .35); }
+        const px = -uz * 6.5, pz = ux * 6.5;                                             // utility pipe beside the walkway
+        put(BOX, mx + px, 1.6, mz + pz, len, 1.3, 1.3, -a, 0, '#c9773a', 0); put(BOX, mx + px, 0, mz + pz, 1.2, 1.6, 1.2, -a, 0, '#6a6f78', 0); } });
+  }
   /* ---------- v85: base lights. Light masts around the core, and a blinking beacon on every working module (orange and fast when it is badly damaged) ---------- */
   const BCH = { core: 34, habitat: 24, o2: 17, farm: 15, medbay: 17, battery: 11, drill: 22, turret: 17, tesla: 31, rtg: 13, reactor: 21, shield: 11 };
   function beacon(b) {
@@ -1372,7 +1389,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
   }
 
   function scene(cm) {
-    const ST = R3.st = { a: n, ta: tn }; S.b.forEach(building); ST.bld = n - ST.a; if (HDM) { S.b.forEach(hdTierB); S.b.forEach(beacon); }
+    const ST = R3.st = { a: n, ta: tn }; S.b.forEach(building); ST.bld = n - ST.a; if (HDM) { S.b.forEach(hdTierB); S.b.forEach(beacon); walkways(); }
     const SU = suitOf();
     if (S.land <= .55 && !S.drive && cm !== 'fp') { const sv = n; if (REAL) astroX(S.p.x, S.p.y, faceS(), S.walk || 0, SU, null, 1, 0, S.mv ? Math.min(1, Math.hypot(S.mv.x, S.mv.y) / 40) : 0, S.jz || 0, 1); else astro(S.p.x, S.p.y, Math.atan2(S.face.y, S.face.x), S.walk || 0, SU, null, 1); if (S.L.lowg && S.pv) { const hop = Math.min(1, Math.hypot(S.pv.x, S.pv.y) / 60) * Math.abs(Math.sin((S.walk || 0) * 5)) * 9; for (let i = sv; i < n; i++) buf[i * FL + 1] += hop; } if (S.jz) for (let i = sv; i < n; i++) buf[i * FL + 1] += S.jz; skRoll(sv); if (HDM && !REAL && S.glide) { const ang = Math.atan2(S.face.y, S.face.x), ca = Math.cos(ang), sa = Math.sin(ang), fl = Math.sin(T() * 6) * .04, hb = 11 + (S.jz || 0) - ca * 0 ; for (const q of [-1, 1]) { const px = -sa * q, pz = ca * q, bx = S.p.x - ca * 2, bz = S.p.y - sa * 2; put(BOX, bx + px * 7.6, hb, bz + pz * 7.6, 5.2, .35, 12.5, ang, q * (-.2 + fl), '#f4f7fb', .1); put(BOX, bx + px * 7.6 + ca * 2.4, hb + .15, bz + pz * 7.6 + sa * 2.4, .8, .4, 12.5, ang, q * (-.2 + fl), '#ff8a3d', .9); put(SPHm, bx + px * 13.6, hb - .8, bz + pz * 13.6, 1.1, 1.1, 1.1, 0, 0, '#7df9ff', 2); } } if (!REAL && S.emo && S.emo.k !== 'sit') { const hb = Math.abs(Math.sin((T() - S.emo.t0) * 7)) * 2.5; for (let i = sv; i < n; i++) buf[i * FL + 1] += hb; } }
     // low gravity: everyone on foot bounces the same way the player does (speed is measured from movement between frames)
