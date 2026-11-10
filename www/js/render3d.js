@@ -1196,6 +1196,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
 
   /* ---------- the frame ---------- */
   function frame() {
+    if (R3.hold) return;   // a full-screen scene (like walking inside the outpost) covers the 3D view, so skip drawing it
     const cv = document.getElementById('c'), dpr = R3.q === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     { const now = performance.now(); if (R3.lf) { const d = Math.min(200, now - R3.lf); R3.ft = (R3.ft || 16) * .95 + d * .05; } R3.lf = now;
       // adaptive resolution: drop the render scale when frames are slow, raise it back when there is headroom
@@ -2034,6 +2035,14 @@ void main(){vC=aC.rgb;if(aE>1.15||aC.a<.98){gl_Position=vec4(2.,2.,2.,1.);return
       A[1] += .13 * Math.min(1, mvk) * (air ? 0 : 1);
       const hf = S.hf > 0 ? Math.min(1, S.hf / .3) : 0; if (hf) { A[1] -= .3 * hf; A[4] -= .25 * hf; A[2] += .12 * hf; A[6] -= .4 * hf; A[8] -= .3 * hf; }
     }
+    // v87: grounded movement. Low gravity gives the Apollo-style lope (higher knees, arms held out for balance);
+    // you crouch to absorb the landing after a jump, kneel to work when you build, and hold the scanner out while scanning.
+    if (!E) { if ((WG[S.lv] || .5) < .2 && mvk > .05 && !air) { A[13] *= 1.3; A[14] *= 1.3; A[6] *= .55; A[8] *= .55; A[5] -= .12; A[7] -= .12; A[1] += .06 * mvk; } }
+    if (me && !E) { const tn = typeof TT === 'number' ? TT : t;
+      if (PSM._air && !air) S.landT = tn; PSM._air = air;
+      const lt = S.landT != null ? tn - S.landT : 9; if (lt < .3 && !air) { const k = 1 - lt / .3; A[13] += .9 * k; A[14] += .9 * k; A[11] += .4 * k; A[12] += .4 * k; A[3] -= .14 * k; A[1] += .12 * k; }
+      const bt = S.bldT != null ? tn - S.bldT : 9; if (bt < .8 && mvk < .3 && !air) { showGun = false; const k = Math.min(1, bt / .12) * Math.min(1, (.8 - bt) / .15); A[11] = 1.15 * k; A[13] = 1.7 * k; A[12] = .25 * k; A[14] = .45 * k; A[3] = -.3 * k; A[1] = .25 * k; A[5] = 1.25; A[6] = 1.3; A[9] = .9 + Math.sin(bt * 32) * .25; A[7] = 1.1; A[8] = .9; A[10] = .7; }
+      if (S.scanT > 0) { showGun = false; A[5] = 1.5; A[6] = 1.25; A[9] = .3; A[7] = 1.42; A[8] = 1.05; A[10] = .45; A[4] = .16 + Math.sin(tn * 3) * .03; A[0] = Math.sin(tn * 1.7) * .12; } }
     // smooth blending for you and the hero (critically damped); crew use the raw pose
     let Pz = A; if (me || hero) { const key = me ? 'me' : 'hero', pr = PSM[key], k = 1 - Math.exp(-14 * Math.max(.004, FDT));
       if (!pr || pr.length !== A.length) PSM[key] = A.slice(); else { for (let i = 0; i < A.length; i++) pr[i] += (A[i] - pr[i]) * (i === 17 ? 1 : k); } Pz = PSM[key]; }

@@ -111,6 +111,24 @@ Each world-specific decision tells a real fact:
 | Titan | Rounded ice cobbles | Huygens |
 | Ceres | Dark, low-albedo ground with bright salt patches, and Ahuna Mons on the horizon | Dawn |
 
+## Science scanning discoveries (v87)
+
+Each world has six. Every one is based on published mission results:
+
+| World | Discoveries and sources |
+|---|---|
+| Moon | Anorthosite and the Apollo 15 "Genesis Rock" · mare basalt · ilmenite as an oxygen source · Apollo 17 orange volcanic glass (Shorty crater) · water detected by LCROSS at Cabeus crater (2009) · impact breccia |
+| Mars | Hematite spherules ("blueberries") and jarosite (Opportunity, Meridiani Planum) · perchlorate (Phoenix, 2008) · basalt · clay-bearing mudstone and calcium sulfate veins (Curiosity, Gale crater) |
+| Mercury | Hollows, carbon-rich low-reflectance material, high surface sulfur, volcanic smooth plains and polar ice (all from MESSENGER) · impact melt |
+| Europa | Water-ice shell · sodium chloride (Trumbo et al. 2019, Hubble/Keck) · hydrated salts on lineae (Galileo NIMS) · sulfuric acid hydrate from Io's sulfur · hydrogen peroxide (Keck, 2013) · chaos terrain |
+| Titan | Water-ice cobbles, methane-damp ground and river channels (Huygens, 2005) · tholins · organic dune sand and lake-shore evaporites (Cassini) |
+| Ceres | Sodium carbonate in Occator crater, ammoniated clays, exposed water ice at Oxo crater, organics near Ernutet crater and hydrohalite (all from Dawn) · carbonaceous rock |
+
+Two discoveries are worded as possibilities, because scientists aren't sure yet:
+
+- How Mercury's hollows form: they "may" form from material escaping as gas.
+- Where Europa's surface salts come from: they "may" come from the ocean.
+
 ## Known approximations
 
 - **Days and waves:** a game day is 50 seconds on every world. Real day lengths are explained in the facts and the field guide.

@@ -829,6 +829,32 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v87 — Mission Control, science scanning, walking inside, and grounded astronaut moves (unreleased, on the dev branch)
+- **Mission Control hub** (title menu, pause menu, status panel, or key **N**). Five tabs:
+  - **Objectives:** live goals, discovery sites, expeditions and today's quests.
+  - **Discoveries:** the science codex.
+  - **Crew:** profiles with jobs and what each job does.
+  - **Mission log:** stars per world and your records.
+  - **Rewards:** rank, XP, achievements, research and stars.
+- **Interactive scanning:**
+  - Every world has 6 survey markers (pulsing cyan rings). Walk up and press **SCAN** or **H**. Your astronaut holds the scanner out while a progress ring fills.
+  - Each scan is a real discovery with a short explanation, worth +2 research and +15 XP. All 36 discoveries are saved and listed in Mission Control. Examples:
+    - Moon: anorthosite, orange glass, LCROSS ice.
+    - Mars: hematite "blueberries", jarosite, perchlorate, gypsum veins.
+    - Mercury: hollows, carbon-rich dark material.
+    - Europa: sea salt, sulfuric acid hydrate.
+    - Titan: tholins, ice cobbles, river channels.
+    - Ceres: sodium carbonate, ammonia clays, hydrohalite.
+- **Walk inside the outpost:**
+  - Stand by the base core and press **Go inside** or **I**. You see a cut-away of your real modules: command module, science lab, and, once built, crew quarters, greenhouse, life support, medbay and power room.
+  - Each room's window shows that world's sky, including Earth from the Moon and Jupiter from Europa.
+  - Your crew walks around and works inside. Each room shows live numbers, for example air and its rate per second in life support, or batteries in the power room.
+  - The game pauses while you are inside, and the 3D view stops drawing to save battery.
+- **Astronaut animation (HD/Real):**
+  - On low-gravity worlds (Moon, Europa, Titan, Ceres) the astronaut uses an Apollo-style lope.
+  - A crouch absorbs the landing after a jump.
+  - The astronaut kneels and works for a moment after placing a building, and holds the scanner out while scanning.
+
 ## v86 — Mission-control interface (unreleased, on the dev branch)
 A full UI pass with one design system. No game logic was changed: the new layouts move the game's own buttons (same ids, handlers and translations) into calmer places. Everything lives in `www/js/ui86.js`, and the high-contrast mode keeps its own look.
 - **Design system:**
