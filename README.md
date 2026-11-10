@@ -829,6 +829,31 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v85 — Every world looks like itself (unreleased, on the dev branch)
+- **World identity:** each world now has its own ground, landmarks, colour and title card, so a screenshot tells you where you are.
+  - **Europa:** reddish-brown lineae and tilted ice rafts (chaos terrain).
+  - **Ceres:** dark ground with bright salt patches, and Ahuna Mons on the horizon.
+  - **Titan:** dark methane lakes and Huygens-style rounded ice cobbles.
+  - **Mars:** layered mesas and dark basalt sand.
+  - **Mercury:** brownish ground with bluish hollows and cliffs (scarps).
+  - **The Moon:** dark maria and bright crater rays.
+- **Bug fix:** the Story scenery (horizon mountains, edge boulders, HD rocks, the deep-space antenna) was never drawn because of a name clash in `render3d.js`. It is back.
+- **Base lights:** light masts around the core, and blinking beacons on every working module. A beacon turns orange and blinks fast when its module is badly damaged.
+- **Resource forecasts:**
+  - A bar that is draining now shows the seconds left, for example ▼12s.
+  - At night, Mission Control warns you if the batteries will run out before sunrise.
+  - Warning chips get a "!" badge, so warnings don't rely on colour alone.
+- **Mission Control decisions:** nine new science decisions tied to each world, plus an oxygen-generator fault that can happen anywhere. Every choice shows its exact cost before you pick.
+  - **Moon:** long night.
+  - **Mars:** launch window.
+  - **Mercury:** heat wave, polar ice.
+  - **Europa:** Jupiter's radiation, water plume.
+  - **Titan:** methane rain, drone survey.
+  - **Ceres:** brine.
+- **Adventure map:** shows the real distance from Earth today for every world and how long a radio signal takes. It is computed from NASA JPL planet orbits, and the map says clearly that the game squeezes sizes and distances.
+- **Sound:** on airless worlds you hear only your own suit (breathing and the fan), because sound can't travel through a vacuum. Mars has a thin, faint wind; Titan has a thick, low one.
+- **Science corrections:** Moon maximum 121 °C, Mercury sunlight about 7× on average and up to 11×, Europa about 5.4 Sv a day. The sources are in [SCIENCE.md](SCIENCE.md). The code audit is in [AUDIT.md](AUDIT.md).
+
 ## v84 — Wow polish for judging
 
 - **Realistic explosions** (Story mode, HD and Real views): each blast is built in stages.

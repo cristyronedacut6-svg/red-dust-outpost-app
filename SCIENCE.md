@@ -1,0 +1,105 @@
+# Red Dust Outpost · Science sources and verification notes
+
+Every number the game shows the player is listed here. For each one you'll find:
+
+- the value and its unit
+- the conditions it applies under
+- the source
+
+Planet facts change with place, time of day and season, so the conditions column matters.
+
+Last checked: 10 November 2026 (v85).
+
+## Story mode worlds
+
+| World | Quantity | Value in game | Conditions / approximation | Source |
+|---|---|---|---|---|
+| Moon | Surface gravity | 1.62 m/s² (17% of Earth) | Mean surface value | [NASA Moon facts](https://science.nasa.gov/moon/facts/) |
+| Moon | Surface temperature | −173 to 121 °C | Equator, night to day. Polar craters are colder. | [NASA Moon facts](https://science.nasa.gov/moon/facts/) |
+| Moon | Radiation dose | about 1.4 mSv per day | Measured by Chang'e 4 (1.369 mSv/day), quiet Sun, far side | Zhang et al. 2020, *Science Advances*, via [Sci.News](https://www.sci.news/space/radiation-dose-rates-lunar-surface-08893.html) |
+| Moon | Day–night cycle | 29.5 Earth days, so a night lasts about 14 days | Synodic month | [NASA Moon facts](https://science.nasa.gov/moon/facts/) |
+| Mars | Surface gravity | 3.71 m/s² (38%) | Mean | [NASA Mars facts](https://science.nasa.gov/mars/facts/) |
+| Mars | Surface temperature | −153 to 20 °C | Range over the planet. The base sim uses a Gale-crater-like range, −95 to 0 °C. | [NASA Mars facts](https://science.nasa.gov/mars/facts/) |
+| Mars | Air pressure | under 1% of Earth (about 0.6%) | About 6 mbar, varies with season and altitude | NASA Mars facts |
+| Mars | Sunlight | 43% of Earth | 1/1.524², mean distance | Inverse-square law |
+| Mars | Radiation dose | about 0.67 mSv per day | Curiosity RAD, Gale crater, 2012–2013 | Hassler et al. 2014, *Science*, via [SwRI](https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars) |
+| Mars | Launch windows | about every 26 months | Earth–Mars synodic period | [NASA Mars Exploration](https://science.nasa.gov/mars/) |
+| Mercury | Surface gravity | 3.70 m/s² (38%) | Mean | [NASA Mercury facts](https://science.nasa.gov/mercury/facts/) |
+| Mercury | Surface temperature | −180 to 430 °C | Night to day at the equator | NASA Mercury facts |
+| Mercury | Sunlight | about 7 times Earth on average, up to 11 times at perihelion | 1/0.387² mean, 1/0.307² at perihelion. **Corrected in v85** (was "up to 7"). | Inverse-square law |
+| Mercury | Sun's apparent size | about 2.5 times wider than from Earth | 1/0.387 at mean distance | Geometry |
+| Mercury | Polar water ice | present in permanently shadowed craters | Earth radar, confirmed by MESSENGER (2012) | [NASA MESSENGER](https://science.nasa.gov/mission/messenger/) |
+| Europa | Surface gravity | 1.31 m/s² (13%) | Mean | [NASA Europa facts](https://science.nasa.gov/jupiter/jupiter-moons/europa/europa-facts/) |
+| Europa | Surface temperature | about −160 to −170 °C | Equator by day. Poles are colder. | NASA Europa facts |
+| Europa | Sunlight | about 4% of Earth | 1/5.2² | Inverse-square law |
+| Europa | Radiation | about 5.4 Sv per day, unshielded | Surface average. Varies strongly with longitude. **Made specific in v85** (was "deadly within days"). | Commonly cited estimate. See also the [JPL radiation map of Europa](https://www.jpl.nasa.gov/news/radiation-maps-of-jupiters-moon-europa-key-to-future-missions/) |
+| Europa | Jupiter in the sky | about 12° wide | 2·atan(69,911 km / 671,034 km) | Geometry |
+| Titan | Surface gravity | 1.35 m/s² (14%) | Mean | [NASA Titan facts](https://science.nasa.gov/saturn/moons/titan/) |
+| Titan | Surface temperature | about −179 °C | Nearly uniform | NASA Titan |
+| Titan | Air pressure | about 1.5 times Earth | 1.47 bar, measured by Huygens (2005) | NASA Titan / ESA Huygens |
+| Titan | Sunlight | about 1% of Earth at the top of the air, less at the ground because of haze | 1/9.5² | Inverse-square law |
+| Titan | Surface cobbles | rounded water-ice pebbles | Huygens landing-site images | ESA/NASA Huygens |
+| Ceres | Surface gravity | 0.28 m/s² (3%) | Mean | [NASA Ceres facts](https://science.nasa.gov/dwarf-planets/ceres/facts/) |
+| Ceres | Surface temperature | about −105 °C (sim range −143 to −73 °C) | Day-side estimate | NASA Ceres |
+| Ceres | Sunlight | about 13% of Earth | 1/2.77² | Inverse-square law |
+| Ceres | Bright spots | salts left by brine; some brine may remain | Occator crater, Dawn (2015–2018) | [NASA Dawn](https://science.nasa.gov/mission/dawn/) |
+| Ceres | Ahuna Mons | ice volcano about 4 km tall | Dawn | NASA Dawn |
+
+## Light-speed delay (Earth help)
+
+The delay is distance divided by the speed of light (299,792 km/s):
+
+| World | Delay used |
+|---|---|
+| Moon | about 1.3 s |
+| Mars | 3 to 22 min, depending on where the planets are |
+| Titan | about 80 min at Saturn's mean distance |
+
+The game shortens these waits so they're playable. It always tells the player the real figure.
+
+## Adventure mode: real distances on the map (new in v85)
+
+The map shows each planet's real distance from Earth today. How it's worked out:
+
+- **Planet positions:** NASA JPL's approximate Keplerian elements (Standish, J2000 epoch). For each planet this uses the orbit's size (a), its shape (e), the mean longitude L with its rate, and the longitude of perihelion. Kepler's equation is solved each time.
+- **Simplification:** inclinations are ignored. This puts the distances within about 1–2% for the major planets. A check against known 2026 events (Saturn's opposition on 4 October 2026 and Venus's inferior conjunction on 24 October 2026) gave about 8.6 AU and about 0.3 AU for 10 November 2026, as expected.
+- **Moon:** shown at its mean distance of 384,400 km.
+- **Ceres:** shown by its orbit size (2.77 AU from the Sun), not a live distance.
+
+The map says clearly that the game's own sizes and distances are squeezed so trips take minutes.
+
+Source: [JPL Solar System Dynamics, approximate positions of the planets](https://ssd.jpl.nasa.gov/planets/approx_pos.html)
+
+## Mission Control decisions (new in v85)
+
+Each world-specific decision tells a real fact:
+
+| World | Decision | Real fact |
+|---|---|---|
+| Moon | Long night | Lunar nights last about 14 days, below −170 °C. NASA's Fission Surface Power project. |
+| Mars | Launch window | A launch window opens every 26 months. |
+| Mercury | Heat wave | MESSENGER's sunshade. |
+| Mercury | Ice expedition | Polar ice confirmed by MESSENGER. |
+| Europa | Radiation belts | About 5.4 Sv/day. Ice works as shielding. |
+| Europa | Water plume | Hubble's plume observations. Europa Clipper (launched 2024, arrives 2030). |
+| Titan | Methane rain | Titan's methane cycle. Burning methane needs oxygen, and Titan's air has no free oxygen. |
+| Titan | Drone survey | The Dragonfly rotorcraft (launch planned for 2028). |
+| Ceres | Brine | Dawn's results at Occator crater. |
+
+## Visual identity (new in v85): what each world's look is based on
+
+| World | Look | Based on |
+|---|---|---|
+| Moon | Dark mare basalt patches and bright ray streaks from fresh craters | Lunar albedo features |
+| Mars | Dark basaltic sand in the low ground, ripples, layered mesas and buttes | Gale crater and Mount Sharp, as seen by Curiosity |
+| Mercury | Brownish-grey ground, darker "low-reflectance material", small bright bluish "hollows" and lobate scarps | MESSENGER discoveries |
+| Europa | Reddish-brown lineae (long bands with bright central ridges) and tilted ice rafts of chaos terrain | Galileo images of Conamara Chaos |
+| Titan | Dark methane lakes in low ground, far from the base | Cassini radar |
+| Titan | Rounded ice cobbles | Huygens |
+| Ceres | Dark, low-albedo ground with bright salt patches, and Ahuna Mons on the horizon | Dawn |
+
+## Known approximations
+
+- **Days and waves:** a game day is 50 seconds on every world. Real day lengths are explained in the facts and the field guide.
+- **Scale:** buildings, aliens and distances in Story mode are scaled for play.
+- **Ceres dust:** the realism module adds a little dust settling on solar panels on Ceres. This is a gameplay stand-in, not a measured rate.
