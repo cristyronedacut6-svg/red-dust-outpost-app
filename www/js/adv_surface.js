@@ -108,7 +108,7 @@ export function makeSurface(ctx) {
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const hx = hgt[y * 256 + ((x + 1) & 255)] - hgt[y * 256 + ((x + 255) & 255)], hy = hgt[((y + 1) & 255) * 256 + x] - hgt[((y + 255) & 255) * 256 + x], nx = -hx * 6, ny = -hy * 6, l = Math.hypot(nx, ny, 1), o = (y * 256 + x) * 4; nim.data[o] = (nx / l * .5 + .5) * 255; nim.data[o + 1] = (ny / l * .5 + .5) * 255; nim.data[o + 2] = (1 / l * .5 + .5) * 255; nim.data[o + 3] = 255; }
     ng.putImageData(nim, 0, 0); const nt = new THREE.CanvasTexture(ncv); nt.wrapS = nt.wrapT = THREE.RepeatWrapping; nt.repeat.set(size / 9, size / 9); nt.anisotropy = 8;
     const mat = R ? new THREE.MeshStandardMaterial({ vertexColors: true, map: dt, roughness: R.rough, metalness: 0 }) : new THREE.MeshStandardMaterial({ vertexColors: true, map: dt, normalMap: nt, normalScale: new THREE.Vector2(1.1, 1.1), roughness: .95, metalness: 0 });
-    const FU = R ? { ftex: { value: featTex(id) }, ftile: { value: R.tile }, fbump: { value: .2 * R.bump } } : null; S.FU = FU;
+    const FU = R ? { ftex: { value: featTex(id) }, ftile: { value: R.tile }, fbump: { value: ctx.pre && ctx.pre().seg <= 200 ? 0 : .2 * R.bump } } : null;   // Low graphics: no surface relief (saves texture reads on weak phones) S.FU = FU;
     // break up texture tiling with a slow, large-scale brightness variation sampled from the same detail map at another scale
     mat.onBeforeCompile = sh => { fogHook(sh); Object.assign(sh.uniforms, TU);
       sh.vertexShader = 'attribute float lava; varying float vLava; varying vec3 vTWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vTWP = (modelMatrix * vec4(transformed, 1.)).xyz; vLava = lava;');

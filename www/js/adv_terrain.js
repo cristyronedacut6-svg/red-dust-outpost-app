@@ -98,9 +98,8 @@ export const GLSL_ALB = `{ vec2 fu = vTWP.xz / ftile, fu2 = mat2(.8, -.6, .6, .8
   vec4 f1 = texture2D(ftex, fu), f2 = texture2D(ftex, fu2); vec4 f = mix(f1, f2, wv); float alb = mix(f.r, f.b, vZn.x);
   diffuseColor.rgb *= .5 + .68 * alb; }`;
 export const GLSL_BUMP = `{ float dist = length(vTWP - cameraPosition), fade = 1. - smoothstep(45., 170., dist);
-  if (fade > 0.) { vec2 fu = vTWP.xz / ftile, fu2 = mat2(.8, -.6, .6, .8) * fu * .37 + .21, dx = dFdx(fu), dy = dFdy(fu); float wv = smoothstep(.72, .84, texture2D(map, vMapUv * .017 + .3).r);
-    float z = vZn.x, amp = fbump * mix(vZn.y, 1., z) * fade, h0 = mix(rdoH(fu, z), rdoH(fu2, z), wv), hx = mix(rdoH(fu + dx, z), rdoH(fu2 + mat2(.8, -.6, .6, .8) * dx * .37, z), wv), hy = mix(rdoH(fu + dy, z), rdoH(fu2 + mat2(.8, -.6, .6, .8) * dy * .37, z), wv);
-    normal = rdoBump(-vViewPosition, normal, vec2(hx - h0, hy - h0) * amp, faceDirection); } }`;
+  if (fade > 0. && fbump > 0.) { vec2 fu = vTWP.xz / ftile; float z = vZn.x, amp = fbump * mix(vZn.y, 1., z) * fade, h0 = rdoH(fu, z);   // 3 texture reads: relief only matters close up
+    normal = rdoBump(-vViewPosition, normal, vec2(rdoH(fu + dFdx(fu), z) - h0, rdoH(fu + dFdy(fu), z) - h0) * amp, faceDirection); } }`;
 
 /* far horizon: a ring of terrain from the edge of the walkable area out to the sky, so the world never ends in a cliff
    (airless worlds have no haze to hide an edge) */
