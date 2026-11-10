@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { makeAstronaut } from './adv_astro.js';
 import { makeRover } from './adv_rover.js';
 import { makeFX, makeRings, scatterRocks, makeGrass, FOGSUN, FOGSUNC, fogHook } from './adv_fx.js';
+import { SURF, featTex, GLSL_HEAD, GLSL_ALB, GLSL_BUMP, farRing, rockField, pebbleField } from './adv_terrain.js';
 
 function hash(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); }
 function vn(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
@@ -21,8 +22,8 @@ const TU = { lavaMap: { value: null }, frost: { value: 0 }, lavaT: { value: 0 },
 /* world settings: gravity (m/s²), temperature, air, sky, fog, ground colours, terrain roughness, craters, extra features */
 export const WORLD = {
   earth: { g: 9.81, t: 'about 15 °C', air: 'Nitrogen and oxygen (you could breathe it!)', sky: '#8ec3f0', fog: .0011, gr: ['#5d7a3a', '#8a9a5a', '#c9b98a'], amp: 3, cr: 0, sea: '#2a6aa8', site: 'Kennedy Space Center, Florida', sun: '#fff4e0' },
-  moon: { g: 1.62, t: '−173 to 127 °C', air: 'None', sky: null, gr: ['#5c5a57', '#8e8b86', '#b9b6b0'], amp: 14, cr: 1, site: 'Sea of Tranquility (Apollo 11)', inSky: 'earth', sun: '#ffffff' },
-  mars: { g: 3.71, t: 'about −63 °C', air: 'Very thin carbon dioxide', sky: '#c9a27a', fog: .0032, gr: ['#5e2e1c', '#a85a34', '#d08a58'], amp: 24, cr: .35, site: 'Jezero Crater', sun: '#ffe2bf' },
+  moon: { g: 1.62, t: '−173 to 121 °C', air: 'None', sky: null, gr: ['#5c5a57', '#8e8b86', '#b9b6b0'], amp: 14, cr: 1, site: 'Sea of Tranquility (Apollo 11)', inSky: 'earth', sun: '#ffffff' },
+  mars: { g: 3.71, t: 'about −63 °C', air: 'Very thin carbon dioxide', sky: '#c9a27a', fog: .0012, gr: ['#5e2e1c', '#a85a34', '#d08a58'], amp: 24, cr: .35, site: 'Jezero Crater', sun: '#ffe2bf' },
   mercury: { g: 3.7, t: '−180 to 430 °C', air: 'Almost none', sky: null, gr: ['#4e4a46', '#7d7670', '#a39b93'], amp: 16, cr: 1.2, site: 'Caloris Basin rim', sun: '#ffffff', bigSun: 2.6 },
   venus: { g: 8.87, t: 'about 465 °C (hot enough to melt lead)', air: 'Thick carbon dioxide with sulfuric-acid clouds', sky: '#d79a4a', fog: .016, gr: ['#5a3a1a', '#8a5a2a', '#b07a3a'], amp: 12, cr: .1, site: 'Maxwell Montes foothills', sun: '#ffd28a' },
   ceres: { g: .28, t: 'about −105 °C', air: 'None', sky: null, gr: ['#3e3e42', '#68686e', '#9a9aa0'], amp: 18, cr: 1, site: 'Occator Crater', sun: '#ffffff', salt: 1 },
@@ -65,20 +66,21 @@ export function makeSurface(ctx) {
   let H = () => 0;
   function terrain(id, W, site) {
     const size = id === 'earth' ? 1600 : 1400, seg = ctx.pre ? ctx.pre().seg : 300, geo = new THREE.PlaneGeometry(size, size, seg, seg); geo.rotateX(-Math.PI / 2);
-    const seed = id.length * 13.7 + id.charCodeAt(0), craters = [];
+    const seed = id.length * 13.7 + id.charCodeAt(0), craters = [], R = !(site && site.hm) && SURF[id] ? SURF[id] : null, RM = R ? R.make(seed) : null; S.RM = RM; S.R = R;
     const nc = Math.round(60 * (W.cr || 0)); for (let i = 0; i < nc; i++) { const a = hash(i, seed) * 6.283, d = 60 + hash(seed, i) * 620; craters.push([Math.cos(a) * d, Math.sin(a) * d, 8 + Math.pow(hash(i * 3, seed), 3) * 90]); }
     if (site && site.hm) { const N = site.N, hm = site.hm, sc = site.relief * size * 1.3, half = size / 2;
       H = (x, z) => { const u = THREE.MathUtils.clamp((x + half) / size * (N - 1), 0, N - 1.001), v = THREE.MathUtils.clamp((z + half) / size * (N - 1), 0, N - 1.001), i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j;
         const a = hm[j * N + i], b = hm[j * N + i + 1], c = hm[(j + 1) * N + i], d = hm[(j + 1) * N + i + 1]; return ((a * (1 - fu) + b * fu) * (1 - fv) + (c * (1 - fu) + d * fu) * fv) * sc + (fbm(x * .05, z * .05 + seed, 3) - .5) * 1.4; }; }
     else H = (x, z) => { const fl = Math.min(1, Math.hypot(x, z) / 60) * (site && site.flat ? .15 : 1); let h = (fbm(x * .004 + seed, z * .004, 5) - .5) * W.amp * 2.2 * fl + (fbm(x * .03, z * .03 + seed, 3) - .5) * W.amp * .12;
-      if (id === 'mars') h += Math.max(0, Math.hypot(x - 300, z + 350) < 600 ? 0 : 0) + (Math.hypot(x, z) > 520 ? (Math.hypot(x, z) - 520) * .35 : 0); // the crater rim around Jezero
+      if (id === 'mars' && !RM) h += Math.hypot(x, z) > 520 ? (Math.hypot(x, z) - 520) * .35 : 0; // the crater rim around Jezero
       if (id === 'miranda') h += x > 250 ? 160 : 0;
       for (const [cx, cz, r] of craters) { const d = Math.hypot(x - cx, z - cz) / r; if (d < 1.4) h += d < 1 ? (d * d - 1) * r * .22 : (1.4 - d) * r * .28 * (d - 1) * 2.5; }
+      if (RM) h = RM.shape(x, z, h);
       if (W.sea && x > 330) h = Math.min(h, -1.5 - (x - 330) * .05);
       return h * fl + h * (1 - fl) * .15; };
     const H0 = H(0, 0); if (site && site.hm) { const Hr = H; H = (x, z) => Hr(x, z) - H0; }
-    const p = geo.attributes.position, lava = new Float32Array(p.count), cc = new Float32Array(p.count * 3), C0 = col(W.gr[0]), C1 = col(W.gr[1]), C2 = col(W.gr[2]), c = new THREE.Color();
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), h = H(x, z); p.setY(i, h); const n = fbm(x * .02 + 9, z * .02, 4), k = THREE.MathUtils.clamp(.5 + h / ((site && site.hm ? site.relief * size * .5 : W.amp * 3) + 1) + (n - .5) * .7, 0, 1);
+    const p = geo.attributes.position, KK = new Float32Array(p.count), lava = new Float32Array(p.count), cc = new Float32Array(p.count * 3), C0 = col(W.gr[0]), C1 = col(W.gr[1]), C2 = col(W.gr[2]), c = new THREE.Color();
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), h = H(x, z); p.setY(i, h); const n = fbm(x * .02 + 9, z * .02, 4), k = THREE.MathUtils.clamp(.5 + h / ((site && site.hm ? site.relief * size * .5 : W.amp * 3) + 1) + (n - .5) * .7, 0, 1); KK[i] = k;
       if (k < .5) c.copy(C0).lerp(C1, k * 2); else c.copy(C1).lerp(C2, (k - .5) * 2);
       if (id === 'earth') { if (x > 300) c.lerp(col('#e8dcb0'), THREE.MathUtils.clamp((x - 300) / 30, 0, 1)); if (Math.abs(z) < 5 || Math.abs(x + 40) < 4) c.set('#6a6a68'); }
       if (W.salt && Math.hypot(x - 90, z + 70) < 30 + n * 14) c.set('#f4f6f8');
@@ -87,6 +89,10 @@ export function makeSurface(ctx) {
       cc.set([c.r, c.g, c.b], i * 3); }
     geo.setAttribute('color', new THREE.BufferAttribute(cc, 3)); geo.setAttribute('lava', new THREE.BufferAttribute(lava, 1)); geo.computeVertexNormals();
     { const nn = geo.attributes.normal, rock = C0.clone().multiplyScalar(.8); for (let i = 0; i < p.count; i++) { const sl = 1 - nn.getY(i), k = THREE.MathUtils.smoothstep(sl, .12, .45); if (k > 0) { c.setRGB(cc[i * 3], cc[i * 3 + 1], cc[i * 3 + 2]).lerp(rock, k * (id === 'earth' ? .6 : .75)); cc.set([c.r, c.g, c.b], i * 3); } } geo.attributes.color.needsUpdate = true; }
+    if (RM) { // the world's own ground recipe: colour zones (sand, dust, bedrock) and the zone each vertex belongs to
+      const nn = geo.attributes.normal, zn = new Float32Array(p.count * 2), CC = {}; for (const k in R.C) if (typeof R.C[k] === 'string') CC[k] = col(R.C[k]);
+      for (let i = 0; i < p.count; i++) { const z2 = RM.paint(p.getX(i), p.getZ(i), p.getY(i), KK[i], nn.getY(i), c, CC); cc.set([c.r, c.g, c.b], i * 3); zn[i * 2] = z2[0]; zn[i * 2 + 1] = z2[1]; }
+      geo.setAttribute('zn', new THREE.BufferAttribute(zn, 2)); geo.attributes.color.needsUpdate = true; }
     const dcv = document.createElement('canvas'); dcv.width = dcv.height = 256; const dg = dcv.getContext('2d'), im = dg.createImageData(256, 256);
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const v = 200 + (fbm(x * .06, y * .06, 4) - .5) * 90 + (hash(x, y) - .5) * 40, o = (y * 256 + x) * 4; im.data[o] = im.data[o + 1] = im.data[o + 2] = v; im.data[o + 3] = 255; }
     dg.putImageData(im, 0, 0); const dt = new THREE.CanvasTexture(dcv); dt.wrapS = dt.wrapT = THREE.RepeatWrapping; dt.repeat.set(size / 6, size / 6); dt.anisotropy = 8;
@@ -99,7 +105,8 @@ export function makeSurface(ctx) {
         for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++) for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) { const d = Math.hypot(dx, dy) / r; if (d >= 1) continue; const X = (Math.floor(cx) + dx + 256) & 255, Y = (Math.floor(cy) + dy + 256) & 255; hgt[Y * 256 + X] += Math.sqrt(1 - d * d) * hh * (r / 6); } } }
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const hx = hgt[y * 256 + ((x + 1) & 255)] - hgt[y * 256 + ((x + 255) & 255)], hy = hgt[((y + 1) & 255) * 256 + x] - hgt[((y + 255) & 255) * 256 + x], nx = -hx * 6, ny = -hy * 6, l = Math.hypot(nx, ny, 1), o = (y * 256 + x) * 4; nim.data[o] = (nx / l * .5 + .5) * 255; nim.data[o + 1] = (ny / l * .5 + .5) * 255; nim.data[o + 2] = (1 / l * .5 + .5) * 255; nim.data[o + 3] = 255; }
     ng.putImageData(nim, 0, 0); const nt = new THREE.CanvasTexture(ncv); nt.wrapS = nt.wrapT = THREE.RepeatWrapping; nt.repeat.set(size / 9, size / 9); nt.anisotropy = 8;
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: dt, normalMap: nt, normalScale: new THREE.Vector2(1.1, 1.1), roughness: .95, metalness: 0 });
+    const mat = R ? new THREE.MeshStandardMaterial({ vertexColors: true, map: dt, roughness: R.rough, metalness: 0 }) : new THREE.MeshStandardMaterial({ vertexColors: true, map: dt, normalMap: nt, normalScale: new THREE.Vector2(1.1, 1.1), roughness: .95, metalness: 0 });
+    const FU = R ? { ftex: { value: featTex(id) }, ftile: { value: R.tile }, fbump: { value: .2 * R.bump } } : null; S.FU = FU;
     // break up texture tiling with a slow, large-scale brightness variation sampled from the same detail map at another scale
     mat.onBeforeCompile = sh => { fogHook(sh); Object.assign(sh.uniforms, TU);
       sh.vertexShader = 'attribute float lava; varying float vLava; varying vec3 vTWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vTWP = (modelMatrix * vec4(transformed, 1.)).xyz; vLava = lava;');
@@ -118,10 +125,15 @@ export function makeSurface(ctx) {
           // ice glints: tiny crystal facets that catch the Sun
           if (ice > 0.) { vec3 cell = floor(vTWP * 7.); float h = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453); vec3 fn = normalize(vec3(fract(h * 13.1) - .5, 1.2, fract(h * 7.3) - .5));
             float gl = pow(max(dot(reflect(-L, fn), V), 0.), 90.) * step(.82, h) * ice * sunUp; outgoingLight += vec3(1., .98, .95) * gl * 3.; } }
-        #include <opaque_fragment>`); };
-    const m = new THREE.Mesh(geo, mat); m.receiveShadow = true;
+        #include <opaque_fragment>`);
+      if (FU) { Object.assign(sh.uniforms, FU);
+        sh.vertexShader = 'attribute vec2 zn; varying vec2 vZn;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vZn = zn;');
+        sh.fragmentShader = GLSL_HEAD + '\n' + sh.fragmentShader.replace('{ float m1 = texture2D(map', GLSL_ALB + '\n      { float m1 = texture2D(map').replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + GLSL_BUMP); } };
+    mat.customProgramCacheKey = () => 'ter-' + (R ? id : 'std');
+    const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; m.userData.craters = craters;
     // horizon skirt: an outer ring at the average height so the world never ends in an edge; the haze hides the seam
-    const sk = new THREE.Mesh(new THREE.RingGeometry(size * .49, 3400, 64, 1), new THREE.MeshStandardMaterial({ color: C1.clone().lerp(C0, .3), roughness: 1 })); sk.rotation.x = -Math.PI / 2; sk.position.y = id === 'earth' ? -1.2 : H(size * .45, 0) - 2; m.add(sk);
+    if (R) m.add(farRing(id, H, size, W, R));
+    else { const sk = new THREE.Mesh(new THREE.RingGeometry(size * .49, 3400, 64, 1), new THREE.MeshStandardMaterial({ color: C1.clone().lerp(C0, .3), roughness: 1 })); sk.rotation.x = -Math.PI / 2; sk.position.y = id === 'earth' ? -1.2 : H(size * .45, 0) - 2; m.add(sk); }
     return m;
   }
   function sky(id, W, scn) {
@@ -213,7 +225,7 @@ export function makeSurface(ctx) {
     S.player = playerModel(); scn.add(S.player); scn.add(S.player.userData.sh);
     { const lamp = new THREE.SpotLight(0xfff4e0, 0, 60, .5, .6, 1.4); lamp.position.set(0, 1.7, -.1); lamp.target.position.set(0, .6, -8); S.player.add(lamp); S.player.add(lamp.target); S.lamp = lamp; } S.player.position.set(4, H(4, 4) + .1, 8); S.vel.set(0, 0, 0); S.yaw = Math.PI; S.camYaw = Math.PI;
     // VFX: glowing particles, soft dust, shockwave rings; rocks everywhere, grass on Earth
-    S.fx = makeFX(scn, 2200, true); S.dust = makeFX(scn, 2600, false); S.rings = makeRings(scn); S.grass = null; S.gc = col(W.gr[1]); S.dc = col(W.gr[2]).lerp(new THREE.Color(0xffffff), .08).multiplyScalar(.85);
+    S.fx = makeFX(scn, 2200, true); S.dust = makeFX(scn, 2600, false); S.rings = makeRings(scn); S.grass = null; S.peb = null; S.rocks = null; S.gc = col(W.gr[1]); S.dc = col(W.gr[2]).lerp(new THREE.Color(0xffffff), .08).multiplyScalar(.85);
     if (body.id !== 'earth') { const bt = new THREE.TextureLoader().load('models/tex/bootprint.png'); bt.colorSpace = THREE.SRGBColorSpace; bt.anisotropy = 4;
       const pg = new THREE.PlaneGeometry(.3, .5); pg.rotateX(-Math.PI / 2); const pm = new THREE.MeshStandardMaterial({ map: bt, color: S.dc.clone().multiplyScalar(.95), transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 });
       const im = new THREE.InstancedMesh(pg, pm, 220); im.count = 0; im.receiveShadow = true; im.frustumCulled = false; scn.add(im); S.prints = { im, n: 0, d: 0, side: 1, last: null }; }
@@ -221,6 +233,7 @@ export function makeSurface(ctx) {
     const ultra = (ctx.q ? ctx.q() : 'high') === 'ultra' && !matchMedia('(pointer:coarse)').matches, nearPad = (x, z) => Math.hypot(x + 12, z + 8) < 14 || Math.hypot(x - 4, z - 8) < 6 || (W.sea && x > 300) || S.items.some(it => !it.geyser && Math.hypot(x - it.g.position.x, z - it.g.position.z) < it.s * .8 + 2);
     const PR = ctx.pre ? ctx.pre() : { grass: 18000, rocks: .6 };
     if (body.id === 'earth') { S.grass = makeGrass(scn, H, PR.grass, PR.grass > 20000 ? 75 : 60, (x, z) => nearPad(x, z) || Math.abs(x - 40) < 9); scatterRocks(scn, H, col('#8b8577'), Math.round(120 * PR.rocks), 600, nearPad); }
+    else if (S.RM) { S.rocks = rockField(scn, H, body.id, Object.assign({ hot: S.RM.hot }, S.R), Math.max(120, Math.round(1400 * PR.rocks * (S.R.rockN || 1))), 640, nearPad, ter.userData.craters); S.peb = pebbleField(scn, H, body.id, S.R, Math.round(2400 * Math.max(.5, PR.rocks)), nearPad); }
     else scatterRocks(scn, H, col(W.gr[1]).lerp(col(W.gr[0]), .35), Math.max(60, Math.round(1500 * PR.rocks)), 640, nearPad);
     for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283; S.dust.emit(new THREE.Vector3(-12 + Math.cos(a) * 3, H(-12, -8) + .4, -8 + Math.sin(a) * 3), new THREE.Vector3(Math.cos(a) * 9, 1.2, Math.sin(a) * 9), S.dc, 1.6, 2.2, 1, 2, { grow: 3, drag: .7, a: .3, grav: W.g * .05 }); }
     S.rings.add(new THREE.Vector3(-12, H(-12, -8) + .3, -8), 0xffe6b0, 30, 1.2);
@@ -239,7 +252,7 @@ export function makeSurface(ctx) {
     if (!S.on) return; S.t += dt; if (S.launch) { stepLaunch(dt); if (!S.on || !S.fx) return {}; S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, S.player.position.x, S.player.position.z); return {}; } const r = S.mode === 'dive' ? stepDive(dt, inp) : stepLand(dt, inp);
     if (S.mode !== 'dive') dayCycle(dt);
     if (S.fx && S.mode !== 'dive') { const P = S.player.position; if (WORLD[S.body.id].air !== 'None' && Math.random() < dt * 6) S.dust.emit(new THREE.Vector3(P.x + (Math.random() - .5) * 40, P.y + Math.random() * 8, P.z + (Math.random() - .5) * 40), new THREE.Vector3(1.2, .1, .4), S.dc, .25, 6, 1, .6, { drag: .1, a: .35, fadeIn: .3, grow: 1 });
-      S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, P.x, P.z); }
+      S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, P.x, P.z); if (S.peb) S.peb.update(P.x, P.z); }
     return r; }
   function stepLand(dt, inp) {
     if (S.fly) return stepFly(dt, inp); if (S.drive) return stepDrive(dt, inp);
@@ -430,6 +443,6 @@ export function makeSurface(ctx) {
     ctx.cam.position.lerp(new THREE.Vector3(P.position.x + Math.sin(S.yaw) * 14, 7, P.position.z + Math.cos(S.yaw) * 14), Math.min(1, dt * 6)); ctx.cam.lookAt(P.position.x, -4, P.position.z);
     return { depth: S.depth, max: D.max };
   }
-  function exit() { FOGSUN.value.w = 0; if (S.fx) { S.fx.dispose(); S.dust.dispose(); S.fx = S.dust = null; S.grass = null; } if (S.fly) { S.fly = null; S.craft = null; } if (S.player && S.player.userData.sh) S.player.userData.sh.scale.setScalar(1); S.on = false; if (S.scn) { S.scn.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } S.scn = null; S.items = []; S.cols = []; }
+  function exit() { FOGSUN.value.w = 0; if (S.fx) { S.fx.dispose(); S.dust.dispose(); S.fx = S.dust = null; S.grass = null; S.peb = null; } if (S.fly) { S.fly = null; S.craft = null; } if (S.player && S.player.userData.sh) S.player.userData.sh.scale.setScalar(1); S.on = false; if (S.scn) { S.scn.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } S.scn = null; S.items = []; S.cols = []; }
   return { S, enter, step, exit, fly, launch, drive, helmet: () => { S.helmet = S.helmet ? 0 : 1; return S.helmet; }, H: (x, z) => H(x, z) };
 }
