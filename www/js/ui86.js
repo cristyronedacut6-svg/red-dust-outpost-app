@@ -11,7 +11,7 @@
   'use strict';
   if (typeof show !== 'function') return;
   const $q = s => document.querySelector(s), esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const VER = 'v88';
+  const VER = 'v90';
   /* ---------- one icon system: simple 24px outline icons, 1.8px strokes ---------- */
   const IP = {
     bolt: 'M13 2 4 14h7l-1 8 9-12h-7z', wind: 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h8', leaf: 'M5 21c0-9 5-15 15-16-1 10-7 15-15 16zM5 21l7-8',
