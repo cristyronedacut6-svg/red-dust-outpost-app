@@ -829,6 +829,27 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v86 — Mission-control interface (unreleased, on the dev branch)
+A full UI pass with one design system. No game logic was changed: the new layouts move the game's own buttons (same ids, handlers and translations) into calmer places. Everything lives in `www/js/ui86.js`, and the high-contrast mode keeps its own look.
+- **Design system:**
+  - **Colours:** navy `#101820` / `#192630`, cyan `#55D6E8` for anything you can press, orange `#F4A259` for planet information, green, amber and red only for status.
+  - **Type and icons:** Inter for text, Chakra Petch for the logo, one set of outline icons.
+  - **Buttons:** quiet secondary buttons, no glassy blur.
+- **Main menu:**
+  - **Primary action:** one big button. It says Continue mission when a save exists, or Story mode otherwise. Adventure mode sits next to it as the second choice.
+  - **World picker:** each world has a planet card with gravity, temperature, day length, atmosphere, its missions and your progress. Every value matches SCIENCE.md.
+  - **Secondary links:** Field guide, Settings, How to play, Credits (with every third-party model credit) and More.
+  - **Version line:** a small version label in the corner.
+- **Story HUD:**
+  - **Status panel:** tap the life-support bar to open it. It shows power, air and food per second, radiation and crew dose, your buildings by category, crew beds, temperature and the world's environment, with links to Goals, Research, Squad and the Field guide.
+  - **Objective line:** the current objective always shows under the bars. Tap it for the full goals list.
+- **Build bar:**
+  - **Categories:** Energy, Life support, Defense, Infrastructure, Medical, plus All. The tutorial always shows All. Number keys still work, and the right tab opens by itself.
+  - **Detail card:** picking a building shows its category, real cost, level-1 output, what it uses, whether you can build it now and what upgrades give.
+- **Settings:** six tabs (Graphics, Audio, Controls, Accessibility, Language, Gameplay). Every setting has a one-line explanation.
+- **Adventure mode:** the same palette and type, with smaller, calmer panels and buttons.
+- **Fixes:** the world title card, streak toast and squad portraits no longer show on top of menus. Reduced-motion mode turns the new animations off.
+
 ## v85 — Every world looks like itself (unreleased, on the dev branch)
 - **World identity:** each world now has its own ground, landmarks, colour and title card, so a screenshot tells you where you are.
   - **Europa:** reddish-brown lineae and tilted ice rafts (chaos terrain).

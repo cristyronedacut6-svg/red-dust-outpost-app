@@ -3543,7 +3543,7 @@ function frame(t){if(window.ADV_ON){last=t;requestAnimationFrame(frame);return}c
  if(MODE==='game'){if(S&&S.run&&!S.pz){if(S.net==='guest')HOOK('guestUpdate',dt);else update(dt)}HOOK('frame',dt);draw();bcardStep(dt);hudT-=dt;if(hudT<=0){hudT=.15;hudUp()}}else if(MODE==='cut'){cutStep(dt);drawCut()}else drawSpace();
  requestAnimationFrame(frame)}
 mkIcons();P=(CP&&CP.lv===TW)?CP:newP(Math.min(TW,mx));TW=P.lv;fit();init();fit();splash();requestAnimationFrame(frame);
-</script><script src="js/story_real.js"></script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
+</script><script src="js/story_real.js"></script><script src="js/ui86.js"></script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
 <div class="mi-moon"><svg viewBox="0 0 900 420"><defs><mask id="mnM"><rect x="0" y="0" width="900" height="420" fill="#fff"/><circle cx="270" cy="200" r="103" fill="#000"/></mask></defs>
 <g class="mn-cres"><circle cx="232" cy="214" r="122" fill="#fff" mask="url(#mnM)"/></g>
 <path class="mn-trail" d="M178 243 Q262 222 322 186" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="round"/>

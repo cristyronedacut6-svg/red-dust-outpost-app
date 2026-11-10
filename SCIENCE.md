@@ -45,6 +45,19 @@ Last checked: 10 November 2026 (v85).
 | Ceres | Bright spots | salts left by brine; some brine may remain | Occator crater, Dawn (2015–2018) | [NASA Dawn](https://science.nasa.gov/mission/dawn/) |
 | Ceres | Ahuna Mons | ice volcano about 4 km tall | Dawn | NASA Dawn |
 
+## Planet cards (main menu, v86)
+
+| World | Day length | Atmosphere | Source |
+|---|---|---|---|
+| Moon | 29.5 Earth days (sunrise to sunrise) | None (a very thin exosphere) | NASA Moon facts |
+| Mars | 24 h 40 min (one sol is 24 h 39.6 min) | Thin carbon dioxide, about 0.6% of Earth's pressure | NASA Mars facts |
+| Mercury | 176 Earth days (sunrise to sunrise) | None (a very thin exosphere) | NASA Mercury facts |
+| Europa | 3.6 Earth days (it always shows the same face to Jupiter, so a day equals its 3.55-day orbit) | Almost none (a trace of oxygen) | NASA Europa facts |
+| Titan | 15.9 Earth days (tidally locked to Saturn) | Thick nitrogen with methane, about 1.5 times Earth's pressure | NASA Titan |
+| Ceres | 9.1 hours | None | NASA Ceres facts |
+
+Gravity and temperature on the cards are the same values as the Story mode table above.
+
 ## Light-speed delay (Earth help)
 
 The delay is distance divided by the speed of light (299,792 km/s):
