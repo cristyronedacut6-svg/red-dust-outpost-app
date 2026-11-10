@@ -829,6 +829,22 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v84 — Wow polish for judging
+
+- **Realistic explosions** (Story mode, HD and Real views): each blast is built in stages.
+  - It starts with a white flash and a turbulent fireball that rises on its own heat.
+  - Billowing smoke follows, lit orange from below, then turns grey and drifts up.
+  - Dark debris chunks fly out on ballistic arcs and leave smoke trails, then bounce and settle; embers and sparks fall with them.
+  - On the ground, a dust skirt races outward and a scorch mark stays behind, and the blast briefly lights the ground and nearby buildings.
+  - Physics follows each world: on airless worlds the fireball is only a flash (no oxygen to burn), and the regolith flies out in a dome on clean ballistic arcs and falls back slowly in low gravity, with no smoke. Mars smoke is rust-red dust and Titan's is thick orange.
+  - Destroyed buildings now explode this way too.
+- **Judge's tour (3 min):** a new title button that plays the highlights.
+  - Story mode in the Real view: the Moon, then Mars (dust storm, marsquake, explosion), then the Europa boss under Jupiter.
+  - Then Adventure: the SLS launch, entry and landing at Jezero crater on Mars, a short walk, and a thank-you card.
+  - The older demo is now "Full story demo".
+- **Filipino and Spanish** now cover the science content as well as the menus: NASA data for each world, all 24 world facts, briefings, storm and radiation notes, the "Living on a real world" guide, quake facts and the new buttons.
+- **Accessibility:** new **High contrast** setting (black panels, white text, yellow outlines) and **One-handed** mode (your astronaut fires by itself whenever an alien is in range, so one thumb on the joystick is enough). These join the existing big text, bigger buttons, colour-blind colours and reduced flashing.
+
 ## v83 — Judge-ready polish
 
 - **First load is about 7× smaller:** the 3D model data (about 7 MB of NASA and boss models) now loads in the background after the title appears, or right away when a 3D view is switched on. The game is playable after about 1 MB.

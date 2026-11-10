@@ -61,7 +61,10 @@
     // brushing dust off solar panels
     if (!S.drive && S.b && S.net !== 'guest') S.b.forEach(b => { if (b.t !== 'solar' || !(b.dust > .02)) return; if (Math.hypot(S.p.x - (b.x + 8), S.p.y - (b.y + 8)) < 20) { b.dust = Math.max(0, b.dust - dt * .55); if (!b.brT || S.t - b.brT > 3) { b.brT = S.t; if (typeof ftxt === 'function') ftxt(b.x + 8, b.y - 4, 'Brushing off dust', '#d8c9a8'); }
         if (Math.random() < dt * 14) S.pt.push({ x: b.x + 2 + Math.random() * 12, y: b.y + 2 + Math.random() * 12, vx: (Math.random() - .5) * 18, vy: -8 - Math.random() * 10, l: .5, ml: .5, c: '#b8a98c', s: 1 }); } });
-    footprints(dt); quakes(dt); air(); };
+    footprints(dt); quakes(dt); air(); autoFire(); };
+  /* one-handed play: fire by itself whenever an alien is in range, so one thumb on the joystick is enough */
+  let afOn = false; function autoFire() { let want = false; try { want = !!LS.get('autof', 0); } catch (e) {} if (!want) { if (afOn) { afOn = false; fireHeld = false; } return; }
+    const near = S.al && S.al.some(a => !a.hid && a.hp > 0 && Math.hypot(a.x - S.p.x, a.y - S.p.y) < 150); if (near) { fireHeld = true; afOn = true; } else if (afOn) { fireHeld = false; afOn = false; } }
   /* 7) footprints and tracks */
   function footprints(dt) { S.prints = S.prints || []; const P = S.prints, fade = FADE[lv()] || 0;
     if (S.land <= 0 && !S.cin) {
@@ -84,7 +87,7 @@
     if (q.t > q.ring * 4 + 1) { S.qk = null; S.qT = 75 + Math.random() * 90; } }
   function startQuake(Q) { const m = Q.m[0] + Math.random() * (Q.m[1] - Q.m[0]); S.qk = { t: 0, m, amp: 2 + (m - 2) * 2.2, ring: Q.ring * (.8 + m / 6), n: m > 3.8 ? 3 : m > 3 ? 2 : 1, dmg: Math.round(3 + (m - 2) * 4) };
     if (typeof snd === 'function') snd('rumble'); try { navigator.vibrate && navigator.vibrate([80, 40, 120, 40, 60]); } catch (e) {}
-    S.ban = { k: 'earth', lab: `📈 Seismometer · ${Q.n} · magnitude ${m.toFixed(1)}`, txt: Q.f + (S.qN ? '' : ' Buildings near the shaking can take a little damage.'), t: 11 }; S.qN = (S.qN || 0) + 1; }
+    S.ban = { k: 'earth', lab: `📈 Seismometer · ${Q.n} · magnitude ${m.toFixed(1)}`, txt: Q.f, t: 11 }; S.qN = (S.qN || 0) + 1; }
   /* 8) sound through the air */
   let airW = -1; function air() { if (typeof BUS === 'undefined' || !BUS || !BUS.m || !AC) return; if (!SR.af) { try { const f = AC.createBiquadFilter(), g = AC.createGain(); f.type = 'lowpass'; f.frequency.value = 20000; f.connect(g); g.connect(BUS.m); BUS.sfx.disconnect(); BUS.sfx.connect(f); SR.af = f; SR.ag = g; } catch (e) { SR.af = false; return; } }
     if (!SR.af) return; const w = S && S.run ? lv() : -1; if (w === airW) return; airW = w; const A = w < 0 ? [20000, 1] : (AIR[w] || [20000, 1]);

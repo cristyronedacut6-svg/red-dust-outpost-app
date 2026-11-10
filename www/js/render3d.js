@@ -751,7 +751,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     acid: ['#f0ffc0', '#a8ff3a', '#2a9a20', '#3a4a20'], void: ['#ffe0ff', '#ff3ab0', '#7a10ff', '#1a0a2a'], sand: ['#fff0c0', '#ffb060', '#c06020', '#a07850'],
     grav: ['#f0e0ff', '#c070ff', '#5a20ff', '#2a2040'], energy: ['#ffffff', '#7df9ff', '#2a6bff', '#405060'], gold: ['#ffffff', '#ffe066', '#ff9a1a', '#504020'] };
   function vxTex() {
-    const S_ = 128, cv = document.createElement('canvas'); cv.width = S_ * 4; cv.height = S_ * 2; const g = cv.getContext('2d'), im = g.createImageData(S_ * 4, S_ * 2), d = im.data;
+    const S_ = 128, cv = document.createElement('canvas'); cv.width = S_ * 4; cv.height = S_ * 4; const g = cv.getContext('2d'), im = g.createImageData(S_ * 4, S_ * 4), d = im.data;
     const hs = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
     const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); return (hs(xi, yi) * (1 - u) + hs(xi + 1, yi) * u) * (1 - v) + (hs(xi, yi + 1) * (1 - u) + hs(xi + 1, yi + 1) * u) * v; };
     const fbm = (x, y) => vn(x, y) * .5 + vn(x * 2.1, y * 2.1) * .3 + vn(x * 4.3, y * 4.3) * .2;
@@ -764,6 +764,13 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     cell(5, (u, v, r) => Math.max(Math.exp(-r * r * 9), Math.exp(-u * u * 400) * (1 - Math.abs(v)), Math.exp(-v * v * 400) * (1 - Math.abs(u)))); // star flare
     cell(6, (u, v, r) => Math.exp(-Math.pow((r - .7) / .2, 2)) * (r < 1 ? 1 : 0));                         // soft shock ring
     cell(7, (u, v, r, x, y) => { const n = fbm(x / 10, y / 10), a = Math.atan2(v, u), ray = Math.pow(Math.abs(Math.sin(a * 7 + n * 3)), 6); return Math.max(0, 1 - r) * (.55 + .45 * n) * (r < .35 ? 1 : .4 + .6 * ray); }); // scorch decal
+    // realistic explosion parts: billowing smoke, a turbulent fireball, a jagged debris chunk, a glowing ember, a grainy dust puff
+    const BL = []; for (let i = 0; i < 16; i++) { const a = hs(i, 3) * 6.283, d = Math.pow(hs(i, 7), .6) * .42; BL.push([Math.cos(a) * d, Math.sin(a) * d * .9 - .04, .2 + hs(i, 11) * .26]); }
+    cell(8, (u, v, r, x, y) => { let s = 0; for (const b of BL) { const q = Math.hypot(u - b[0], v - b[1]) / b[2]; s += Math.exp(-q * q * 1.6); } const n = fbm(x / 14 + 2, y / 14); return Math.min(1, s * .55) * (.55 + .45 * n) * Math.max(0, 1 - Math.pow(r, 6)); });
+    cell(9, (u, v, r, x, y) => { const n = fbm(x / 16 + 5, y / 16 + 1), n2 = fbm(x / 7, y / 7); return Math.pow(Math.max(0, 1 - r * (.95 + .9 * (1 - n))), .65) * (.6 + .4 * n2); });
+    cell(10, (u, v, r) => { const a = Math.atan2(v, u), R = .45 + .22 * Math.sin(a * 3 + 1) + .12 * Math.sin(a * 7 + 2); return Math.max(0, Math.min(1, (R - r) * 18)); });
+    cell(11, (u, v, r) => Math.min(1, Math.exp(-r * r * 40) + .35 * Math.exp(-r * r * 7)));
+    cell(12, (u, v, r, x, y) => { const n = fbm(x / 6, y / 6), n2 = fbm(x / 20 + 4, y / 20); return Math.max(0, 1 - r * (1 + .9 * (1 - n2))) * (.3 + .7 * n) * .85; });
     g.putImageData(im, 0, 0); return cv;
   }
   function vxInit() {
@@ -828,8 +835,51 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
       FX.ring(x, z, { el: o.el, r1: 10, r2: r }); FX.ring(x, z, { el: o.el, r1: r * .3, r2: r * 1.4 });
       for (let i = 0; i < 40; i++) { const q = rr(0, 6.283), d = rr(0, r); vxAdd({ x: x + Math.cos(q) * d, y: y + 300, z: z + Math.sin(q) * d, vy: -rr(700, 1000), l: rr(.25, .45), s0: 5, s1: 3, c0: vcol(E[0]), c1: vcol(E[1]), a0: 1, a1: .3, tx: 3, str: 1, add: 1 }); }
       for (let i = 0; i < 14; i++) { const q = rr(0, 6.283), d = rr(0, r * .8); vxAdd({ x: x + Math.cos(q) * d, y: y + 4, z: z + Math.sin(q) * d, vy: rr(20, 60), l: rr(.5, .9), s0: 20, s1: 50, c0: vcol(E[1]), c1: vcol(E[2]), a0: .9, a1: 0, tx: 1, add: 1 }); } } };
+  /* ---------- realistic explosions (HD and Real views) ----------
+     flash → turbulent fireball that rises on its own heat → billowing smoke lit orange from below, turning grey → debris on ballistic arcs
+     with smoke trails → embers → a ground-hugging dust ring → scorch mark. Gravity and air are each world's own: on airless worlds the
+     fireball is a brief flash (no oxygen) and the regolith flies out in a perfect dome and falls back slowly, with no smoke at all. */
+  const WG = [.17, .38, .38, .13, .14, .03, .5], AIRW = [0, .55, 0, 0, 1.4, 0, .8];
+  const SMK = [['#7c7a78', '#9a9894'], ['#7a4a32', '#b07a58'], ['#6a6662', '#8a8580'], ['#c8d8e8', '#eef6ff'], ['#8a5a28', '#c08a4a'], ['#6a6a70', '#8a8a92'], ['#5a3a6a', '#8a6a9a']];
+  function realBoom(x, z, o) { const r = Math.max(8, o.r || 20), E = VEL[o.el] || VEL.fire, y = TH0(x, z), lv = S.lv || 0, air = AIRW[lv] ?? .5, gW = 220 * Math.max(.22, WG[lv] || .5), big = r > 40, Q = R3.q === 'low' ? .55 : 1, sm = SMK[lv] || SMK[0];
+    const fire = !o.el || o.el === 'fire' || o.el === 'energy', E0 = fire ? '#fff6d8' : E[0], E1 = fire ? '#ffb040' : E[1], E2 = fire ? '#e0400c' : E[2];
+    R3.flashes = R3.flashes || []; R3.flashes.push({ x, z, t: 0, r: r * 5, c: E1 });
+    // flash
+    vxAdd({ x, y: y + r * .35, z, l: .08, s0: r * 2.4, s1: r * 3.2, c0: vcol('#ffffff'), c1: vcol(E0), a0: .9, a1: 0, tx: 5, add: 1, rot: rr(0, 6) });
+    vxAdd({ x, y: y + r * .3, z, l: .14, s0: r * 1.6, s1: r * 2.4, c0: vcol('#fff2c0'), c1: vcol(E1), a0: .7, a1: 0, tx: 0, add: 1 });
+    // fireball: several turbulent lobes that swell, rise and cool from white to orange to deep red
+    const fl = air > 0 ? 1 : .45, nF = Math.round((big ? 11 : 7) * Q);
+    for (let i = 0; i < nF; i++) { const q = rr(0, 6.283), sp = rr(.25, .8) * r * (air > 0 ? 1.2 : 2.2), up = rr(.2, .7) * r;
+      vxAdd({ x: x + rr(-.2, .2) * r, y: y + rr(.15, .5) * r, z: z + rr(-.2, .2) * r, vx: Math.cos(q) * sp, vy: up + r * .5 * air, vz: Math.sin(q) * sp, dr: 3.2, g: -r * .9 * air, l: rr(.45, .85) * fl, s0: r * rr(.6, .9), s1: r * rr(1.3, 1.9), c0: fire ? [.95, .62, .25] : vcol(E0), c1: fire ? [.5, .1, .02] : vcol(E2), a0: .85, a1: 0, ez: 1, tx: 9, rot: rr(0, 6), vr: rr(-1.2, 1.2), add: 1 });
+      if (i % 2 === 0) vxAdd({ x: x + rr(-.15, .15) * r, y: y + rr(.2, .45) * r, z: z + rr(-.15, .15) * r, vx: Math.cos(q) * sp * .7, vy: up * .8 + r * .45 * air, vz: Math.sin(q) * sp * .7, dr: 3, g: -r * .8 * air, l: rr(.6, 1) * fl, s0: r * rr(.7, 1), s1: r * rr(1.4, 2), c0: fire ? [.85, .38, .08] : vcol(E1), c1: [.16, .1, .08], a0: .95, a1: 0, ez: 1, tx: 9, rot: rr(0, 6), vr: rr(-1, 1), add: 0 }); }
+    // smoke: billows lit orange from below at first, then grey; they rise, spread and slowly fade (only where there is air)
+    if (air > 0) { const nS = Math.round((big ? 16 : 9) * Q);
+      for (let i = 0; i < nS; i++) { const q = rr(0, 6.283), d = rr(0, .5) * r, sp = rr(.15, .45) * r, life = rr(2.2, 4) * (air > 1 ? 1.4 : 1);
+        const base = { x: x + Math.cos(q) * d, y: y + rr(.2, .6) * r, z: z + Math.sin(q) * d, vx: Math.cos(q) * sp, vy: rr(.4, .9) * r * .6 / Math.max(.6, air), vz: Math.sin(q) * sp, dr: 1.1 * air, l: life, rot: rr(0, 6), vr: rr(-.35, .35), add: 0 };
+        vxAdd({ ...base, s0: r * rr(.8, 1.1), s1: r * rr(2.8, 3.8), c0: vcol(fire ? '#2a160c' : E[3]), c1: vcol(sm[0]), a0: 1, a1: 0, ez: 1, tx: 8 });
+        vxAdd({ ...base, y: base.y + r * .25, s0: r * rr(.55, .8), s1: r * rr(2, 2.8), c0: vcol(fire ? '#e07020' : E[1]), c1: vcol(sm[1]), a0: .75, a1: 0, ez: 1, tx: 8, vr: -base.vr }); } }
+    else { const nD = Math.round((big ? 40 : 24) * Q);   // the airless ejecta dome: dust on clean ballistic arcs, no drag, falling back in low gravity
+      for (let i = 0; i < nD; i++) { const q = rr(0, 6.283), el = rr(.5, 1.25), sp = rr(.45, 1.15) * r * 1.5 * Math.sqrt(.4 / Math.max(.13, WG[lv])), lit = i % 3 !== 0;
+        vxAdd({ x, y: y + 2, z, vx: Math.cos(q) * Math.cos(el) * sp, vy: Math.sin(el) * sp, vz: Math.sin(q) * Math.cos(el) * sp, g: gW, bnc: 1, l: rr(1.8, 3.2), s0: r * rr(.4, .6), s1: r * rr(.9, 1.3), c0: lit ? [.95, .93, .88] : [.4, .39, .37], c1: lit ? [.8, .78, .74] : [.36, .35, .33], a0: .95, a1: 0, ez: 1, tx: lit ? 8 : 12, rot: rr(0, 6), add: 0 }); }
+      vxAdd({ x, y: y + r * .3, z, l: .5, s0: r * 1.2, s1: r * 3, c0: [.9, .88, .84], c1: vcol(sm[1]), a0: .7, a1: 0, ez: 1, tx: 12, add: 0 }); }
+    // debris: dark chunks on ballistic arcs with smoke trails, bouncing to a stop
+    const nB = Math.round((big ? 14 : 7) * Q);
+    for (let i = 0; i < nB; i++) { const q = rr(0, 6.283), el = rr(.35, 1.2), sp = rr(1.4, 3.2) * r * Math.sqrt(.45 / Math.max(.13, WG[lv]));
+      vxAdd({ x, y: y + r * .2, z, vx: Math.cos(q) * Math.cos(el) * sp, vy: Math.sin(el) * sp, vz: Math.sin(q) * Math.cos(el) * sp, g: gW, dr: .25 * air, bnc: 1, l: rr(1.6, 2.8), s0: rr(1.6, 3.4) * Math.min(2, r / 18), s1: rr(1.4, 3) * Math.min(2, r / 18), c0: vcol('#2a2624'), c1: vcol('#3a3430'), a0: 1, a1: .9, tx: 10, rot: rr(0, 6), vr: rr(-9, 9), add: 0, trail: air > 0 ? 12 : 0, tc: vcol(sm[0]) }); }
+    // sparks and embers
+    const nK = Math.round((big ? 30 : 16) * Q);
+    for (let i = 0; i < nK; i++) { const q = rr(0, 6.283), el = rr(.2, 1.3), sp = rr(r * 2.2, r * 6);
+      vxAdd({ x, y: y + 3, z, vx: Math.cos(q) * sp * Math.cos(el), vy: Math.sin(el) * sp * .8, vz: Math.sin(q) * sp * Math.cos(el), g: gW * 1.2, dr: 1.2 * air + .2, l: rr(.3, .7), s0: rr(2.5, 4.5), s1: 1, c0: vcol('#fff8e0'), c1: vcol(E1), a0: 1, a1: 0, tx: 3, str: 1, add: 1 }); }
+    for (let i = 0; i < Math.round(nK * .5); i++) { const q = rr(0, 6.283), sp = rr(.4, 1.6) * r;
+      vxAdd({ x, y: y + r * .4, z, vx: Math.cos(q) * sp, vy: rr(.5, 1.5) * r, vz: Math.sin(q) * sp, g: gW * .35, dr: .8 * air, bnc: 1, l: rr(1.2, 2.4), s0: rr(1.6, 2.6), s1: .8, c0: vcol('#ffd27a'), c1: vcol('#ff4a10'), a0: 1, a1: 0, tx: 11, add: 1 }); }
+    // ground: a dust skirt racing outwards, a heat ring, and a lasting scorch mark
+    vxAdd({ x, y: y + .8, z, l: .9, s0: r * .8, s1: r * 4.2, c0: vcol(sm[1]), c1: vcol(sm[0]), a0: .55, a1: 0, tx: 6, flat: 1, add: 0 });
+    vxAdd({ x, y: y + .6, z, l: .35, s0: r * .5, s1: r * 3, c0: vcol(E1), c1: vcol(E2), a0: .8, a1: 0, tx: 4, flat: 1, add: 1 });
+    vxAdd({ x, y: y + .4, z, l: 9, s0: r * 2.2, s1: r * 2.3, c0: vcol('#000000'), c1: vcol('#000000'), a0: .6, a1: 0, tx: 7, flat: 1, add: 0, rot: rr(0, 6.28) });
+    vxAdd({ x, y: y + .5, z, l: 2.2, s0: r * 1.4, s1: r * 1.6, c0: vcol('#ff6a1a'), c1: vcol('#3a0a00'), a0: .8, a1: 0, tx: 7, flat: 1, add: 1, rot: rr(0, 6.28) }); }
+  const oldExplode = FX.explode; FX.explode = (x, z, o) => (HDM && R3.realFx !== false) ? realBoom(x, z, o) : oldExplode(x, z, o);
   R3.fx = (k, x, z, o) => { try { if (FX[k] && VX.P.length < 2400) FX[k](x, z, o || {}); } catch (e) {} };
-  R3.fxEl = VEL;
+  R3.fxEl = VEL; R3._vx = VX;
   // live per-frame sprites: bullets as glowing orbs/tracers, elemental telegraph rims on danger zones
   function vxLive(t) {
     try { vxLive2(t); } catch (e) {}
@@ -845,19 +895,21 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
   function vxDraw(dt) {
     if (!vxInit()) return; const t = T(); VX.I.length = 0; try { vxLive(t); } catch (e) {}
     const P = VX.P; for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; p.l -= dt; if (p.l <= 0) { P[i] = P[P.length - 1]; P.pop(); continue; }
-      if (p.vx != null) { const k = p.dr ? Math.exp(-p.dr * dt) : 1; p.vx *= k; p.vz *= k; p.vy = (p.vy || 0) * k - (p.g || 0) * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; }
+      if (p.vx != null) { const k = p.dr ? Math.exp(-p.dr * dt) : 1; p.vx *= k; p.vz *= k; p.vy = (p.vy || 0) * k - (p.g || 0) * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+        if (p.bnc) { const gy = TH0(p.x, p.z) + p.s0 * .25; if (p.y < gy) { p.y = gy; p.vy = Math.abs(p.vy) * .3; p.vx *= .55; p.vz *= .55; p.vr = (p.vr || 0) * .5; if (Math.abs(p.vy) < 6) { p.vy = 0; p.g = 0; p.vx *= .2; p.vz *= .2; } } }
+        if (p.trail && p.l > p.ml * .25 && Math.random() < dt * p.trail && P.length < 2300) vxAdd({ x: p.x, y: p.y, z: p.z, vx: 0, vy: 4, vz: 0, dr: 2, l: rr(.8, 1.4), s0: p.s0 * 1.8, s1: p.s0 * 5, c0: p.tc || vcol('#6a645c'), c1: p.tc || vcol('#6a645c'), a0: .6, a1: 0, ez: 1, tx: 8, rot: rr(0, 6), add: 0 }); }
       else if (p.vy) p.y += p.vy * dt; if (p.vr) p.rot += p.vr * dt; }
     VX.addArr = null; if (!P.length && !VX.I.length) return;
     const B = BAS; if (!B) return; const R_ = B.r, U_ = B.u, F_ = B.f, out = [[], []];
     const quad = (x, y, z, s, r, g, b, a, tx, add, flat, rot, str, vx, vy, vz) => {
-      const L = out[add ? 1 : 0]; if (L.length > 9 * 6 * 1400) return; const cu = (tx % 4) * .25, cv = Math.floor(tx / 4) * .5, du = .25, dv = .5, h = s / 2;
+      const L = out[add ? 1 : 0]; if (L.length > 9 * 6 * 1400) return; const cu = (tx % 4) * .25, cv = Math.floor(tx / 4) * .25, du = .25, dv = .25, h = s / 2;
       let ax, ay, az, bx, by, bz;
       if (flat) { const c = Math.cos(rot), sn = Math.sin(rot); ax = c * h; ay = 0; az = sn * h; bx = -sn * h; by = 0; bz = c * h; }
       else if (str) { let l = Math.hypot(vx, vy, vz) || 1; let dx = vx / l, dy = vy / l, dz = vz / l; let sx = dy * F_[2] - dz * F_[1], sy = dz * F_[0] - dx * F_[2], sz = dx * F_[1] - dy * F_[0], sl = Math.hypot(sx, sy, sz) || 1; const len = Math.max(h * 2.2, Math.min(l * .045, 26)); ax = dx * len; ay = dy * len; az = dz * len; bx = sx / sl * h * .5; by = sy / sl * h * .5; bz = sz / sl * h * .5; }
       else { const c = Math.cos(rot), sn = Math.sin(rot); ax = (R_[0] * c + U_[0] * sn) * h; ay = (R_[1] * c + U_[1] * sn) * h; az = (R_[2] * c + U_[2] * sn) * h; bx = (-R_[0] * sn + U_[0] * c) * h; by = (-R_[1] * sn + U_[1] * c) * h; bz = (-R_[2] * sn + U_[2] * c) * h; }
       const v = (sa, sb, u, w) => L.push(x + ax * sa + bx * sb, y + ay * sa + by * sb, z + az * sa + bz * sb, cu + u * du, cv + w * dv, r, g, b, a);
       v(-1, -1, 0, 0); v(1, -1, 1, 0); v(1, 1, 1, 1); v(-1, -1, 0, 0); v(1, 1, 1, 1); v(-1, 1, 0, 1); };
-    for (const p of P) { const k = 1 - p.l / p.ml, s = p.s0 + (p.s1 - p.s0) * k, a = p.a0 + (p.a1 - p.a0) * k, c0 = p.c0, c1 = p.c1 || c0; if (a <= .01) continue;
+    for (const p of P) { const k = 1 - p.l / p.ml, s = p.s0 + (p.s1 - p.s0) * (p.ez ? 1 - (1 - k) * (1 - k) : k), a = p.a0 + (p.a1 - p.a0) * (p.ez ? k * k : k), c0 = p.c0, c1 = p.c1 || c0; if (a <= .01) continue;
       quad(p.x, p.y, p.z, s, c0[0] + (c1[0] - c0[0]) * k, c0[1] + (c1[1] - c0[1]) * k, c0[2] + (c1[2] - c0[2]) * k, a, p.tx, p.add, p.flat, p.rot, p.str, p.vx || 0, p.vy || 0, p.vz || 0); }
     for (const q of VX.I) quad(q.x, q.y, q.z, q.s, q.c[0], q.c[1], q.c[2], q.a, q.tx, q.add, q.flat, q.rot, q.str, q.vx || 0, q.vy || 0, q.vz || 0);
     gl.useProgram(VX.prog); gl.uniformMatrix4fv(VX.U.uM, false, new Float32Array(VP)); gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, VX.tex); gl.uniform1i(VX.U.uX, 5);
@@ -1260,8 +1312,10 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, c3.width, c3.height); gl.useProgram(prog); gl.enable(gl.CULL_FACE);
     gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, SH.tex); gl.uniform1i(U.uSh, 4); gl.activeTexture(gl.TEXTURE0); gl.uniformMatrix4fv(U.uLM, false, new Float32Array(M)); gl.uniform1f(U.uShT, 1.1 / SH.size); return M; }
   function lights(dk) {
-    if (dk < .05) return [];
+    const FLs = (R3.flashes || []).filter(f => (f.t += (FDT || .016)) < .45); R3.flashes = FLs;
+    if (dk < .05 && !FLs.length) return [];
     const K = .2 + dk * 1.1, out = [], add = (x, y, h, r, c, k) => { const C = col(c); out.push([x, h + (HDM && TER ? THc(x, y) : 0), y, r, C[0] * K * (k || 1), C[1] * K * (k || 1), C[2] * K * (k || 1), Math.hypot(x - TGT.x, y - TGT.y)]); };
+    if (FLs.length) { const fo = []; FLs.forEach(f => { const k = Math.pow(1 - f.t / .45, 2), C = col(f.c), h = 14 + (HDM && TER ? THc(f.x, f.z) : 0); fo.push([f.x, h, f.z, f.r, C[0] * 3.2 * k, C[1] * 2.6 * k, C[2] * 2 * k, 0]); }); if (dk < .05) return fo.slice(0, 4); out.push(...fo.slice(0, 2)); }   /* the blast lights up the ground and buildings around it */
     const c = core(); if (c) add(c.x + 16, c.y + 16, 34, 150, '#fff1d0', .8);
     if (S.cin && S.cin.k === 'boss') add(S.cin.x, S.cin.y, 50, 200, '#ff7070', 1.6);
     add(S.p.x + S.face.x * 10, S.p.y + S.face.y * 10, 16, 95, '#e8f4ff', 1);

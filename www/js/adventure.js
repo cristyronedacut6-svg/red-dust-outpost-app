@@ -1131,7 +1131,7 @@ function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last 
   else if (R.entry) { stepEntry(dt); draw(R.scn); }
   else { if (!pnl) { step(dt); const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) setT(lb, k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase()); draw(R.scn); } }
   } catch (e) { if (!loop.errN || loop.errN < 5) { loop.errN = (loop.errN || 0) + 1; console.error('Adventure frame error:', e); } }
-  try { envFX(dt, sf); adapt(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
+  try { envFX(dt, sf); adapt(dt, sf); if (TOURA) tourStep(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
 /* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
 const MC = 'rdo-models-2', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
 const DLV = 78;
@@ -1164,7 +1164,22 @@ function resPanel(done, fromGame) {
     $('#dF').onclick = () => run(full, 'full'); $('#dL').onclick = () => run(light, 'light');
   }).catch(() => { $('#dlT').textContent = 'Resources are built into this version, so no download is needed.'; $('#dlB').innerHTML = '<div class="row" style="margin-top:12px"><button class="pr" id="dGo">🚀 Launch</button></div>'; $('#dGo').onclick = () => { open.skipDL = 1; o.remove(); done && done(); }; });
 }
-function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); const after = () => { if (!open.shown) { open.shown = 1; openingShot(); } else if (!G('adv_seen', 0)) intro(); }; if (SET.launch !== 0) launchSeq(after); else after(); }
+function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); const after = () => { if (TOURA) return tourMars(); if (!open.shown) { open.shown = 1; openingShot(); } else if (!G('adv_seen', 0)) intro(); }; if (SET.launch !== 0 || TOURA) launchSeq(after); else after(); }
 function close() { try { AUD.stop(); } catch (e) {} try { coLeave(true); } catch (e) {} ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
-window.ADV = { open, close, goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R, _CO: () => CO, toast: (m) => R && toast(m), trophyToast };
+/* ---------------- judge's tour: the SLS launch, then a landing on Mars and a short walk, then a thank-you card ---------------- */
+let TOURA = null;
+function tour(cb) { TOURA = { cb, t: 0, st: 0 }; open.skipDL = 1; open.shown = 1; try { P('adv_seen', 1); } catch (e) {} open(); tourChip('4 of 5 · Launch from Earth on NASA’s SLS'); }
+function tourChip(t) { if (!R) return; let c = R.root.querySelector('#aTour'); if (!c) { c = document.createElement('div'); c.id = 'aTour'; c.style.cssText = 'position:absolute;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);z-index:12;display:flex;gap:8px;align-items:center;background:rgba(6,10,24,.78);border:1px solid rgba(125,249,255,.35);border-radius:999px;padding:5px 6px 5px 14px;font:600 12px var(--disp,system-ui);color:#e8f4ff;white-space:nowrap;max-width:94vw';
+    c.innerHTML = '<span></span><button style="border:0;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font:700 11px var(--disp,system-ui);padding:5px 10px">Exit tour</button>'; c.querySelector('button').onclick = () => tourEnd(true); R.root.appendChild(c); } c.querySelector('span').textContent = 'Judge’s tour · ' + t; }
+async function tourMars() { const b = BI.mars; if (!b || !TOURA) return tourEnd(); TOURA.st = 1; TOURA.t = 0; tourChip('5 of 5 · Entry, descent and landing on Mars');
+  const site = (SITES.mars || []).find(s => s.id === 'jezero') || (SITES.mars || [])[0] || null; try { if (site) await loadDEM(site); } catch (e) {} if (!TOURA) return;
+  try { orbitStep(); orbitStep(); } catch (e) {}   /* the planets kept moving during the launch: catch up first */
+  const c = R.bpos.mars, B = b.r, away = R.bpos.phobos ? c.clone().sub(R.bpos.phobos).setY(0).normalize() : new THREE.Vector3(1, 0, 1).normalize(); R.ship.position.copy(c).addScaledVector(away, B + 6).add(new THREE.Vector3(0, 3, 0));   /* on the far side from Phobos, so its gravity doesn't carry the ship off */ R.vel.set(0, 0, 0); R.ap = null; lookAtYP(c); R.site = site;   /* same approach the Adventure demo uses */
+  setTimeout(() => { try { if (TOURA) landOrLaunch.go(); } catch (e) { tourEnd(); } }, 300); }
+function tourStep(dt, sf) { const T = TOURA; T.t += dt; if (T.st === 1 && sf && R.surf.S.on && !R.entry) { T.st = 2; T.t = 0; tourChip('5 of 5 · Walking on Mars, real NASA terrain'); }
+  if (T.st === 2) { R.joy.y = T.t > 1.5 && T.t < 9 ? -.7 : 0; R.joy.x = T.t > 4 && T.t < 6 ? .35 : 0; if (T.t > 12) { T.st = 3; R.joy.x = R.joy.y = 0; tourCard(); } } }
+function tourCard() { const o = document.createElement('div'); o.className = 'pnl'; o.innerHTML = `<div class="crd"><div class="ey">RED DUST OUTPOST · MOON PRODUCTIONS</div><h2>Thank you for playing</h2><div class="mt">Every world in the game uses real NASA data: gravity, temperatures, day lengths, radiation, sunlight, terrain and spacecraft models (NASA 3D Resources). Story mode and Adventure mode are both waiting for you.</div><div class="row"><button class="pr" id="tcX">Back to the title</button></div></div>`;
+  R.root.appendChild(o); o.querySelector('#tcX').onclick = () => tourEnd(); setTimeout(() => { if (TOURA) tourEnd(); }, 12000); }
+function tourEnd(skip) { const T = TOURA; if (!T) return; TOURA = null; try { const c = R.root.querySelector('#aTour'); if (c) c.remove(); R.root.querySelectorAll('.pnl').forEach(p => p.remove()); if (R.launch) R.launch.finish(true); } catch (e) {} R.joy.x = R.joy.y = 0; close(); open.skipDL = 0; if (T.cb) setTimeout(() => T.cb(skip), 50); }
+window.ADV = { tour, open, close, goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R, _CO: () => CO, toast: (m) => R && toast(m), trophyToast };
 export { open, close };

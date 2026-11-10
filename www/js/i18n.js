@@ -171,6 +171,7 @@
     let lead = m[1], core = m[2]; if (!core) return null; const li = IDX[LANG];
     const k = norm(core), row = MAP.get(k);
     if (row) return lead + row[li] + m[3];
+    if (window.I18N_FACTS) { const f = I18N_FACTS.get(core, LANG); if (f) return lead + f + m[3]; }
     for (const [re, out] of PT) { const mm = k.match(re); if (mm) return lead + out[li - 1].replace(/\$(\d)/g, (_, d) => mm[+d]) + m[3]; }
     return null;
   }
