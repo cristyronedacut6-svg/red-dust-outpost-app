@@ -129,6 +129,13 @@ Two discoveries are worded as possibilities, because scientists aren't sure yet:
 - How Mercury's hollows form: they "may" form from material escaping as gas.
 - Where Europa's surface salts come from: they "may" come from the ocean.
 
+## Rendering rules tied to the science (v89)
+
+- **Airless worlds** (Moon, Mercury, Europa, Ceres): there is no atmosphere to scatter light.
+  - **Distance:** far terrain is not faded by haze (no aerial perspective). Only the very edge of the map fades.
+  - **Shadows:** in the HD and Real views, the sky does not fill them, so they are darker and harder. Earthshine on the Moon and Jupitershine on Europa still add a faint fill.
+- **Mars and Titan** keep distance haze, because both have real atmospheres. Mars' is thin and dusty; Titan's is thick and hazy.
+
 ## Known approximations
 
 - **Days and waves:** a game day is 50 seconds on every world. Real day lengths are explained in the facts and the field guide.
