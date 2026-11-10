@@ -141,3 +141,27 @@ Two discoveries are worded as possibilities, because scientists aren't sure yet:
 - **Days and waves:** a game day is 50 seconds on every world. Real day lengths are explained in the facts and the field guide.
 - **Scale:** buildings, aliens and distances in Story mode are scaled for play.
 - **Ceres dust:** the realism module adds a little dust settling on solar panels on Ceres. This is a gameplay stand-in, not a measured rate.
+
+## Adventure surfaces (v90, branch `adventure-mode-quality-upgrade`)
+
+Each landing world now has its own ground recipe in `www/js/adv_terrain.js`. The surfaces are **procedural**: they are shaped by published descriptions, not copied from measured elevation. Where a landing site already used a real elevation model (the Moon sites and most Mars sites, in `models/dem/`), the recipe only changes colour, texture and rocks. It never invents landforms there.
+
+| World | What the ground shows | Based on |
+|---|---|---|
+| Mars (Jezero) | Dark basaltic sand in low ground with wind ripples; pale, fractured bedrock on higher ground and every steep face; ochre dust elsewhere; a layered, terraced escarpment to the west (the delta front) and a delta-remnant butte; an eroded crater rim far away | Mars 2020 and HiRISE descriptions of the Jezero delta front, the "Séítah" ripple fields and the crater-floor bedrock |
+| Moon | Mature grey regolith covered in small craters; brighter, blockier ejecta around a few young craters; no ripples (no wind) | Apollo and LROC images |
+| Mercury | Darker, browner regolith than the Moon (low-reflectance material), small bright bluish "hollows", a lobate thrust scarp | MESSENGER MDIS results |
+| Europa (Conamara Chaos) | Bright water ice; double ridges with reddish-brown material along them; tilted ice rafts in a darker, lumpy matrix; fine lineae in the ice | Galileo SSI images of Conamara Chaos |
+| Titan (Kraken Mare shore) | Dark organic sand in long east–west dunes; rounded water-ice cobbles; darker, damp ground toward the sea | Huygens descent images (rounded cobbles), Cassini RADAR (linear dunes) |
+| Ceres (Occator) | Very dark grey regolith; the bright sodium-carbonate faculae on the crater floor with fractures; the crater wall on the horizon | Dawn Framing Camera results |
+
+**Rocks.** Rock sizes follow a power law, so there are many pebbles and few boulders, as counted at the Viking, Pathfinder and Mars 2020 sites. Rocks gather on crater rims, on slopes and at the foot of scarps. Mars and Moon rocks are angular; Titan and Ceres rocks are rounder. On Mars the rock tops carry a little dust.
+
+**Approximations.**
+- Landform sizes are compressed to fit a 1.4 km area. For example, the Jezero delta front is tens of metres high in reality, and Titan's dunes are about 100 m high and kilometres apart.
+- Feature heights are chosen to look right; they are not measurements.
+
+**Sound.**
+- Worlds with almost no air (Mercury, Europa and the other "almost none" moons) are now treated as vacuum, like the Moon and Ceres. Before this, they used full-range sound by mistake.
+- On the surface you always hear the suit: a fan hum and slow breathing, faster when you run.
+- Only worlds with real air carry an outside breeze. On Mars it is very faint, because the air is so thin, and dust storms make it louder.

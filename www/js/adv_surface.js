@@ -9,6 +9,8 @@ function hash(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; re
 function vn(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
 function fbm(x, y, o = 5) { let s = 0, a = .5, f = 1; for (let i = 0; i < o; i++) { s += a * vn(x * f, y * f); a *= .5; f *= 2; } return s; }
 const col = h => new THREE.Color(h);
+// no real atmosphere: dust flies in clean ballistic arcs and nothing drifts on a wind (Moon, Mercury, Europa, Ceres and the other airless bodies)
+export const AIRLESS = W => !!W && /^(None|Almost none)/.test(W.air || 'None');
 
 /* distance from the Sun in AU: the Sun's disc shrinks with distance (from Mars it is 2/3 the size; from Pluto a blinding star) */
 const AU = { mercury: .39, venus: .72, earth: 1, moon: 1, mars: 1.52, phobos: 1.52, deimos: 1.52, vesta: 2.36, ceres: 2.77, io: 5.2, europa: 5.2, ganymede: 5.2, callisto: 5.2, titan: 9.5, enceladus: 9.5, mimas: 9.5, rhea: 9.5, iapetus: 9.5, dione: 9.5, tethys: 9.5, miranda: 19.2, titania: 19.2, ariel: 19.2, triton: 30, pluto: 39.5, charon: 39.5, arrokoth: 44.6 };
@@ -66,8 +68,8 @@ export function makeSurface(ctx) {
   let H = () => 0;
   function terrain(id, W, site) {
     const size = id === 'earth' ? 1600 : 1400, seg = ctx.pre ? ctx.pre().seg : 300, geo = new THREE.PlaneGeometry(size, size, seg, seg); geo.rotateX(-Math.PI / 2);
-    const seed = id.length * 13.7 + id.charCodeAt(0), craters = [], R = !(site && site.hm) && SURF[id] ? SURF[id] : null, RM = R ? R.make(seed) : null; S.RM = RM; S.R = R;
-    const nc = Math.round(60 * (W.cr || 0)); for (let i = 0; i < nc; i++) { const a = hash(i, seed) * 6.283, d = 60 + hash(seed, i) * 620; craters.push([Math.cos(a) * d, Math.sin(a) * d, 8 + Math.pow(hash(i * 3, seed), 3) * 90]); }
+    const seed = id.length * 13.7 + id.charCodeAt(0), craters = [], R = SURF[id] || null, DEMS = !!(site && site.hm), RM = R ? R.make(seed, { dem: DEMS }) : null; S.RM = RM; S.R = R;
+    const nc = Math.round(60 * (W.cr || 0)); for (let i = 0; i < nc; i++) { const a = hash(i, seed) * 6.283, d = 60 + hash(seed, i) * 620; craters.push([Math.cos(a) * d, Math.sin(a) * d, 8 + Math.pow(hash(i * 3, seed), 3) * 90, hash(i * 7, seed + 1) < .22]); }
     if (site && site.hm) { const N = site.N, hm = site.hm, sc = site.relief * size * 1.3, half = size / 2;
       H = (x, z) => { const u = THREE.MathUtils.clamp((x + half) / size * (N - 1), 0, N - 1.001), v = THREE.MathUtils.clamp((z + half) / size * (N - 1), 0, N - 1.001), i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j;
         const a = hm[j * N + i], b = hm[j * N + i + 1], c = hm[(j + 1) * N + i], d = hm[(j + 1) * N + i + 1]; return ((a * (1 - fu) + b * fu) * (1 - fv) + (c * (1 - fu) + d * fu) * fv) * sc + (fbm(x * .05, z * .05 + seed, 3) - .5) * 1.4; }; }
@@ -75,7 +77,7 @@ export function makeSurface(ctx) {
       if (id === 'mars' && !RM) h += Math.hypot(x, z) > 520 ? (Math.hypot(x, z) - 520) * .35 : 0; // the crater rim around Jezero
       if (id === 'miranda') h += x > 250 ? 160 : 0;
       for (const [cx, cz, r] of craters) { const d = Math.hypot(x - cx, z - cz) / r; if (d < 1.4) h += d < 1 ? (d * d - 1) * r * .22 : (1.4 - d) * r * .28 * (d - 1) * 2.5; }
-      if (RM) h = RM.shape(x, z, h);
+      if (RM && RM.shape) h = RM.shape(x, z, h);
       if (W.sea && x > 330) h = Math.min(h, -1.5 - (x - 330) * .05);
       return h * fl + h * (1 - fl) * .15; };
     const H0 = H(0, 0); if (site && site.hm) { const Hr = H; H = (x, z) => Hr(x, z) - H0; }
@@ -91,7 +93,7 @@ export function makeSurface(ctx) {
     { const nn = geo.attributes.normal, rock = C0.clone().multiplyScalar(.8); for (let i = 0; i < p.count; i++) { const sl = 1 - nn.getY(i), k = THREE.MathUtils.smoothstep(sl, .12, .45); if (k > 0) { c.setRGB(cc[i * 3], cc[i * 3 + 1], cc[i * 3 + 2]).lerp(rock, k * (id === 'earth' ? .6 : .75)); cc.set([c.r, c.g, c.b], i * 3); } } geo.attributes.color.needsUpdate = true; }
     if (RM) { // the world's own ground recipe: colour zones (sand, dust, bedrock) and the zone each vertex belongs to
       const nn = geo.attributes.normal, zn = new Float32Array(p.count * 2), CC = {}; for (const k in R.C) if (typeof R.C[k] === 'string') CC[k] = col(R.C[k]);
-      for (let i = 0; i < p.count; i++) { const z2 = RM.paint(p.getX(i), p.getZ(i), p.getY(i), KK[i], nn.getY(i), c, CC); cc.set([c.r, c.g, c.b], i * 3); zn[i * 2] = z2[0]; zn[i * 2 + 1] = z2[1]; }
+      for (let i = 0; i < p.count; i++) { const z2 = RM.paint(p.getX(i), p.getZ(i), p.getY(i), KK[i], nn.getY(i), c, CC, DEMS ? null : craters); cc.set([c.r, c.g, c.b], i * 3); zn[i * 2] = z2[0]; zn[i * 2 + 1] = z2[1]; }
       geo.setAttribute('zn', new THREE.BufferAttribute(zn, 2)); geo.attributes.color.needsUpdate = true; }
     const dcv = document.createElement('canvas'); dcv.width = dcv.height = 256; const dg = dcv.getContext('2d'), im = dg.createImageData(256, 256);
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const v = 200 + (fbm(x * .06, y * .06, 4) - .5) * 90 + (hash(x, y) - .5) * 40, o = (y * 256 + x) * 4; im.data[o] = im.data[o + 1] = im.data[o + 2] = v; im.data[o + 3] = 255; }
@@ -130,7 +132,7 @@ export function makeSurface(ctx) {
         sh.vertexShader = 'attribute vec2 zn; varying vec2 vZn;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vZn = zn;');
         sh.fragmentShader = GLSL_HEAD + '\n' + sh.fragmentShader.replace('{ float m1 = texture2D(map', GLSL_ALB + '\n      { float m1 = texture2D(map').replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + GLSL_BUMP); } };
     mat.customProgramCacheKey = () => 'ter-' + (R ? id : 'std');
-    const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; m.userData.craters = craters;
+    const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; m.userData.craters = DEMS ? [] : craters;
     // horizon skirt: an outer ring at the average height so the world never ends in an edge; the haze hides the seam
     if (R) m.add(farRing(id, H, size, W, R));
     else { const sk = new THREE.Mesh(new THREE.RingGeometry(size * .49, 3400, 64, 1), new THREE.MeshStandardMaterial({ color: C1.clone().lerp(C0, .3), roughness: 1 })); sk.rotation.x = -Math.PI / 2; sk.position.y = id === 'earth' ? -1.2 : H(size * .45, 0) - 2; m.add(sk); }
@@ -195,7 +197,7 @@ export function makeSurface(ctx) {
     const q = ctx.q ? ctx.q() : 'high'; if (kind !== 'dive') { dl.castShadow = true; const ms = ctx.pre ? ctx.pre().shadow : 2048; dl.shadow.mapSize.set(ms, ms); const c = dl.shadow.camera; c.left = c.bottom = -70; c.right = c.top = 70; c.near = 10; c.far = 600; dl.shadow.bias = -.0006; dl.shadow.normalBias = .4; }
     if (kind === 'dive') return enterDive(body, scn);
     sky(body.id, W, scn); const ter = terrain(body.id, W, site); scn.add(ter); S.site = site;
-    TU.opp.value = W.air === 'None' || /^Almost none/.test(W.air) ? 1 : 0; TU.ice.value = ICY[body.id] || 0; TU.cOn.value = S.cloudL ? 1 : 0; TU.cmap.value = S.cloudL ? S.cloudL.material.map : null; TU.cY.value = S.cloudL ? S.cloudL.position.y : 520; TU.day.value = 1;
+    TU.opp.value = AIRLESS(W) ? 1 : 0; TU.ice.value = ICY[body.id] || 0; TU.cOn.value = S.cloudL ? 1 : 0; TU.cmap.value = S.cloudL ? S.cloudL.material.map : null; TU.cY.value = S.cloudL ? S.cloudL.position.y : 520; TU.day.value = 1;
     TU.tsd.value.set(-1500, 900, -1800).normalize(); if (S.skyU) TU.tsd.value.copy(S.skyU.sd.value);
     // landing site: your capsule and a golden beacon (rest point)
     const pad = new THREE.Group(); scn.add(pad); pad.position.set(0, H(0, 0), 0);
@@ -237,7 +239,7 @@ export function makeSurface(ctx) {
     else scatterRocks(scn, H, col(W.gr[1]).lerp(col(W.gr[0]), .35), Math.max(60, Math.round(1500 * PR.rocks)), 640, nearPad);
     for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283; S.dust.emit(new THREE.Vector3(-12 + Math.cos(a) * 3, H(-12, -8) + .4, -8 + Math.sin(a) * 3), new THREE.Vector3(Math.cos(a) * 9, 1.2, Math.sin(a) * 9), S.dc, 1.6, 2.2, 1, 2, { grow: 3, drag: .7, a: .3, grav: W.g * .05 }); }
     S.rings.add(new THREE.Vector3(-12, H(-12, -8) + .3, -8), 0xffe6b0, 30, 1.2);
-    S.gEff = Math.max(W.gameG || W.g, .05); ctx.ui(body, W, 'land'); S.on = true;
+    S.gEff = Math.max(W.gameG || W.g, .05); ctx.ui(body, W, 'land'); S.on = true; S.arrive = ctx.noArrive ? null : { t0: 0, T: 5.2, yaw: S.camYaw + 2.2 };
     const n = ctx.objs(body.id, site).length; ctx.toast(`🛬 Landed: <b>${body.n}</b> · ${site ? site.n : W.site}<br><small>${n ? n + ' NASA site' + (n > 1 ? 's' : '') + ' nearby · ' : ''}${S.cols.filter(c => !c.got).length} glowing finds to collect</small>`, 4500);
   }
   function geyser(scn, x, y, z) { const n = 60, p = new Float32Array(n * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xeaf6ff, size: 1.6, transparent: true, opacity: .8, depthWrite: false })); pts.position.set(x, y, z); pts.userData.seed = Math.random() * 10; scn.add(pts); return pts; }
@@ -251,7 +253,7 @@ export function makeSurface(ctx) {
   function step(dt, inp) {
     if (!S.on) return; S.t += dt; if (S.launch) { stepLaunch(dt); if (!S.on || !S.fx) return {}; S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, S.player.position.x, S.player.position.z); return {}; } const r = S.mode === 'dive' ? stepDive(dt, inp) : stepLand(dt, inp);
     if (S.mode !== 'dive') dayCycle(dt);
-    if (S.fx && S.mode !== 'dive') { const P = S.player.position; if (WORLD[S.body.id].air !== 'None' && Math.random() < dt * 6) S.dust.emit(new THREE.Vector3(P.x + (Math.random() - .5) * 40, P.y + Math.random() * 8, P.z + (Math.random() - .5) * 40), new THREE.Vector3(1.2, .1, .4), S.dc, .25, 6, 1, .6, { drag: .1, a: .35, fadeIn: .3, grow: 1 });
+    if (S.fx && S.mode !== 'dive') { const P = S.player.position; if (!AIRLESS(WORLD[S.body.id]) && Math.random() < dt * 6) S.dust.emit(new THREE.Vector3(P.x + (Math.random() - .5) * 40, P.y + Math.random() * 8, P.z + (Math.random() - .5) * 40), new THREE.Vector3(1.2, .1, .4), S.dc, .25, 6, 1, .6, { drag: .1, a: .35, fadeIn: .3, grow: 1 });
       S.fx.update(dt, ctx.cam); S.dust.update(dt, ctx.cam); S.rings.update(dt); if (S.grass) S.grass.update(dt, S.t, P.x, P.z); if (S.peb) S.peb.update(P.x, P.z); }
     return r; }
   function stepLand(dt, inp) {
@@ -276,10 +278,10 @@ export function makeSurface(ctx) {
     if (S.lamp) { const dark = S.skyU ? 1 - THREE.MathUtils.smoothstep(S.skyU.e.value, -.08, .12) : 0; S.lamp.intensity += ((dark > .05 ? 40 * dark : 0) - S.lamp.intensity) * Math.min(1, dt * 3); S.lamp.visible = S.lamp.intensity > .5; }
     const jet = P.userData.jet; jet.scale.setScalar(!S.onGround && inp.jump ? 1.2 + Math.random() * .4 : .01);
     if (S.fx) { const hs = Math.hypot(S.vel.x, S.vel.z);
-      if (moving && W.air === 'None' && Math.random() < dt * (run > 1 ? 16 : 8)) { const gv = Math.max(.3, g || W.g || 1.6); for (let i = 0; i < 6; i++) { const a = Math.random() * 6.283, sp = .4 + Math.random() * 1.2, up = (.9 + Math.random() * 1.4) * Math.sqrt(gv / 1.62); S.dust.emit(new THREE.Vector3(P.position.x, ng + .05, P.position.z), new THREE.Vector3(Math.cos(a) * sp - S.vel.x * .1, up, Math.sin(a) * sp - S.vel.z * .1), S.dc, .13, (2 * up / gv) * 1.05, 1, .1, { grow: 1, drag: 0, grav: gv, a: .85 }); } }
-      if (moving && Math.random() < dt * (run > 1 ? 14 : 7)) S.dust.emit(new THREE.Vector3(P.position.x, ng + .1, P.position.z), new THREE.Vector3(-S.vel.x * .15, .6, -S.vel.z * .15), S.dc, .7, 1.2, 1, .8, { grow: 2.8, drag: .8, a: W.air === 'None' ? .5 : .35 });
+      if (moving && AIRLESS(W) && Math.random() < dt * (run > 1 ? 16 : 8)) { const gv = Math.max(.3, g || W.g || 1.6); for (let i = 0; i < 6; i++) { const a = Math.random() * 6.283, sp = .4 + Math.random() * 1.2, up = (.9 + Math.random() * 1.4) * Math.sqrt(gv / 1.62); S.dust.emit(new THREE.Vector3(P.position.x, ng + .05, P.position.z), new THREE.Vector3(Math.cos(a) * sp - S.vel.x * .1, up, Math.sin(a) * sp - S.vel.z * .1), S.dc, .13, (2 * up / gv) * 1.05, 1, .1, { grow: 1, drag: 0, grav: gv, a: .85 }); } }
+      if (moving && !AIRLESS(W) && Math.random() < dt * (run > 1 ? 14 : 7)) S.dust.emit(new THREE.Vector3(P.position.x, ng + .1, P.position.z), new THREE.Vector3(-S.vel.x * .15, .6, -S.vel.z * .15), S.dc, .7, 1.2, 1, .8, { grow: 2.8, drag: .8, a: .35 });
       if (!S.onGround && inp.jump) { const jp = jet.getWorldPosition(new THREE.Vector3()); S.fx.emit(jp, new THREE.Vector3(S.vel.x * .3, -6, S.vel.z * .3), 0x9fe6ff, .45, .35, 3, 1.5, { grow: 2 }); if (P.position.y - ng < 3) S.dust.emit(new THREE.Vector3(P.position.x, ng + .1, P.position.z), new THREE.Vector3(0, .4, 0), S.dc, 1.2, 1, 2, 5, { grow: 3, drag: .9, a: .35 }); }
-      if (S.wasAir && S.onGround && S.landV < -3) { if (W.air === 'None') { const gv = Math.max(.3, g || W.g || 1.6); for (let i = 0; i < 40; i++) { const a = Math.random() * 6.283, sp = 1 + Math.random() * 3, up = (1 + Math.random() * 2.2) * Math.sqrt(gv / 1.62); S.dust.emit(new THREE.Vector3(P.position.x, ng + .05, P.position.z), new THREE.Vector3(Math.cos(a) * sp, up, Math.sin(a) * sp), S.dc, .14, (2 * up / gv) * 1.05, 1, .1, { grow: 1, drag: 0, grav: gv, a: .9 }); } } for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; S.dust.emit(new THREE.Vector3(P.position.x, ng + .1, P.position.z), new THREE.Vector3(Math.cos(a) * 4, .5, Math.sin(a) * 4), S.dc, 1, 1.2, 1, .5, { grow: 2.5, drag: .85, a: .4 }); } }
+      if (S.wasAir && S.onGround && S.landV < -3) { if (AIRLESS(W)) { const gv = Math.max(.3, g || W.g || 1.6); for (let i = 0; i < 40; i++) { const a = Math.random() * 6.283, sp = 1 + Math.random() * 3, up = (1 + Math.random() * 2.2) * Math.sqrt(gv / 1.62); S.dust.emit(new THREE.Vector3(P.position.x, ng + .05, P.position.z), new THREE.Vector3(Math.cos(a) * sp, up, Math.sin(a) * sp), S.dc, .14, (2 * up / gv) * 1.05, 1, .1, { grow: 1, drag: 0, grav: gv, a: .9 }); } } for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; S.dust.emit(new THREE.Vector3(P.position.x, ng + .1, P.position.z), new THREE.Vector3(Math.cos(a) * 4, .5, Math.sin(a) * 4), S.dc, 1, 1.2, 1, .5, { grow: 2.5, drag: .85, a: .4 }); } }
       S.wasAir = !S.onGround; if (!S.onGround) S.landV = S.vel.y; }
     if (S.dl && S.dl.castShadow) { S.dl.target.position.copy(P.position); S.dl.position.set(P.position.x - 300, P.position.y + 180, P.position.z - 360); }
     const sh = P.userData.sh; sh.position.set(P.position.x, ng + .05, P.position.z); sh.material.opacity = .35 * Math.max(0, 1 - (P.position.y - ng) / 8);
@@ -287,6 +289,13 @@ export function makeSurface(ctx) {
     const cd = 7.5, cx = P.position.x + Math.sin(S.camYaw) * cd * Math.cos(S.camPitch), cz = P.position.z + Math.cos(S.camYaw) * cd * Math.cos(S.camPitch); let cy = P.position.y + 1.6 + Math.sin(S.camPitch) * cd; cy = Math.max(cy, H(cx, cz) + .8);
     if (S.helmet) { const hp = new THREE.Vector3(P.position.x, P.position.y + 1.66 + (P.userData.rig ? P.userData.rig.root.children[0].position.y : 0), P.position.z); ctx.cam.position.copy(hp);   // inside the helmet: you see what the astronaut sees
       const lp = -(S.camPitch - .35) * 1.4; ctx.cam.lookAt(hp.x - Math.sin(S.camYaw) * Math.cos(lp) * 10, hp.y + Math.sin(lp) * 10, hp.z - Math.cos(S.camYaw) * Math.cos(lp) * 10); if (P.userData.rig) P.userData.rig.root.visible = false; }
+    else if (S.arrive) { const A = S.arrive; if (!A.t0) A.t0 = performance.now() + 400; A.t = Math.max(0, performance.now() - A.t0) / 1000;   // the clock starts once the new scene is actually on screen
+      if (P.userData.rig) P.userData.rig.root.visible = true;
+      // smootherstep from a high, wide view of the site down to the usual shoulder camera; any movement hands control back early
+      const k = Math.min(1, A.t / A.T), e = k * k * k * (k * (k * 6 - 15) + 10), yw = A.yaw + (S.camYaw - A.yaw) * e, pt = .62 + (S.camPitch - .62) * e, r = 110 + (cd - 110) * e;
+      const ax = P.position.x + Math.sin(yw) * r * Math.cos(pt), az = P.position.z + Math.cos(yw) * r * Math.cos(pt), ay = Math.max(P.position.y + 1.6 + Math.sin(pt) * r, H(ax, az) + 2);
+      ctx.cam.position.set(ax, ay, az); ctx.cam.lookAt(P.position.x, P.position.y + 1.4 * e, P.position.z);
+      if (k >= 1 || Math.abs(inp.x || 0) + Math.abs(inp.y || 0) > .2) S.arrive = null; }
     else { if (P.userData.rig) P.userData.rig.root.visible = true; ctx.cam.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 8)); ctx.cam.lookAt(P.position.x, P.position.y + 1.4, P.position.z); }
     if (S.beam) { const bd = Math.hypot(ctx.cam.position.x + 16, ctx.cam.position.z + 12); S.beam.material.opacity = THREE.MathUtils.clamp((bd - 12) / 30, 0, 1) * .18; }
     return things(dt, P);
@@ -349,7 +358,7 @@ export function makeSurface(ctx) {
   function stepLaunch(dt) { const L = S.launch, g = S.capG, W = WORLD[S.body.id]; L.t += dt; if (S.beam) S.beam.material.opacity = 0; const t = L.t, up = t < .7 ? 0 : 1.5 * 9 * Math.pow(t - .7, 2.2);
     g.position.y = L.y0 + up; g.position.x = -12 + (t < .7 ? (Math.random() - .5) * .12 : 0); const wp = g.getWorldPosition(new THREE.Vector3()), gy = H(-12, -8), base = new THREE.Vector3(wp.x, wp.y + .2, wp.z);
     const n = t < .7 ? 3 : 6; S.fx.emit(base, new THREE.Vector3(0, -14 - up * .2, 0), 0xffc070, S.capS * .35, .35, n, 4, { grow: 2, jit: .6 }); S.fx.emit(base, new THREE.Vector3(0, -8, 0), 0xffffff, S.capS * .2, .2, 3, 2, { grow: 1.5, jit: .4 });
-    if (up < 40) for (let i = 0; i < 4; i++) { const a = Math.random() * 6.283; S.dust.emit(new THREE.Vector3(-12 + Math.cos(a) * 2, gy + .6, -8 + Math.sin(a) * 2), new THREE.Vector3(Math.cos(a) * (8 + Math.random() * 8), 1 + Math.random() * 2, Math.sin(a) * (8 + Math.random() * 8)), W.air === 'None' ? S.dc : 0xd8d4cc, 3.5, 4, 1, 1.5, { grow: 3.5, drag: .55, a: W.air === 'None' ? .45 : .6, grav: -.3 }); }
+    if (up < 40) for (let i = 0; i < 4; i++) { const a = Math.random() * 6.283; S.dust.emit(new THREE.Vector3(-12 + Math.cos(a) * 2, gy + .6, -8 + Math.sin(a) * 2), new THREE.Vector3(Math.cos(a) * (8 + Math.random() * 8), 1 + Math.random() * 2, Math.sin(a) * (8 + Math.random() * 8)), AIRLESS(W) ? S.dc : 0xd8d4cc, 3.5, 4, 1, 1.5, { grow: 3.5, drag: .55, a: AIRLESS(W) ? .45 : .6, grav: -.3 }); }
     if (t > .7 && t < .8) S.rings.add(new THREE.Vector3(-12, gy + .3, -8), 0xffd27a, 34, 1.4);
     const cp = new THREE.Vector3(14, gy + 3.5, 26), look = wp.clone(); look.y = Math.max(look.y, gy + 6); ctx.cam.position.lerp(cp.add(new THREE.Vector3((Math.random() - .5), (Math.random() - .5), 0).multiplyScalar(t > .7 && up < 30 ? .12 : 0)), Math.min(1, dt * 3)); ctx.cam.lookAt(look);
     if (t > 3.2) { const cb = L.cb; S.launch = null; S.player.visible = true; if (S.player.userData.sh) S.player.userData.sh.visible = true; cb(); } }
@@ -362,7 +371,7 @@ export function makeSurface(ctx) {
   function dayCycle(dt) { const U = S.skyU; if (!U) return airlessCycle(dt); const W = WORLD[S.body.id]; S.tod = (S.tod + dt / ((DAYH[S.body.id] || 24) * 10)) % 1; const a = S.tod * Math.PI * 2, e = Math.sin(a) * .9;
     U.e.value = e; U.sd.value.set(-Math.cos(a) * .82, e, -.42).normalize(); const day = THREE.MathUtils.smoothstep(e, -.06, .22), low = 1 - THREE.MathUtils.smoothstep(e, .02, .4);
     const P = S.skyP, fogC = P[3].clone().multiplyScalar(1.6).lerp(P[1], day).lerp(P[2], low * day * .55); if (S.scn.fog) S.scn.fog.color.copy(fogC); S.scn.background.copy(fogC);
-    { const k = W.air === 'None' ? 0 : ({ mars: .95, earth: .6, titan: .55, venus: .45 }[S.body.id] ?? .5); FOGSUN.value.set(U.sd.value.x, U.sd.value.y, U.sd.value.z, k * day * (S.mode === 'dive' ? 0 : 1)); FOGSUNC.value.copy(col(W.sun || '#ffffff')).lerp(new THREE.Color(1, .55, .28), low * .8).multiplyScalar(S.body.id === 'mars' ? .55 : .7); }
+    { const k = AIRLESS(W) ? 0 : ({ mars: .95, earth: .6, titan: .55, venus: .45 }[S.body.id] ?? .5); FOGSUN.value.set(U.sd.value.x, U.sd.value.y, U.sd.value.z, k * day * (S.mode === 'dive' ? 0 : 1)); FOGSUNC.value.copy(col(W.sun || '#ffffff')).lerp(new THREE.Color(1, .55, .28), low * .8).multiplyScalar(S.body.id === 'mars' ? .55 : .7); }
     const dl = S.dl, pl = S.player ? S.player.position : new THREE.Vector3(); if (e > -.05) { dl.intensity = 2.6 * THREE.MathUtils.smoothstep(e, -.05, .2); dl.color.copy(col(W.sun || '#ffffff')).lerp(P[2].clone().lerp(new THREE.Color(1, .6, .35), .5), low * .7); dl.position.copy(pl).addScaledVector(U.sd.value, 420); }
     else { dl.intensity = .28; dl.color.setRGB(.6, .7, 1); dl.position.copy(pl).addScaledVector(U.sd.value, -420).setY(pl.y + 300); }   // moonlight / starlight
     dl.target.position.copy(pl); S.hemi.intensity = .06 + .5 * day; S.scn.environmentIntensity = .5 * (.1 + .9 * day); S.hemi.color.copy(P[1]).lerp(new THREE.Color(1, 1, 1), .4); if (S.starM) S.starM.opacity = 1 - THREE.MathUtils.smoothstep(e, -.15, .05);
@@ -389,7 +398,7 @@ export function makeSurface(ctx) {
       T.im.count = Math.min(900, T.n); T.im.instanceMatrix.needsUpdate = true; } }
     // rooster tails: on the airless Moon the dust flies in perfect arcs and drops straight back (seen in the Apollo 16 rover film)
     if (S.dust && sp > 1 && !st.air && Math.random() < dt * 40) for (const w of R.wheels) { if (w.x > 0) continue; const wx = st.x + w.x * fx - w.z * fz * 0 + w.z * Math.sin(st.yaw), wz = st.z + w.x * fz + w.z * Math.cos(st.yaw);
-      if (W.air === 'None') { const up = 1.2 + Math.random() * 1.6; S.dust.emit(new THREE.Vector3(wx, H(wx, wz) + .1, wz), new THREE.Vector3(-fx * sp * .7 + (Math.random() - .5), up, -fz * sp * .7 + (Math.random() - .5)), S.dc, .12, 2 * up / S.gEff, 2, .3, { grow: 1, drag: 0, grav: S.gEff, a: .85 }); }
+      if (AIRLESS(W)) { const up = 1.2 + Math.random() * 1.6; S.dust.emit(new THREE.Vector3(wx, H(wx, wz) + .1, wz), new THREE.Vector3(-fx * sp * .7 + (Math.random() - .5), up, -fz * sp * .7 + (Math.random() - .5)), S.dc, .12, 2 * up / S.gEff, 2, .3, { grow: 1, drag: 0, grav: S.gEff, a: .85 }); }
       else S.dust.emit(new THREE.Vector3(wx, H(wx, wz) + .2, wz), new THREE.Vector3(-fx * sp * .3, .7, -fz * sp * .3), S.dc, .9, 1.6, 1, .6, { grow: 3, drag: .7, a: .3 }); }
     // chase camera
     const back = 8.5 + sp * .3, cx = st.x - fx * back, cz = st.z - fz * back, cy = Math.max(st.y + 3.2, H(cx, cz) + 1.2); ctx.cam.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 3.5)); const lk = S.drvLook || (S.drvLook = new THREE.Vector3(st.x, st.y, st.z)); lk.lerp(new THREE.Vector3(st.x + fx * 2, st.y + .6, st.z + fz * 2), Math.min(1, dt * 6)); ctx.cam.lookAt(lk);

@@ -41,4 +41,11 @@ const lsLine = html.slice(html.indexOf('const LS={'), html.indexOf('};', html.in
 const c3 = { localStorage: lsx, HOOK() {} }; vm.createContext(c3); vm.runInContext(lsLine.replace('const LS=', 'LS='), c3);
 lsx.setItem('rdo2-stars', '[2,1,{broken'); const got = vm.runInContext("LS.get('stars',[])", c3);
 ok('damaged value recovered from backup', JSON.stringify(got) === '[2,1,0,0,0,0]', JSON.stringify(got));
+// Adventure surfaces (v90): each of the six main worlds has its own ground recipe; airless checks cover thin exospheres
+{ const at = fs.readFileSync(path.join(W, 'js/adv_terrain.js'), 'utf8'), as = fs.readFileSync(path.join(W, 'js/adv_surface.js'), 'utf8');
+  for (const w of ['mars', 'moon', 'mercury', 'europa', 'titan', 'ceres']) ok('surface recipe for ' + w, new RegExp('\\b' + w + ': \\{ tile: ').test(at));
+  ok('recipes never invent landforms on real-elevation sites', /G = o\.dem \? 0 : 1/.test(at));
+  ok('adventure Moon max temperature 121 °C', /moon: \{ g: 1\.62, t: '−173 to 121 °C'/.test(as));
+  ok('no plain "None" airless checks left (thin exospheres count as airless)', !/air === 'None'|air !== 'None'/.test(as));
+  ok('adv_terrain.js cached for offline play', sw.includes("'js/adv_terrain.js'")); }
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

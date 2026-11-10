@@ -44,6 +44,15 @@ New assets in v85–v88:
 | Planet positions today | [JPL approximate positions](https://ssd.jpl.nasa.gov/planets/approx_pos.html) | Adventure map distances |
 | 36 science discoveries | MESSENGER, Dawn, Cassini–Huygens, Galileo, Curiosity, Opportunity, Phoenix, Apollo, LCROSS results | Story scanning. Sources per world are in SCIENCE.md. |
 
+## Adventure surfaces (v90 branch)
+
+**No new files were downloaded or added.**
+
+- **Textures:** the ground textures, ripples, bedrock plates, micro-craters and ice lineae are all generated in code at load time, in `www/js/adv_terrain.js`. There is nothing to licence.
+- **Poly Haven and ambientCG:** checked as material sources, but these sites can't be reached from the build machine. Nothing from them was used.
+- **NASA 3D Resources:** the repository's image folder holds only whole-planet maps, with no ground-level textures. Those planet maps are already in the game.
+- **Elevation models:** the real ones already in `models/dem/` (Moon and Mars sites) are unchanged. The new recipes only recolour and texture them.
+
 ## Template for future assets
 
 Record every new asset here **before** it ships:

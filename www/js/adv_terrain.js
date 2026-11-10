@@ -30,7 +30,7 @@ export const SURF = {
    West: the eroded front of the ancient river delta, a layered escarpment ~30 m high. A delta remnant butte (like "Kodiak")
    to the south-east. Dark basaltic sand collects in the lows and forms ripple fields; pale fractured bedrock is exposed on
    higher ground and on every steep face; ochre dust covers the rest. The crater rim rises far beyond. */
-SURF.mars.make = seed => {
+SURF.mars.make = (seed, o = {}) => { const G = o.dem ? 0 : 1;   // G = 0 on real-elevation (DEM) sites: no invented landforms
   const edge = z => -270 + (fbm(z * .006 + 2.2, 3.1, 4) - .5) * 170;
   const butte = (x, z) => Math.hypot(x - 235, z + 255) / (72 + (fbm(x * .02, z * .02 + 5, 3) - .5) * 34);
   const dunes = (x, z) => ss(70, 150, z) * ss(390, 300, z) * ss(-120, -40, x) * ss(520, 420, x);
@@ -49,13 +49,13 @@ SURF.mars.make = seed => {
     const sl = 1 - up, dn = fbm(x * .011 + 40, z * .011, 3), fine = fbm(x * .06, z * .06 + 7, 2);
     c.copy(C.dust).lerp(C.dust2, fine * .9);
     let rock = Math.max(ss(.1, .26, sl), ss(.52, .64, dn) * ss(.2, .55, k));
-    const tread = ss(edge(z) + 10, edge(z) - 30, x) + ss(1.15, .9, butte(x, z)); rock = Math.max(rock, Math.min(1, tread) * (.55 + .45 * ss(.06, .16, sl)));
+    const tread = G * (ss(edge(z) + 10, edge(z) - 30, x) + ss(1.15, .9, butte(x, z))); rock = Math.max(rock, Math.min(1, tread) * (.55 + .45 * ss(.06, .16, sl)));
     rock = Math.min(1, rock);
-    let sand = Math.max(ss(.47, .3, k + (dn - .5) * .35), dunes(x, z) * .95) * (1 - rock);
+    let sand = Math.max(ss(.47, .3, k + (dn - .5) * .35), G * dunes(x, z) * .95) * (1 - rock);
     c.lerp(C.sand, Math.min(1, sand * 1.1)).lerp(C.bed, rock * .9);
     c.multiplyScalar(1 - ss(.3, .75, sl) * .22);
     return [rock, Math.min(1, sand + .5 * (1 - rock))]; };
-  const hot = rnd => { if (rnd() < .6) { const z = (rnd() - .5) * 1300; return [edge(z) + 8 + rnd() * 45, z]; } const a = rnd() * 6.283, d = 1 + rnd() * .5; return [235 + Math.cos(a) * 74 * d, -255 + Math.sin(a) * 74 * d]; };
+  const hot = !G ? null : rnd => { if (rnd() < .6) { const z = (rnd() - .5) * 1300; return [edge(z) + 8 + rnd() * 45, z]; } const a = rnd() * 6.283, d = 1 + rnd() * .5; return [235 + Math.cos(a) * 74 * d, -255 + Math.sin(a) * 74 * d]; };
   return { shape, paint, hot, edge };
 };
 
@@ -74,6 +74,12 @@ export function featTex(id) {
       for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const ii = (ci + di + C) % C, jj = (cj + dj + C) % C, q = pts[jj * C + ii], px = q[0] + (ci + di - ii) * cs, py = q[1] + (cj + dj - jj) * cs, dd = Math.hypot(x - px, y - py); if (dd < f1) { f2 = f1; f1 = dd; id1 = jj * C + ii; } else if (dd < f2) f2 = dd; }
       const i = y * N + x, cr = ss(0, 3.2, f2 - f1), hv = hash(id1, s + 3);
       rh[i] = rh[i] * .35 + (.6 + hv * .25 - f1 / cs * .18) * cr + .08 * (1 - cr); ra[i] = ra[i] * .6 + (.3 + hv * .22) * cr + .1 * (1 - cr) + (1 - cr) * .14; } }
+  if (R.pits) { const pr = rng(s + 5); for (let k = 0; k < R.pits; k++) { const cx = pr() * N, cy = pr() * N, r = 2 + Math.pow(pr(), 2.5) * 22, dep = .18 + pr() * .2, fresh = pr();
+      for (let dy = -Math.ceil(r * 1.5); dy <= Math.ceil(r * 1.5); dy++) for (let dx = -Math.ceil(r * 1.5); dx <= Math.ceil(r * 1.5); dx++) { const d2 = Math.hypot(dx, dy) / r; if (d2 >= 1.5) continue; const X = (Math.floor(cx) + dx + N) % N, Y = (Math.floor(cy) + dy + N) % N, i = Y * N + X;
+        const prof = d2 < 1 ? (d2 * d2 - 1) * dep : (1.5 - d2) * 2 * .3 * dep * (d2 - 1) * 4; sh[i] += prof; rh[i] += prof * .7; if (d2 < 1.25 && fresh > .8) { sa[i] += .05 * (1.25 - d2); ra[i] += .04; } } } }
+  if (R.lineae) { for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const u = x / N, v = y / N, i = y * N + x; let l = 0;
+      for (let k = 0; k < 5; k++) { const a = 1 + (k % 3), b = (k * 2 + 1) % 4 - 1, f = Math.abs(Math.sin((a * u + b * v) * 6.283 * (4 + k * 3) + k)); l = Math.max(l, Math.pow(1 - f, 14)); }
+      sh[i] += l * .25; rh[i] += l * .2; sa[i] -= l * .1; ra[i] -= l * .08; } }
   const rr = rng(s); for (let k = 0; k < (R.clasts || 0); k++) { const cx = rr() * N, cy = rr() * N, r = 1.4 + Math.pow(rr(), 3) * 7, th = rr() * 6.283, el = .6 + rr() * .4, hh = .25 + rr() * .3, al = rr() < .5 ? -.22 : .14, sides = 5 + Math.floor(rr() * 3), zone = rr();
     for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++) for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) { const a = Math.atan2(dy, dx) - th, poly = Math.cos(Math.PI / sides) / Math.cos(((a % (6.283 / sides)) + 6.283 / sides) % (6.283 / sides) - Math.PI / sides), dd = Math.hypot(dx, dy * (1 / el)) / (r * poly); if (dd >= 1) continue;
       const X = (Math.floor(cx) + dx + N) % N, Y = (Math.floor(cy) + dy + N) % N, i = Y * N + X, b = Math.sqrt(1 - dd * dd) * hh;
@@ -131,13 +137,14 @@ export function rockField(scene, H, id, R, count, area, avoid, craters) {
     if (u < .85) { const a = rr() * 6.283, d = rr() * area, cx = Math.cos(a) * d, cz = Math.sin(a) * d, s = 4 + rr() * 14; return [cx + (rr() + rr() - 1) * s, cz + (rr() + rr() - 1) * s]; }
     const a = rr() * 6.283, d = Math.sqrt(rr()) * area; return [Math.cos(a) * d, Math.sin(a) * d]; };
   const big = [], small = []; let tries = 0;
-  while (big.length + small.length < count && tries++ < count * 4) { const [x, z] = pick(); if (Math.hypot(x, z) > area * 1.05 || (avoid && avoid(x, z))) continue;
+  while (big.length + small.length < count && tries++ < count * 9) { const [x, z] = pick(); if (Math.hypot(x, z) > area * 1.05 || (avoid && avoid(x, z))) continue;
+    { const g = Math.hypot(H(x + 1.5, z) - H(x - 1.5, z), H(x, z + 1.5) - H(x, z - 1.5)) / 3; if (rr() > .4 + Math.min(.6, g * 2.2)) continue; }   // blocks gather on slopes, crater walls and scarps
     const s = Math.min(3.2, .07 * Math.pow(1 - rr() * .999, -1 / 1.55)); (s > .45 ? big : small).push([x, z, s]); }
   const out = [], m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
   const put = (list, detail) => { const geos = [0, 1, 2].map(k => rockShape(R.rock, k + id.length, detail)), per = Math.ceil(list.length / 3);
     geos.forEach((geo, k) => { const part = list.slice(k * per, (k + 1) * per); if (!part.length) return; const im = new THREE.InstancedMesh(geo, mat, part.length); im.castShadow = detail > 1; im.receiveShadow = true;
       part.forEach(([x, z, s], j) => { e.set((rr() - .5) * .5, rr() * 6.283, (rr() - .5) * .5); q.setFromEuler(e); sc.set(s * (.75 + rr() * .6), s * (.8 + rr() * .4), s * (.75 + rr() * .6)); p.set(x, H(x, z) - s * (.12 + rr() * .3) * .6, z);
-        m4.compose(p, q, sc); im.setMatrixAt(j, m4); c.copy(cols[Math.floor(rr() * cols.length)]).multiplyScalar(.82 + rr() * .3); im.setColorAt(j, c); });
+        m4.compose(p, q, sc); im.setMatrixAt(j, m4); c.copy(cols[Math.floor(rr() * cols.length)]).multiplyScalar((.82 + rr() * .3) * .74); im.setColorAt(j, c); });
       im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; scene.add(im); out.push(im); }); };
   put(big, 2); put(small, 1); out.stats = { big: big.length, small: small.length }; return out;
 }
@@ -158,7 +165,56 @@ export function pebbleField(scene, H, id, R, n, avoid) {
       for (let s = 0; s < k; s++) { const h1 = hash(i * 7 + s, j * 3 - s), h2 = hash(j * 5 + s, i * 11 + s), h3 = hash(i + s * 13, j + s * 17), x = (i + h1) * CELL, z = (j + h2) * CELL; if (avoid && avoid(x, z)) continue;
         const w = (i + j + s) & 1; if (cnt[w] >= cap) continue; const sz = Math.min(.55, .045 * Math.pow(1 - h3 * .995, -1 / 1.7));
         e.set((h1 - .5) * .6, h2 * 6.283, (h3 - .5) * .6); q.setFromEuler(e); sc.set(sz * (.8 + h2 * .5), sz * (.7 + h1 * .5), sz * (.8 + h3 * .5)); p.set(x, H(x, z) - sz * .22, z); m4.compose(p, q, sc);
-        const im = ims[w]; im.setMatrixAt(cnt[w], m4); c.copy(cols[Math.floor(hash(i - s, j + s) * cols.length)]).multiplyScalar(.8 + h1 * .35); im.setColorAt(cnt[w], c); cnt[w]++; } }
+        const im = ims[w]; im.setMatrixAt(cnt[w], m4); c.copy(cols[Math.floor(hash(i - s, j + s) * cols.length)]).multiplyScalar((.8 + h1 * .35) * .74); im.setColorAt(cnt[w], c); cnt[w]++; } }
     ims.forEach((im, w) => { im.count = cnt[w]; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }); }
   return { update, ims };
 }
+
+/* ---------------- the other five worlds, built to the Mars standard ---------------- */
+// common painter: a three-step colour ramp by height, bedrock / blocky zone on steep ground and in patches,
+// young bright ejecta around some craters (airless worlds), plus each world's own features (o.extra)
+function painter(o) { const lo = new THREE.Color(o.lo), mid = new THREE.Color(o.mid), hi = new THREE.Color(o.hi), rk = new THREE.Color(o.rockZ), t = new THREE.Color();
+  return (x, z, h, k, up, c, C, craters) => { const sl = 1 - up, dn = fbm(x * .009 + 70, z * .009, 3), fine = fbm(x * .05 + 3, z * .05, 2), kk = Math.min(1, Math.max(0, k + (fine - .5) * .25));
+    if (kk < .5) c.copy(lo).lerp(mid, kk * 2); else c.copy(mid).lerp(hi, (kk - .5) * 2);
+    let rock = Math.min(1, Math.max(ss(o.slope[0], o.slope[1], sl), ss(.6, .72, dn) * (o.patch || 0)));
+    if (o.ejecta && craters) for (const [cx, cz, r, young] of craters) { if (!young || r > 45) continue; const d = Math.hypot(x - cx, z - cz) / r; if (d < 2.1) { const e = ss(2.1, 1.05, d) * (d > .85 ? 1 : .5); c.lerp(t.set(o.ejecta), e * .4); rock = Math.max(rock, ss(1.5, 1, d) * .8); } }
+    c.lerp(rk, rock * (o.rockMix || .5));
+    let rip = o.ripple ? (1 - rock) * ss(.5, .3, kk) : .75;
+    if (o.extra) rip = o.extra(x, z, h, kk, sl, c, rock, rip);
+    c.multiplyScalar(1 - ss(.3, .8, sl) * (o.slopeDark || .2));
+    return [rock, Math.min(1, rip)]; }; }
+
+// MOON: mature grey regolith peppered with micro-craters; blocky, brighter ejecta around young craters; no wind, no ripples
+Object.assign(SURF, {
+  moon: { tile: 9, pits: 260, clasts: 300, bump: .9, rough: .98, rock: 'angular', rockN: 1.2, dust: .25, far: [70, 1400],
+    C: { dust: '#77736d', rock: ['#5a5753', '#6e6a65', '#47443f', '#83807a'], dustTop: '#8a8680' },
+    make: (seed, o = {}) => ({ paint: painter({ lo: '#55524e', mid: '#77736d', hi: '#97938c', rockZ: '#8a867f', slope: [.12, .34], patch: .4, ejecta: '#b4b0a8', slopeDark: .1 }) }) },
+  // MERCURY: darker and browner than the Moon (low-reflectance material), bright bluish "hollows" (MESSENGER), and a lobate thrust scarp
+  mercury: { tile: 9, pits: 300, clasts: 260, bump: .9, rough: .97, rock: 'angular', rockN: 1.1, dust: .2, far: [110, 1500],
+    C: { dust: '#5e5954', rock: ['#4a4642', '#57524d', '#3c3936', '#6a655f'], dustTop: '#6a655f' },
+    make: (seed, o = {}) => { const G = o.dem ? 0 : 1, scarp = (x, z) => 230 + Math.sin(z * .004 + 1) * 90 + (fbm(z * .01, 4, 3) - .5) * 40;
+      return { shape: (x, z, h) => h + G * ss(scarp(x, z) + 20, scarp(x, z) - 25, x) * (26 + (fbm(x * .01, z * .01, 3) - .5) * 10),
+        paint: painter({ lo: '#46423e', mid: '#5f5a54', hi: '#7a746c', rockZ: '#6e6862', slope: [.12, .34], patch: .35, ejecta: '#9c9890', slopeDark: .1,
+          extra: (x, z, h, k, sl, c, rock, rip) => { const hv = fbm(x * .03 + 21, z * .03, 3); if (hv > .66) c.lerp(new THREE.Color('#9fb0c4'), ss(.66, .74, hv) * .7); return rip; } }) }; } },
+  // EUROPA (Conamara Chaos): bright water ice; double ridges with reddish-brown salts along them; tilted ice rafts in a darker hummocky matrix
+  europa: { tile: 11, lineae: 1, clasts: 90, bump: .8, rough: .55, rock: 'angular', rockN: .7, dust: 0, far: [30, 1400],
+    C: { dust: '#909497', rock: ['#a4a8ac', '#94989c', '#82796e', '#b0b3b6'], dustTop: '#b0b3b6' },
+    make: (seed, o = {}) => { const G = o.dem ? 0 : 1;
+      const ridge = (x, z) => { let m = 0; for (let i = 0; i < 4; i++) { const a = i * 1.1 + .4, d = Math.abs((x * Math.cos(a) + z * Math.sin(a)) - (i * 170 - 260) + (fbm(x * .003 + i, z * .003, 2) - .5) * 60); m = Math.max(m, ss(30, 9, d) * (1 - ss(5, 0, d) * .6)); } return m; };
+      const raft = (x, z) => { const v = fbm(x * .006 + 9, z * .006 - 4, 3); return ss(.53, .57, v); };
+      return { shape: (x, z, h) => h + G * (ridge(x, z) * 13 + raft(x, z) * (7 + (fbm(x * .02, z * .02, 2) - .5) * 4) + (1 - raft(x, z)) * (fbm(x * .08, z * .08 + 7, 2) - .5) * 2.2),
+        paint: painter({ lo: '#6e6256', mid: '#8c9093', hi: '#a2a6aa', rockZ: '#9ca1a5', slope: [.15, .4], patch: 0, slopeDark: .05,
+          extra: (x, z, h, k, sl, c, rock, rip) => { const r = G * ridge(x, z), m = G * (1 - raft(x, z)); c.lerp(new THREE.Color('#7a4a30'), r * .7).lerp(new THREE.Color('#9a7a60'), m * .6 * ss(.35, .6, fbm(x * .02, z * .02, 2))); return .2 + r * .5; } }) }; } },
+  // TITAN (Kraken Mare shore): dark organic sand in long east-west dunes, rounded water-ice cobbles (as Huygens saw), damp dark ground by the sea
+  titan: { tile: 12, ripple: .8, clasts: 200, bump: .9, rough: .9, rock: 'rounded', rockN: 1, dust: .15, far: [45, 1600],
+    C: { dust: '#5a4024', rock: ['#6a604e', '#786c58', '#5a5242', '#84775f'], dustTop: '#6a4c2c' },
+    make: (seed, o = {}) => { const G = o.dem ? 0 : 1, dune = (x, z) => { const ph = z / 110 * 6.283 + fbm(x * .004, z * .004 + 2, 3) * 4; const p = (((ph / 6.283) % 1) + 1) % 1; return Math.pow(Math.sin(p * 3.1416), 2); };
+      return { shape: (x, z, h) => h + G * ss(-40, -160, x) * dune(x, z) * 7,
+        paint: painter({ lo: '#2e2214', mid: '#4f3820', hi: '#6e5232', rockZ: '#7a6a52', slope: [.14, .38], patch: .25, ripple: 1, slopeDark: .15,
+          extra: (x, z, h, k, sl, c, rock, rip) => { if (x > 250) c.multiplyScalar(1 - ss(250, 330, x) * .45); const d = G * ss(-40, -160, x) * dune(x, z); c.lerp(new THREE.Color('#3a2a16'), d * .4); return Math.max(rip, d); } }) }; } },
+  // CERES (Occator Crater): very dark grey regolith, bright sodium-carbonate faculae on the crater floor, the crater wall far away
+  ceres: { tile: 9, pits: 220, clasts: 220, bump: .85, rough: .97, rock: 'rounded', rockN: 1, dust: .15, far: [160, 1500],
+    C: { dust: '#55555a', rock: ['#4a4a4f', '#5a5a60', '#3a3a3e', '#66666c'], dustTop: '#606066' },
+    make: (seed, o = {}) => ({ paint: painter({ lo: '#323236', mid: '#48484d', hi: '#606066', rockZ: '#66666c', slope: [.12, .34], patch: .3, ejecta: '#85858c', slopeDark: .1,
+      extra: (x, z, h, k, sl, c, rock, rip) => { const n = fbm(x * .02 + 5, z * .02, 3), d = Math.hypot(x - 90, z + 70) - (30 + n * 14), fr = Math.abs(Math.sin((x + z) * .09 + n * 6)); c.lerp(new THREE.Color('#f2f4f6'), ss(16, -4, d) * (.75 + .25 * ss(.15, .5, fr))); return rip; } }) }) },
+});
