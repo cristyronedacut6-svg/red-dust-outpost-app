@@ -17,6 +17,11 @@
     ['Difficulty', 'Hirap', 'Kalisod', 'Dificultad', 'Difficulté', 'Dificuldade', 'Schwierigkeit', 'Kesulitan', '難易度', '难度', '난이도', 'कठिनाई'],
     ['View', 'Tanaw', 'Tan-aw', 'Vista', 'Vue', 'Visão', 'Ansicht', 'Tampilan', '表示', '视图', '보기', 'दृश्य'],
     ['Credits', 'Mga kredito', 'Mga kredito', 'Créditos', 'Crédits', 'Créditos', 'Mitwirkende', 'Kredit', 'クレジット', '制作人员', '크레딧', 'श्रेय'],
+    // Moon Survival (title card and intro)
+    ['Moon Survival', 'Moon Survival', 'Moon Survival', 'Supervivencia lunar', 'Survie lunaire', 'Sobrevivência lunar', 'Mond-Überleben', 'Bertahan di Bulan', 'ムーン・サバイバル', '月球生存', '달 생존', 'चंद्र उत्तरजीविता'],
+    ['Survive at the lunar south pole', 'Mabuhay sa south pole ng Buwan', 'Buhi sa south pole sa Bulan', 'Sobrevive en el polo sur lunar', 'Survivez au pôle Sud lunaire', 'Sobreviva no polo sul lunar', 'Überlebe am Mond-Südpol', 'Bertahan di kutub selatan Bulan', '月の南極で生き延びろ', '在月球南极生存', '달의 남극에서 살아남아라', 'चंद्रमा के दक्षिणी ध्रुव पर जीवित रहें'],
+    ['Survival mode · new', 'Survival mode · bago', 'Survival mode · bag-o', 'Modo supervivencia · nuevo', 'Mode survie · nouveau', 'Modo sobrevivência · novo', 'Überlebensmodus · neu', 'Mode bertahan · baru', 'サバイバルモード · 新登場', '生存模式 · 新', '생존 모드 · 신규', 'सर्वाइवल मोड · नया'],
+    ['Start surviving', 'Simulan', 'Sugdi', 'Empieza a sobrevivir', 'Commencer à survivre', 'Começar a sobreviver', 'Überleben beginnen', 'Mulai bertahan', 'サバイバル開始', '开始生存', '생존 시작', 'जीवित रहना शुरू करें'],
     ['Mission Control', 'Mission Control', 'Mission Control', 'Control de misión', 'Contrôle de mission', 'Controle da missão', 'Missionskontrolle', 'Kendali Misi', 'ミッション管制', '任务控制中心', '미션 컨트롤', 'मिशन कंट्रोल'],
     ['Mission control', 'Mission control', 'Mission control', 'Control de misión', 'Contrôle de mission', 'Controle da missão', 'Missionskontrolle', 'Kendali misi', 'ミッション管制', '任务控制', '미션 컨트롤', 'मिशन कंट्रोल'],
     ['Gravity', 'Grabidad', 'Grabidad', 'Gravedad', 'Gravité', 'Gravidade', 'Schwerkraft', 'Gravitasi', '重力', '重力', '중력', 'गुरुत्व'],

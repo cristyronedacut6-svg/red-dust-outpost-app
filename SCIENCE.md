@@ -165,3 +165,21 @@ Each landing world now has its own ground recipe in `www/js/adv_terrain.js`. The
 - Worlds with almost no air (Mercury, Europa and the other "almost none" moons) are now treated as vacuum, like the Moon and Ceres. Before this, they used full-range sound by mistake.
 - On the surface you always hear the suit: a fan hum and slow breathing, faster when you run.
 - Only worlds with real air carry an outside breeze. On Mars it is very faint, because the air is so thin, and dust storms make it louder.
+
+## Moon Survival (preview, branch `moon-survival`)
+
+| In the game | The real science | Source |
+|---|---|---|
+| The Sun stays low and circles the sky | At the lunar south pole the Sun is never more than about 1.5° above the horizon and circles once per lunar day. The game uses 4° and a 48-minute circle so the area is playable. | LRO / LOLA illumination studies |
+| Shadows are deadly cold; the crater floor is −230 °C | Sunlit polar ground is about −50 to −20 °C. Permanently shadowed crater floors are about 25–70 K (−248 to −203 °C), among the coldest places measured in the Solar System. The game rounds these to −30, −170 and −230 °C. | LRO Diviner |
+| Ice only in the dark crater | Water ice is trapped in permanently shadowed regions near the poles. | LCROSS (2009), LRO, Chandrayaan-1 M3 |
+| Tall vertical solar towers | Polar base concepts use tall, vertical arrays to catch the grazing Sun above the shadows. | NASA Artemis surface concepts |
+| Radiation background 1.37 mSv per day | Measured on the lunar surface by Chang'e 4's LND instrument. | Zhang et al., *Science Advances*, 2020 |
+| Solar flares: shelter behind regolith | Packed regolith 1–2 m thick sharply cuts solar particle radiation. | NASA radiation shielding studies |
+| Habitat model | NASA's Habitat Demonstration Unit, a real prototype tested in the Arizona desert (Desert RATS). | NASA 3D Resources |
+| Laser comms terminal | NASA's Lunar Laser Communication Demonstration reached 622 Mb/s from lunar orbit in 2013. | NASA 3D Resources; NASA LLCD |
+
+**Simplified for play:**
+- Time runs fast: a full suit lasts 14 minutes, not 8 hours.
+- Shackleton Crater is squeezed from 21 km across to about 460 m.
+- The crater shape is procedural, not real elevation data.

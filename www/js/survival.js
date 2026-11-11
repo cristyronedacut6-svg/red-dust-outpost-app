@@ -106,7 +106,7 @@ export function makeSurvival(R, api) {
   #sv .bld button b{display:block;font-size:18px}
   #sv .btns{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:128px;display:none;gap:8px;flex-direction:column;pointer-events:auto}
   #sv .btns button{width:64px;height:52px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(10,16,24,.7);color:#fff;font:700 12px system-ui}
-  body.touch #sv .btns{display:flex}
+  @media (pointer:coarse){#sv .btns{display:flex}}
   #sv .svc{background:#101820;border:1px solid rgba(85,214,232,.35);border-radius:14px;padding:18px 20px;max-width:min(560px,92vw);max-height:86vh;overflow:auto}
   #sv .svc h2{margin:0 0 8px;font-size:20px}#sv .svc p{font-weight:400;line-height:1.45}
   #sv .svc .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
