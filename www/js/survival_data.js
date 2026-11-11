@@ -149,7 +149,7 @@ export const FOOD = { foodMin: 30, waterMin: 20, starve: .6,   // minutes until 
 export const DUST = { perMin: 4, nearThrust: 25, loss: .85, cleanSec: 2 };   // % dust per minute; extra % per second when you thrust or drive within 15 m; power lost at 100% dust
 
 // ---- Score, daily challenge and rescue --------------------------------------------------------------
-export const SCORE = { perSec: 1, perGoal: 300, perSample: 150 };
+export const SCORE = { perSec: 1, perGoal: 300, perSample: 150, insideK: .25 };   // insideK: time inside the habitat earns a quarter of the points (resting in the bunk earns none)
 // one twist per day, the same for everyone (picked from the date)
 export const DAILY = [
   { id: 'flares', n: 'Flare storm', d: 'Solar flares come every 3–5 minutes.' },

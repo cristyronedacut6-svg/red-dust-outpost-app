@@ -41,7 +41,8 @@ export function makeSurvival(R, api) {
   const TW = id => !!(st && st.twist === id);
   const elev = () => TW('shadow') ? 2.5 : D.SUN.elevationDeg;
   const o2Min = () => D.SUIT.o2Min * DF('o2') * (U('tank') ? 1.3 : 1) * (TW('leak') ? .8 : 1), pwMin = () => D.SUIT.powerMin * DF('pw') * (U('cell') ? 1.3 : 1), fuelSec = () => D.JET.fuelSec * (U('thrust') ? 1.5 : 1), gk = () => U('tools') ? .7 : 1;
-  const score = () => Math.floor((st.t * D.SCORE.perSec + st.goal * D.SCORE.perGoal + st.done.length * D.SCORE.perSample) * DF('score'));
+  // time points: full rate outside, a quarter while safe inside, nothing for time skipped in the bunk (no farming by resting)
+  const tPts = () => st.pts ?? st.t, score = () => Math.floor((tPts() * D.SCORE.perSec + st.goal * D.SCORE.perGoal + st.done.length * D.SCORE.perSample) * DF('score'));
   const has = c => Object.entries(c).every(([k, n]) => (st.inv[k] || 0) >= n);
   const pay = c => { for (const k in c) st.inv[k] -= c[k]; };
   const costTxt = c => Object.entries(c).map(([k, n]) => `${D.RES[k].icon}${n}`).join(' ');
@@ -415,7 +416,7 @@ export function makeSurvival(R, api) {
         TH.x = (rx * inp.x - fx * inp.y) / n * D.JET.side * l; TH.z = (rz * inp.x - fz * inp.y) / n * D.JET.side * l; lat = inp.x; } }
     const mag = TH.length(); s.thrust = mag > 0 ? TH : null; thrustK = mag / D.JET.up; latR += (lat - latR) * Math.min(1, dt * 4);
     if (mag > 0) st.jet = Math.max(0, st.jet - dt * 100 / fuelSec() * Math.min(1.4, thrustK)); }
-  function step(dt) { if (!on || !menuDone || st.over) return; const s = S(), P = s.player.position, v = st.vit; dt = Math.min(dt, .1); st.t += dt;
+  function step(dt) { if (!on || !menuDone || st.over) return; const s = S(), P = s.player.position, v = st.vit; dt = Math.min(dt, .1); st.t += dt; st.pts = (st.pts ?? st.t) + dt * (inside ? (D.SCORE.insideK ?? .25) : 1);
     if (earth) earth.position.copy(R.cam.position).addScaledVector(ED, D.EARTH.dist);
     { const tf = (R.keys.z || touchZoom) && !inside ? 16 : s._fov || 60; if (Math.abs(R.cam.fov - tf) > .05) { R.cam.fov += (tf - R.cam.fov) * Math.min(1, dt * 8); R.cam.updateProjectionMatrix(); } }   // visor zoom: Earth is only 2° wide, like a thumbnail at arm's length
     if ((fcT -= dt) <= 0) { fcT = 6; forecast(); }
@@ -570,7 +571,7 @@ export function makeSurvival(R, api) {
       p => { p.querySelector('#lbO').onclick = () => board(!daily); p.querySelector('#lbX').onclick = () => close(); }); }
   async function finish(rescued) { const sc = score(); keepBest(sc); save();
     show(`<h2>${rescued ? '🚀 Rescued! Mission complete' : '☠ Mission over'}</h2><p>${rescued ? 'The supply ship touched down beside your base. Fresh oxygen, food and a crew to take over. You built the first base at the lunar south pole.' : ''}</p>
-      <p style="font-size:26px;margin:6px 0"><b>${sc.toLocaleString()}</b> points</p><p style="font-size:13px;opacity:.85">${Math.floor(st.t / 60)} min survived · ${st.goal} objectives · ${st.done.length} samples analysed${st.mode === 'daily' ? ' · daily: ' + twistOf(st.day).n : ''}</p>
+      <p style="font-size:26px;margin:6px 0"><b>${sc.toLocaleString()}</b> points</p><p style="font-size:12px;opacity:.75">${Math.floor(tPts())} for time out on the surface + ${st.goal} objectives × ${D.SCORE.perGoal} + ${st.done.length} samples × ${D.SCORE.perSample}${DF('score') !== 1 ? ` · × ${DF('score')} (${D.DIFF[st.diff].n})` : ''}</p><p style="font-size:13px;opacity:.85">${Math.floor(st.t / 60)} min survived · ${st.goal} objectives · ${st.done.length} samples analysed${st.mode === 'daily' ? ' · daily: ' + twistOf(st.day).n : ''}</p>
       <p id="svRank" style="font-size:13px">Sending your score…</p><div class="row"><button id="fB">Leaderboard</button><button id="fR">Base report</button>${rescued ? '<button class="sec" id="fK">Keep playing</button>' : ''}<button class="sec" id="fT">Back to the title</button></div>`,
       p => { p.querySelector('#fB').onclick = () => board(st.mode === 'daily'); p.querySelector('#fR').onclick = () => report(); if (rescued) p.querySelector('#fK').onclick = () => close(); p.querySelector('#fT').onclick = () => api.exit(); });
     const msg = await submit(sc); const el = hud && hud.querySelector('#svRank'); if (el) el.textContent = msg; }
