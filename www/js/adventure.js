@@ -216,7 +216,7 @@ function css() {
 #adv #aArr .nm{display:block;font:200 clamp(40px,9vw,96px)/1 var(--disp,system-ui);letter-spacing:.22em;margin:6px 0 8px;text-shadow:0 0 30px rgba(125,249,255,.35),0 2px 10px #000;padding-left:.22em}
 #adv #aArr .ds{display:block;font:500 clamp(11px,1.6vw,15px) ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#F4A259;text-shadow:0 1px 6px #000}
 #adv #aArr .fc{display:block;max-width:560px;margin:10px auto 0;font-size:clamp(12px,1.5vw,15px);opacity:.9;line-height:1.4;text-shadow:0 1px 6px #000}
-@keyframes advArr{0%{opacity:0;letter-spacing:.6em}14%{opacity:1}80%{opacity:1}100%{opacity:0}}
+@keyframes advArr{0%{opacity:0}14%{opacity:1}80%{opacity:1}100%{opacity:0}}
 #adv #aArr.on .nm{animation:advNm 5.6s ease-out forwards}@keyframes advNm{0%{letter-spacing:.6em}30%{letter-spacing:.22em}}
 #adv #aBan{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;display:none;z-index:6;width:min(92vw,620px)}
 #adv #aBan.on{display:block;animation:advBan 3.6s ease-out forwards}
@@ -559,7 +559,8 @@ function step(dt) {
       R.fx.emit(ep, v, boost ? 0xffc27a : 0x9fd8ff, sz * (boost ? .55 : .4), boost ? .7 : .5, n, 1.4 * sz, { grow: 2.6, drag: .5, jit: sz * .2 });
       R.fx.emit(ep, v, 0xffffff, sz * .22, .18, 2, .4, { grow: 1.5 }); } }
   AUD.set({ eng: Math.min(1, (R.burn || 0)), boost, wind: 0, cockpit: CAM.mode === 'cockpit' && !CAM.photo, dt });
-  R.cam.fov += ((60 + Math.min(14, Math.max(0, spd - 50) / 12)) - R.cam.fov) * Math.min(1, dt * 3); R.cam.updateProjectionMatrix();
+  if (boost && !R.bWas && !CAM.photo) { R.cam.fov += 9; jolt(.35); sfx('whoosh'); } R.bWas = boost;   // the kick when boost lights
+  R.cam.fov += ((60 + Math.min(16, Math.max(0, spd - 50) / 10)) - R.cam.fov) * Math.min(1, dt * 3); R.cam.updateProjectionMatrix();
   // chase camera
   camUpdate(dt, spd);
   // objects: move, load nearby models, rotate planets
@@ -612,6 +613,10 @@ function arrivals(dt) { if (R.surf.S.on || CAM.photo) return; const ship = R.shi
   el.querySelector('.ek').textContent = (b.k || '').toUpperCase(); el.querySelector('.nm').textContent = b.n.replace(/^The /, '').toUpperCase(); el.querySelector('.ds').textContent = b.id === 'earth' ? 'Home · the only world we know of with life' : tag;
   el.querySelector('.fc').textContent = (b.facts || [])[0] || ''; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); sfx(first ? 'fanfare' : 'chime'); if (first) say(b.n.replace(/^The /, 'the ') + '.');
   if (first && !R.ap) R.reveal = { t: 0, T: 4.2 }; }
+function touchdown(b, kind, st) { const W0 = WORLD[b.id], nm = b.n.replace(/^The /, ''); jolt(kind === 'dive' ? .5 : 1); sfx('fanfare');
+  bigBanner(kind === 'dive' ? 'INSIDE ' + nm.toUpperCase() : 'TOUCHDOWN', (st ? st.n.split(' (')[0].split(' ·')[0] + ' · ' : '') + nm + (W0 && W0.g ? ` · gravity ${Math.round(W0.g / 9.81 * 100)}% of Earth` : ''), W0 ? `${W0.t || ''}${W0.air ? ' · air: ' + W0.air : ''}` : '', 4600); }
+// a quick screen jolt for big moments (touchdown, boost)
+function jolt(a = 1) { R.shk = Math.max(R.shk || 0, a); try { if (R.surf.S.on) R.surf.S.camDip = Math.max(R.surf.S.camDip || 0, .25 * a); } catch (e) {} }
 function labels() {
   const W = innerWidth, H = innerHeight, list = [];
   for (const e of R.objs) list.push([e.g.position, e.o, 0]); for (const b of BODIES) list.push([R.bpos[b.id], b, 1]);
@@ -898,7 +903,7 @@ function stepEntry(dt) { const C = R.entry, ship = R.ship, sz = (R.shipStat || S
   for (const e2 of R.objs) R.placeObj(e2, R.t); updatePlanetUniforms(R.PL, R.bpos.sun, R.t); R.fx.update(dt, R.cam); R.rings.update(dt); flare();
   entryFX(C, heat, k, dt, sz);
   if (C.air && heat > .92 && !C.pk) { C.pk = 1; say('Peak heating.'); }
-  if (k >= 1) { entryFX(C, 0, 1, 0, sz, true); try { media().stop(2600); } catch (e) {} const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); pre(R.surf.S.scn); if (SURV && R.sv) { R.sv.begin(SURV.fresh); } setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
+  if (k >= 1) { entryFX(C, 0, 1, 0, sz, true); try { media().stop(2600); } catch (e) {} const { b, kind, st } = C; say(kind === 'dive' ? 'We are inside ' + b.n + '.' : 'Touchdown. Welcome to ' + (st ? st.n.split(' (')[0].split(' ·')[0] : b.n) + '.', 1); R.entry = null; R.surf.enter(b, kind, st); try { touchdown(b, kind, st); } catch (e) {} pre(R.surf.S.scn); if (SURV && R.sv) { R.sv.begin(SURV.fresh); } setTimeout(() => { R.root.classList.remove('cine'); ov.style.opacity = 0; ov.classList.remove('w'); }, 120); } }
 /* ---------------- mission-control voice callouts (speech synthesis behind a radio chirp) ---------------- */
 let VQ = 0; function say(text, prio) { if (!SET.voice || !window.speechSynthesis) return; const now = Date.now(); if (!prio && now < VQ) return; VQ = now + 2500;
   try { const a = typeof ac === 'function' ? ac() : null; if (a && typeof BUS !== 'undefined' && BUS) { const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = 'square'; o.frequency.setValueAtTime(1850, t); o.frequency.setValueAtTime(1400, t + .05); g.gain.setValueAtTime(.025, t); g.gain.exponentialRampToValueAtTime(.0001, t + .11); o.connect(g); g.connect(BUS.sfx || a.destination); o.start(t); o.stop(t + .12); } } catch (e) {}
@@ -947,7 +952,8 @@ function camUpdate(dt, spd) { const ship = R.ship, sz = (R.shipStat || SHIPS[0])
   if (CAM.mode === 'cockpit') { ship.visible = false; R.cam.position.copy(ship.position).add(tmpV.set(0, sz * .25, -sz * .9).applyQuaternion(ship.quaternion)); R.cam.quaternion.copy(ship.quaternion); return; }
   let rv = 0; if (R.reveal) { const Q = R.reveal; Q.t += dt; const u = Q.t / Q.T; rv = Math.sin(Math.min(1, u) * Math.PI); if (u >= 1) R.reveal = null; }   // the pull-back on arrival
   ship.visible = true; const k = sz / 1.3, back = tmpV.set(0, (2.4 + rv * 5) * k, (9 + Math.min(6, spd / 30) + rv * 26) * k).applyQuaternion(ship.quaternion); R.cam.position.lerp(back.add(ship.position), Math.min(1, dt * (rv ? 2.2 : 6)));
-  R.cam.lookAt(tmpV.set(0, .6, -6).applyQuaternion(ship.quaternion).add(ship.position)); }
+  R.cam.lookAt(tmpV.set(0, .6, -6).applyQuaternion(ship.quaternion).add(ship.position));
+  if (R.shk > .01) { const a = R.shk * sz * .22; R.cam.position.add(tmpV.set((Math.random() - .5) * a, (Math.random() - .5) * a, (Math.random() - .5) * a)); R.shk *= Math.exp(-dt * 6); } }
 function hud(spd) { const el = R.root.querySelector('#aHud'); if (!el) return; const W = innerWidth, H = innerHeight;
   if (CAM.photo) { el.style.display = 'none'; return; } el.style.display = 'block';
   // target bracket on the nearest object, with distance and closing speed
@@ -1265,5 +1271,5 @@ function tourStep(dt, sf) { const T = TOURA; T.t += dt; if (T.st === 1 && sf && 
 function tourCard() { const o = document.createElement('div'); o.className = 'pnl'; o.innerHTML = `<div class="crd"><div class="ey">RED DUST OUTPOST · MOON PRODUCTIONS</div><h2>Thank you for playing</h2><div class="mt">Every world in the game uses real NASA data: gravity, temperatures, day lengths, radiation, sunlight, terrain and spacecraft models (NASA 3D Resources). Story mode and Adventure mode are both waiting for you.</div><div class="row"><button class="pr" id="tcX">Back to the title</button></div></div>`;
   R.root.appendChild(o); o.querySelector('#tcX').onclick = () => tourEnd(); setTimeout(() => { if (TOURA) tourEnd(); }, 12000); }
 function tourEnd(skip) { const T = TOURA; if (!T) return; TOURA = null; try { const c = R.root.querySelector('#aTour'); if (c) c.remove(); R.root.querySelectorAll('.pnl').forEach(p => p.remove()); if (R.launch) R.launch.finish(true); } catch (e) {} R.joy.x = R.joy.y = 0; close(); open.skipDL = 0; if (T.cb) setTimeout(() => T.cb(skip), 50); }
-window.ADV = { tour, open, close, survival, survSave: () => !!(R && R.sv ? R.sv.hasSave() : (() => { try { return !!localStorage.getItem('rdo2-surv'); } catch (e) { return false; } })()), goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R, _CO: () => CO, _T: { ST, banner: (...a) => bigBanner(...a), check: q => checkMissions(q), moments: () => tourMoments(), CAM }, toast: (m) => R && toast(m), trophyToast };
+window.ADV = { tour, open, close, survival, survSave: () => !!(R && R.sv ? R.sv.hasSave() : (() => { try { return !!localStorage.getItem('rdo2-surv'); } catch (e) { return false; } })()), goto: id => goto(id), count: () => ST.scanned.size, total: ALL.length, _R: () => R, _CO: () => CO, _T: { ST, banner: (...a) => bigBanner(...a), touchdown: id => touchdown(BI[id], 'land'), check: q => checkMissions(q), moments: () => tourMoments(), CAM }, toast: (m) => R && toast(m), trophyToast };
 export { open, close };
