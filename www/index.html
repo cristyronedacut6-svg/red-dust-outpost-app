@@ -1304,12 +1304,20 @@ function drawSpaceOld(){G=X;if(cv.width!==W){cv.width=W;cv.height=H}X.setTransfo
  pos.forEach((p,i)=>{const r=i===TW?13:9;X.globalAlpha=(i>mx&&i<6)?.35:1;planet(p.x,p.y,r,PL[i],TT*.04+i);X.globalAlpha=1;if(i===TW){X.strokeStyle='#ff7a3d';X.lineWidth=1.5;X.beginPath();X.arc(p.x,p.y,r+5+Math.sin(TT*4)*2,0,7);X.stroke()}
   if((STARS[i]||0)>0){X.fillStyle='#ddd';X.fillRect(p.x,p.y-r-8,1,8);X.fillStyle='#2a6bd8';X.fillRect(p.x+1,p.y-r-8,6,4);X.fillStyle='#3fbf5a';X.fillRect(p.x+3,p.y-r-7,2,2)}
   X.fillStyle=(i>mx&&i<6)?'#8a8098':'#fff';X.fillText(LV[i].n,p.x,p.y+r+11)});X.fillStyle='#9fd6ff';X.fillText('EARTH',ex,ey+er+12)}
+// Story intro: Kai (the Commander, a boy) and Mika (Mission Control, a girl). vo = the recording in audio/vo/<code>.mp3 (optional)
+const WHO_K='🧑‍🚀 KAI · Commander',WHO_M='🌍 MIKA · Mission Control';
 function cutIntro(){return[
- {sc:'earth',ti:'EARTH',t:'Commander, this is Earth Mission Control. Humanity is ready to build its first outposts on other worlds, and you are leading the way.'},
- {sc:'earth',t:'You will land on six real places: the Moon, Mars, Mercury, Europa, Titan and the dwarf planet Ceres. Each one has different sunlight, gravity and radiation, based on NASA data.'},
- {sc:'launch',ti:'LAUNCH DAY',t:'Earth will back you up the whole way. Tap the 🌍 EARTH button for supply pods, orbital lasers, robot helpers and shield domes.'},
- {sc:'launch',t:'One warning: our probes found alien hives on every world. Keep your crew alive, keep the outpost running, and plant Earth’s flag.'},
- {sc:'travel',to:0,ti:'EN ROUTE TO THE MOON',t:'First stop, the Moon. '+LV[0].trav+' Good luck, Commander!'}]}
+ {sc:'earth',ti:'EARTH',who:WHO_M,vo:'s001',t:'Commander Kai, this is Earth Mission Control. Mika speaking. Do you copy?'},
+ {sc:'earth',who:WHO_K,vo:'s002',t:'Copy, Mika. Suited up, strapped in, and only a little bit nervous.'},
+ {sc:'earth',who:WHO_M,vo:'s003',t:'Humanity is ready to build its first outposts on other worlds, and you are leading the way.'},
+ {sc:'earth',who:WHO_M,vo:'s004',t:'You will land on six real places: the Moon, Mars, Mercury, Europa, Titan and the dwarf planet Ceres. Each one has different sunlight, gravity and radiation, based on NASA data.'},
+ {sc:'earth',who:WHO_K,vo:'s005',t:'Six worlds. No pressure. Do I at least get snacks?'},
+ {sc:'launch',ti:'LAUNCH DAY',who:WHO_M,vo:'s006',t:'Earth will back you up the whole way. Tap the 🌍 EARTH button for supply pods, orbital lasers, robot helpers and shield domes.'},
+ {sc:'launch',who:WHO_K,vo:'s007',t:'Orbital lasers. Okay, I feel a lot better now.'},
+ {sc:'launch',who:WHO_M,vo:'s008',t:'One warning: our probes found alien hives on every world. Keep your crew alive, keep the outpost running, and plant Earth’s flag.'},
+ {sc:'launch',who:WHO_K,vo:'s009',t:'Wait. Aliens? Nobody said aliens in the job interview!'},
+ {sc:'travel',to:0,ti:'EN ROUTE TO THE MOON',who:WHO_M,vo:'s010',t:'First stop, the Moon. '+LV[0].trav+' Good luck, Commander!'},
+ {sc:'travel',to:0,who:WHO_K,vo:'s011',t:'Three days to the Moon. Wake me up when we get there, Mika.'}]}
 function cutTravel(to){return[
  {sc:'conquer',w:to-1,ti:LV[to-1].n.toUpperCase()+' SECURED',t:`The ${LV[to-1].n} outpost is online and Earth’s flag is flying. Everyone back home is cheering for you!`},
  {sc:'travel',to,ti:'EN ROUTE TO '+LV[to].n.toUpperCase(),t:`Next stop, ${LV[to].n}. ${LV[to].trav} Your upgrades are packed in the landing pod.`}]}
@@ -1318,12 +1326,13 @@ function cutWin(){return[
  {sc:'home',ti:'MISSION COMPLETE',t:'All six outposts are now linked to Earth. You proved that good engineering, balancing power, air, food and shielding, keeps people alive in space.'},
  {sc:'home',t:'Thank you, Commander. Earth Mission Control, signing off. 🌍'}]}
 function playCut(list,done){ac();if(CIN3D&&window.CUT3D)loadTip('c3',1000);CUT={list,i:-1,ch:0,done,pt:[],t0:TT};MODE='cut';ov.hidden=true;$('#shop').hidden=true;$('#tray').hidden=true;closeInsp();$('#stage').classList.add('nohud');$('#cut').hidden=false;cutGo(0)}
-function cutGo(i){const prev=CUT.list[CUT.i],sc=CUT.list[i];CUT.i=i;CUT.ch=0;glFx(sc);
+let CUTA=null;function cutVo(sc,i){try{if(CUTA){CUTA.pause();CUTA=null}}catch(e){}if(!sc||!sc.vo||!SFX)return;const a=new Audio('audio/vo/'+sc.vo+'.mp3');a.volume=Math.min(1,(VOL.s||.8)*1.1);CUTA=a;a.onended=()=>{if(CUT&&CUT.i===i&&CUTA===a&&i+1<CUT.list.length)setTimeout(()=>{if(CUT&&CUT.i===i){CUT.ch=1e9;cutNext()}},700)};a.play().catch(()=>{})}
+function cutGo(i){const prev=CUT.list[CUT.i],sc=CUT.list[i];CUT.i=i;CUT.ch=0;glFx(sc);cutVo(sc,i);
  if(!prev||prev.sc!==sc.sc||prev.to!==sc.to||prev.w!==sc.w||prev.ph!==sc.ph){CUT.t0=TT;CUT.pt=[];CUT.sb=0;CUT.arr=0;CUT.hd={};cutSfx(sc)}
  const tt=$('#cuttitle');if(sc.ti){tt.textContent=sc.ti;tt.style.opacity=0;setTimeout(()=>tt.style.opacity=1,30)}else if(!prev||prev.sc!==sc.sc)tt.style.opacity=0;
  $('#cutwho').textContent=sc.who||'🌍 Earth Mission Control';$('#cuttxt').textContent='';$('#cutnext').textContent=i==CUT.list.length-1?'Start ▶':'Next ▶'}
 function cutNext(){if(!CUT)return;const L=CUT.list[CUT.i].t.length;if(CUT.ch<L){CUT.ch=L;return}if(CUT.i+1>=CUT.list.length)cutEnd();else{snd('next');cutGo(CUT.i+1)}}
-function cutEnd(){$('#cut').classList.remove('glitch');horDrone(false);GLB=0;GLV=0;VTOK++;try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){}if(!CUT)return;const d=CUT.done;CUT=null;fadeTo(()=>{$('#cut').hidden=true;$('#cuttitle').style.opacity=0;d()})}
+function cutEnd(){cutVo(null);$('#cut').classList.remove('glitch');horDrone(false);GLB=0;GLV=0;VTOK++;try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){}if(!CUT)return;const d=CUT.done;CUT=null;fadeTo(()=>{$('#cut').hidden=true;$('#cuttitle').style.opacity=0;d()})}
 function fadeTo(fn){const f=$('#fade');f.style.opacity=1;setTimeout(()=>{fn();setTimeout(()=>f.style.opacity=0,60)},360)}
 function portrait(talk){const c=$('#cutp');if(CUT&&CUT.list[CUT.i]&&(PFORCE||/📡|\?\?\?/.test(String(CUT.list[CUT.i].who||'')))){const o=G;G=c.getContext('2d');const t=TT,bl=Math.sin(t*3)>.95;R('#160828',0,0,28,28);R('#2a1048',0,22,28,6);R('#7a4aa8',5,6,18,17);R('#9a62d0',7,4,14,4);R('#9a62d0',4,10,2,8);R('#9a62d0',22,10,2,8);R('#5a2e80',9,2,2,3);R('#5a2e80',17,2,2,3);R('#d070ff',9,1,2,1);R('#d070ff',17,1,2,1);
  R(bl?'#5a2e80':'#7df9ff',8,10,5,4);R(bl?'#5a2e80':'#7df9ff',15,10,5,4);if(!bl){R('#ffffff',9,11,1,1);R('#ffffff',16,11,1,1)}R('#3a1a5a',11,17+(talk&&Math.floor(t*10)%2?0:1),6,talk&&Math.floor(t*10)%2?3:1);R('rgba(208,112,255,.35)',3,23,22,5);G=o;return}const o=G;G=c.getContext('2d');R('#10234f',0,0,28,28);R('#1d3a78',0,21,28,7);R('#2a6bd8',4,21,20,7);R('#ffffff',12,21,4,3);R('#c68a5a',8,7,12,12);R('#2a1a10',7,4,14,4);R('#2a1a10',7,6,2,6);R('#2a1a10',19,6,2,6);R('#111',11,11,2,2);R('#111',16,11,2,2);

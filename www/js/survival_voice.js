@@ -84,9 +84,26 @@ export const VO = {
   ],
 };
 
+// Adventure mode opening (plays over the flight past Earth). Codes a001…
+export const ADV_VO = {
+  first: [[
+    L('a001', 'mika', 'Kai, welcome to the Grand Tour. Your ship is in orbit around Earth, and the whole solar system is open.'),
+    L('a002', 'kai', 'The whole solar system? Mika, I do not even have a map.'),
+    L('a003', 'mika', 'You do. Tap the map, pick a planet, and the autopilot flies you there.'),
+    L('a004', 'kai', 'And if I see something cool?'),
+    L('a005', 'mika', 'Fly close and scan it. Over two hundred real NASA spacecraft, rovers and suits are out there. Scan them and you can fly some of them yourself.'),
+    L('a006', 'kai', 'Fly the Space Shuttle myself? Okay. Best job ever. Let us go!'),
+  ]],
+  back: [
+    [L('a007', 'mika', 'Welcome back to orbit, Kai. Where to today?'), L('a008', 'kai', 'Somewhere I have not been yet. Surprise me.')],
+    [L('a009', 'kai', 'Mission Control, I am back in the pilot seat.'), L('a010', 'mika', 'Copy. Try not to crash into Saturn’s rings this time.')],
+    [L('a011', 'mika', 'Systems green, Kai. The planets have been waiting for you.'), L('a012', 'kai', 'Tell them I am on my way.')],
+  ],
+};
+
 // ---------------- the player ----------------
 // play(ev, opts): queue a conversation. opts.once = play only the first time (remembered in the save).
-export function makeVoice(api) {
+export function makeVoice(api, SET = VO) {
   const q = [], ok = {}, last = {}; let busy = false, el = null, cur = null, enabled = true;
   const base = 'audio/vo/';
   function box() { if (el && el.isConnected) return el; el = document.createElement('div'); el.className = 'svvo';
@@ -104,7 +121,7 @@ export function makeVoice(api) {
   function next() { if (!enabled) { q.length = 0; busy = false; sub(null); return; } const line = q.shift(); if (!line) { busy = false; setTimeout(() => { if (!busy) sub(null); }, 1200); return; } busy = true; sub(line);
     try { api.radio && api.radio(); } catch (e) {}
     const done = () => setTimeout(next, 280); if (ok[line.id] === false) tts(line, done); else rec(line, done); }
-  function play(ev, opts = {}) { const set = VO[ev]; if (!set || !enabled) return false; const st = api.state(), now = Date.now();
+  function play(ev, opts = {}) { const set = SET[ev]; if (!set || !enabled) return false; const st = api.state(), now = Date.now();
     if (opts.once && st) { st.said = st.said || {}; if (st.said[ev]) return false; st.said[ev] = 1; }
     if (opts.cool && last[ev] && now - last[ev] < opts.cool * 1000) return false; if (busy && opts.skipIfBusy) return false; last[ev] = now;
     const conv = set[Math.floor(Math.random() * set.length)]; if (opts.urgent) { q.length = 0; try { cur && cur.pause(); speechSynthesis.cancel(); } catch (e) {} busy = false; }

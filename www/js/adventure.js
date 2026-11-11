@@ -14,6 +14,7 @@ import { ShaderPass } from './vendor/three/postprocessing/ShaderPass.js';
 import { makeFX, makeRings, makeWarp, CineShader, SafeShader, VisorShader, RayShader, rockGeo } from './adv_fx.js';
 import { AUD } from './adv_audio.js';
 import { makeSurvival } from './survival.js';
+import { makeVoice, ADV_VO } from './survival_voice.js';
 import { makeLaunch } from './adv_launch.js';
 import { makeMedia } from './adv_media.js';
 import { makeProminences, makeAurora, makeComet, makeRingField } from './adv_space.js';
@@ -849,6 +850,7 @@ function fmtKm(km) { return km >= 1e6 ? (km / 1e6).toFixed(2) + ' million km' : 
 function realAlt(b, d) { const r = RKM[b.id]; return r ? Math.max(0, (d - b.r) / b.r * r) : null; }
 /* ---------------- opening cinematic: a sweeping flyby that ends behind your ship ---------------- */
 function openingShot() { if (!R || R.intro) return; const e = R.bpos.earth, er = R.bmesh.earth.geometry.parameters.radius, s = R.bpos.sun.clone().sub(e).normalize(), side = new THREE.Vector3(-s.z, 0, s.x).normalize();
+  try { if (!SURV) { R.vox = R.vox || makeVoice({ state: () => null, voiceOn: () => !!SET.voice, radio: () => AUD.radio(), host: () => R.root }, ADV_VO); setTimeout(() => R.vox && R.vox.play(G('adv_seen', 0) ? 'back' : 'first'), 1200); } } catch (e) {}
   R.intro = { t: 0, T: 11, p0: e.clone().addScaledVector(s, -er * 2.7).addScaledVector(side, er * .9).add(new THREE.Vector3(0, er * .45, 0)), p1: e.clone().addScaledVector(side, er * 2.2).add(new THREE.Vector3(0, er * .35, 0)) };
   R.root.classList.add('cine', 'intro'); let t = R.root.querySelector('#aTitle'); if (!t) { t = document.createElement('div'); t.id = 'aTitle'; R.root.appendChild(t); }
   t.innerHTML = '<div class="k">MOON PRODUCTIONS PRESENTS</div><h1>RED DUST OUTPOST</h1><div class="s">ADVENTURE · THE GRAND TOUR</div><div class="m">Every spacecraft is a real NASA 3D model · tap to skip</div>'; t.className = 'on';
@@ -1179,7 +1181,7 @@ function resPanel(done, fromGame) {
   }).catch(() => { $('#dlT').textContent = 'Resources are built into this version, so no download is needed.'; $('#dlB').innerHTML = '<div class="row" style="margin-top:12px"><button class="pr" id="dGo">🚀 Launch</button></div>'; $('#dGo').onclick = () => { open.skipDL = 1; o.remove(); done && done(); }; });
 }
 function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); misUI(); R.last = 0; requestAnimationFrame(loop); const after = () => { if (SURV) return survLand(); if (TOURA) return tourMars(); if (!open.shown) { open.shown = 1; openingShot(); } else if (!G('adv_seen', 0)) intro(); }; if ((SET.launch !== 0 || TOURA) && !SURV) launchSeq(after); else after(); }
-function close() { try { if (R && R.sv) R.sv.end(); } catch (e) {} SURV = null; try { AUD.stop(); } catch (e) {} try { coLeave(true); } catch (e) {} ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
+function close() { try { if (R && R.vox) R.vox.stop(); } catch (e) {} try { if (R && R.sv) R.sv.end(); } catch (e) {} SURV = null; try { AUD.stop(); } catch (e) {} try { coLeave(true); } catch (e) {} ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
 /* ---------------- judge's tour: the SLS launch, then a landing on Mars and a short walk, then a thank-you card ---------------- */
 let TOURA = null;
 /* Moon Survival: straight to the lunar south pole (no launch, no space flight) */
