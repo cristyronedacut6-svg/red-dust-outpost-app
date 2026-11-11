@@ -343,7 +343,7 @@ export function makeSurvival(R, api) {
     built.forEach(B => { if (B.m.userData.pivot) B.m.userData.pivot.rotation.y = Math.atan2(sd.x, sd.z); });
     caches.forEach(c => { if (c.m.userData.beacon.visible) c.m.userData.beacon.scale.setScalar(Math.sin(st.t * 4 + c.i) > .6 ? 1.6 : .6); });
     // use / gather / build
-    if (inside && IN && IN.g.visible) { if (!panel) stepInside(dt, lastInp); else showPrompt('', 0); }
+    if (inside && IN && IN.g.visible) stepInside(dt, panel ? { x: 0, y: 0 } : lastInp);   // keep the camera inside even while a panel is open
     else if (panel) { showPrompt('', 0); } else if (bsel >= 0) { stepGhost(); if (R.keys.e || touchUse) { R.keys.e = 0; touchUse = false; place(); } }
     else if (!driving) { const tg = findTarget(), holding = R.keys.e || mouseDown || touchUse;
       if (tg && use.target && tg.kind === use.target.kind && tg.c === use.target.c) tg.t = use.target.t; if (!tg || !use.target || tg.kind !== use.target.kind || tg.c !== use.target.c) use.t = 0; use.target = tg;
@@ -381,6 +381,7 @@ export function makeSurvival(R, api) {
     const walk = Math.hypot(inp.x, inp.y) > .1, bob = walk ? Math.sin(I.t * 7) * .02 : 0, hp = new V3(I.g.position.x + I.pos.x, IY + 1.6 + bob, I.g.position.z + I.pos.z), lp = -(s.camPitch - .35) * 1.4;
     R.cam.position.copy(hp); R.cam.lookAt(hp.x - Math.sin(y) * Math.cos(lp) * 10, hp.y + Math.sin(lp) * 10, hp.z - Math.cos(y) * Math.cos(lp) * 10);
     s.dl.intensity = 0; s.hemi.intensity = .1; s.scn.environmentIntensity = .12; lamp.intensity = 0;
+    if (panel) { use.t = 0; showPrompt('', 0); return; }
     let best = null, bd = 9; const f = new V3(); R.cam.getWorldDirection(f); for (const t of I.st) { const dx = t.x - I.pos.x, dz = t.z - I.pos.z, d = Math.hypot(dx, dz), dot = (dx * f.x + dz * f.z) / Math.max(.01, d); if (d < 1.6 && dot > .45 && d < bd) { bd = d; best = t; } }
     const holding = R.keys.e || mouseDown || touchUse, need = best ? (best.id === 'med' ? 2 : .5) : 1;
     if (best) { if (holding) { use.t += dt; if (use.t >= need) { use.t = 0; R.keys.e = 0; mouseDown = touchUse = false; station(best.id); } } else use.t = 0; showPrompt(`<b>Hold E</b> ${best.label}`, use.t / need); } else { use.t = 0; showPrompt('', 0); }
