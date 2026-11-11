@@ -107,7 +107,7 @@ export function makeSurvival(R, api) {
     // nothing to collect from Adventure mode here
     (s.cols || []).forEach(c => { c.got = true; if (c.m) c.m.visible = false; }); }
   function addBuild(b, quiet) { const def = D.BUILD.find(x => x.id === b.id), m = makeMesh(b.id); m.position.set(b.x, H(b.x, b.z), b.z); m.rotation.y = b.ry || 0; S().scn.add(m); built.push({ b, def, m, lit: true }); if (b.id === 'solar') { b.dust ??= 0; m.traverse(n => { if (n.isMesh && n.material === M.panel) { n.material = M.panel.clone(); m.userData.pm = n.material; } }); }
-    if (!quiet) { api.sfx('lnd'); for (let i = 0; i < 24; i++) { const a = Math.random() * TAU; S().dust.emit(new V3(b.x, H(b.x, b.z) + .1, b.z), new V3(Math.cos(a) * 2, 1 + Math.random() * 1.5, Math.sin(a) * 2), S().dc, .14, 1.6, 1, .2, { grow: 1, drag: 0, grav: 1.62, a: .85 }); } } }
+    if (!quiet) { api.sfx('bld'); built[built.length - 1].pop = 0; m.scale.setScalar(.05); shake(.25); for (let i = 0; i < 24; i++) { const a = Math.random() * TAU; S().dust.emit(new V3(b.x, H(b.x, b.z) + .1, b.z), new V3(Math.cos(a) * 2, 1 + Math.random() * 1.5, Math.sin(a) * 2), S().dc, .14, 1.6, 1, .2, { grow: 1, drag: 0, grav: 1.62, a: .85 }); } } }
 
   /* ---------------- HUD ---------------- */
   function css() { if (document.getElementById('svCss')) return; const c = document.createElement('style'); c.id = 'svCss'; c.textContent = `
@@ -156,9 +156,18 @@ export function makeSurvival(R, api) {
   #sv .goal .hint{display:block;margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.12);color:#9fe8f3;font-size:12px;font-weight:600}
   #sv .goal .hint.urg{color:#ff8a7a}
   #sv .btns button.pulse{animation:svp 1s infinite;border-color:#55D6E8}
+  #sv .fl{position:absolute;left:50%;top:calc(50% - 30px);transform:translateX(-50%);font-size:15px;font-weight:800;color:#9fe8f3;pointer-events:none;animation:svfl 1s ease-out forwards}
+  @keyframes svfl{0%{opacity:0;transform:translate(-50%,8px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-34px)}}
+  #sv .ban{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;display:none}
+  #sv .ban.on{display:block;animation:svban 3.2s ease-out forwards}
+  #sv .ban b{display:block;font-size:30px;letter-spacing:.06em;color:#7dffb0;text-shadow:0 0 18px rgba(80,255,160,.55),0 2px 4px #000}
+  #sv .ban i{display:block;font-style:normal;font-size:22px;color:#F4A259;margin-top:2px}#sv .ban span{display:block;font-size:14px;margin-top:6px;opacity:.9}
+  @keyframes svban{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
+  #sv .vs{position:absolute;left:calc(50% + 34px);top:calc(50% - 9px);font-size:13px;font-weight:800;display:none}
+  #sv .vs.bad{color:#ff6a5a;animation:svw .5s infinite}
   #sv .hurt{position:absolute;inset:0;box-shadow:inset 0 0 120px rgba(200,0,0,.8);opacity:0;transition:opacity .3s}`; document.head.appendChild(c); }
   function buildHUD() { css(); hud = document.createElement('div'); hud.id = 'sv'; hud.innerHTML = `<div class="tint"></div><div class="hurt"></div><div class="env"></div><div class="alarm"></div><div class="rescue"></div><div class="goal"></div>
-    <div class="gd"><span class="ic"></span><i class="ar"></i><span class="lb"></span></div><div class="cross"></div><div class="ring" style="--p:0%;display:none"></div><div class="prompt" style="display:none"></div>
+    <div class="ban"><b></b><i></i><span></span></div><div class="vs"></div><div class="gd"><span class="ic"></span><i class="ar"></i><span class="lb"></span></div><div class="cross"></div><div class="ring" style="--p:0%;display:none"></div><div class="prompt" style="display:none"></div>
     <div class="vit"><div class="bar hp"><i></i><span></span></div><div class="bar o2"><i></i><span></span></div><div class="bar pw"><i></i><span></span></div><div class="bar tc"><i></i><span></span></div><div class="bar jt"><i></i><span></span></div><div class="bar fd"><i></i><span></span></div><div class="bar wt"><i></i><span></span></div></div>
     <div class="inv"></div><div class="bld"></div>
     <div class="btns"><button data-b="use">USE</button><button data-b="build">BUILD</button><button data-b="zoom">ZOOM</button><button data-b="jet">JET</button><button data-b="lamp">LAMP</button><button data-b="patch" style="display:none">PATCH</button></div>`;
@@ -170,7 +179,8 @@ export function makeSurvival(R, api) {
   const $ = q => hud.querySelector(q);
   function bar(cls, v, txt, warn) { const b = $('.bar.' + cls); b.querySelector('i').style.width = clamp(v, 0, 100) + '%'; const s = b.querySelector('span'); if (s._t !== txt) { s.textContent = txt; s._t = txt; } b.classList.toggle('warn', !!warn); }
   function hudUpdate(envT) { const v = st.vit;
-    bar('hp', v.hp, `♥ Health ${Math.ceil(v.hp)}`, v.hp < 30); bar('o2', v.o2, `O₂ ${Math.ceil(v.o2)}%${v.leak ? ' · LEAK!' : ''}`, v.o2 < 20 || v.leak); bar('pw', v.pw, `⚡ Suit power ${Math.ceil(v.pw)}%`, v.pw < 15);
+    bar('hp', v.hp, `♥ Health ${Math.ceil(v.hp)}`, v.hp < 30); const mo = !inside && prevV.ro2 > .01 && v.o2 < 50 ? Math.max(0, v.o2 / prevV.ro2 / 60) : null, mp = !inside && prevV.rpw > .01 && v.pw < 50 ? Math.max(0, v.pw / prevV.rpw / 60) : null, fm = m => m == null ? '' : m < 1 ? ` · ${Math.round(m * 60)} s left` : ` · ~${Math.round(m)} min left`;
+    bar('o2', v.o2, `O₂ ${Math.ceil(v.o2)}%${v.leak ? ' · LEAK!' : ''}${fm(mo)}`, v.o2 < 20 || v.leak); bar('pw', v.pw, `⚡ Suit power ${Math.ceil(v.pw)}%${fm(mp)}`, v.pw < 15);
     bar('tc', clamp((v.tc + 20) / .6, 0, 100), `🌡 Suit ${Math.round(v.tc)} °C`, v.tc < 8 || v.tc > 38); bar('jt', st.jet, `🚀 Jetpack fuel ${Math.ceil(st.jet)}%`, st.jet < 10); bar('fd', v.food, `🍲 Food ${Math.ceil(v.food)}%`, v.food < 15); bar('wt', v.water, `💧 Water ${Math.ceil(v.water)}%`, v.water < 15);
     const inv = Object.keys(D.RES).map(k => `<div>${D.RES[k].icon} ${st.inv[k] || 0}<small>${D.RES[k].n}</small></div>`).join('') + `<div>🧪 ${st.carry.length}<small>Samples</small></div><div>🔬 ${st.rp}<small>Research</small></div>`; if ($('.inv')._t !== inv) { $('.inv').innerHTML = inv; $('.inv')._t = inv; }
     const ang = ((Math.atan2(sd.x, sd.z) - Math.atan2(-Math.sin(S().camYaw), -Math.cos(S().camYaw))) * 180 / Math.PI + 540) % 360 - 180, dir = Math.abs(ang) < 30 ? 'ahead' : Math.abs(ang) > 150 ? 'behind you' : ang > 0 ? 'to your left' : 'to your right';
@@ -213,13 +223,32 @@ export function makeSurvival(R, api) {
       <p style="font-size:13px;opacity:.8">Scored on the six areas of NASA's Moon Base Student Challenge (2026–27): power, habitat, life support, mobility, communications and astronaut safety. <i>Red Dust Outpost is not affiliated with NASA.</i></p>${rows}
       <p style="font-size:12px;opacity:.7">Survived ${Math.floor(st.t / 60)} min · ${st.stats.flares} solar flares · ${st.stats.deaths} suit failures · ${Math.round(st.stats.o2made)}% oxygen made from ice · dose ${st.vit.dose.toFixed(1)} mSv</p>
       <div class="row"><button id="rX">Back to the base</button></div>`, p => p.querySelector('#rX').onclick = () => close()); }
-  function die(cause) { const s = st.stats; s.deaths++; const lost = {}, dl = D.DANGER.deathLoss ?? .5; for (const k in st.inv) { lost[k] = Math.floor(st.inv[k] * dl); st.inv[k] -= lost[k]; } calm(D.DANGER.graceAfterDeathSec || 0);
+  function die(cause) { const s = st.stats; s.deaths++; const lost = {}, dl = D.DANGER.deathLoss ?? .5; for (const k in st.inv) { lost[k] = Math.floor(st.inv[k] * dl); st.inv[k] -= lost[k]; } calm(D.DANGER.graceAfterDeathSec || 0); shake(1.3); api.sfx('hurt');
     const hab = st.builds.find(b => b.id === 'hab'), P = S().player.position, sx = hab ? hab.x + 5 : -8, sz = hab ? hab.z + 5 : -4; P.set(sx, H(sx, sz), sz); S().vel.set(0, 0, 0);
     Object.assign(st.vit, { hp: 70, o2: 85, pw: 85, tc: 20, leak: 0 }); vo('dead', { urgent: true });
     show(`<h2>☠ Suit failure</h2><p>${cause}</p><p>You wake up ${hab ? 'in the habitat' : 'in your lander'}. You dropped ${Math.round(dl * 100)}% of what you carried${Object.values(lost).some(n => n) ? ': ' + Object.entries(lost).filter(([, n]) => n).map(([k, n]) => `${n} ${D.RES[k].icon}`).join(' ') : ''}. Nothing else will go wrong for a few minutes: catch your breath.</p><div class="row"><button id="dX">Try again</button></div>`, p => p.querySelector('#dX').onclick = () => close()); }
 
   // one crisis at a time: push the next danger back so the player gets a calm window
   function calm(sec) { const N = st.next; if (!sec) return; N.meteor = Math.max(N.meteor, st.t + sec); if (!flare && N.flare < st.t + sec) N.flare = st.t + sec + 30; }
+
+  /* ---------------- game feel: shake, floaters, banners, alarms ---------------- */
+  let shakeA = 0, beepT = 0, heartT = 0; const prevV = { o2: null, pw: null, t: 0, ro2: 0, rpw: 0 };
+  function shake(a) { shakeA = Math.min(1.6, Math.max(shakeA, a)); }
+  function floater(t) { if (!hud) return; const f = document.createElement('div'); f.className = 'fl'; f.innerHTML = t; hud.appendChild(f); setTimeout(() => f.remove(), 1000); }
+  function banner(big, pts, small) { const b = $('.ban'); b.querySelector('b').textContent = big; b.querySelector('i').textContent = pts || ''; b.querySelector('span').innerHTML = small || ''; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on'); }
+  function feel(dt) { const v = st.vit, s = S();
+    // camera shake (applied after the surface engine has placed the camera this frame)
+    if (shakeA > .01) { const k = shakeA * shakeA; R.cam.position.x += (Math.random() - .5) * .14 * k; R.cam.position.y += (Math.random() - .5) * .1 * k; R.cam.rotateZ((Math.random() - .5) * .03 * k); shakeA *= Math.exp(-dt * 5); }
+    // how fast oxygen and power are going, so the bars can say how many minutes are left
+    if ((prevV.t -= dt) <= 0) { if (prevV.o2 != null) { prevV.ro2 = prevV.ro2 * .6 + (prevV.o2 - v.o2) * .4; prevV.rpw = prevV.rpw * .6 + (prevV.pw - v.pw) * .4; } prevV.o2 = v.o2; prevV.pw = v.pw; prevV.t = 1; }
+    // alarms: a beep when air or power is nearly gone, a heartbeat when hurt
+    if (!inside && (v.o2 < 15 || v.pw < 10 || v.leak) && (beepT -= dt) <= 0) { beepT = v.o2 < 8 || v.pw < 5 ? 1.6 : 3.2; api.sfx('alarm'); }
+    if (v.hp < 35 && (heartT -= dt) <= 0) { heartT = v.hp < 18 ? .7 : 1.1; api.sfx('heart'); }
+    // vertical speed while airborne: red when the landing would hurt
+    const vs = $('.vs'); if (!s.onGround && !inside && !s.drive && s.vel.y < -1.5) { const sp = -s.vel.y, t = `↓ ${sp.toFixed(1)} m/s`; vs.style.display = 'block'; if (vs._t !== t) { vs._t = t; vs.textContent = t; } vs.classList.toggle('bad', sp > D.SUIT.fallSafe); } else vs.style.display = 'none';
+    // buildings pop up when placed
+    built.forEach(B => { if (B.pop != null) { B.pop += dt; const k = Math.min(1, B.pop / .55), c1 = 1.70158, e = 1 + (c1 + 1) * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); B.m.scale.setScalar(Math.max(.05, e)); if (k >= 1) { B.m.scale.setScalar(1); B.pop = null; } } }); }
+  const minsLeft = r => r > .02 ? Math.max(0, Math.round(r)) : null;
 
   /* ---------------- interaction ---------------- */
   function forward() { const c = R.cam, f = new V3(); c.getWorldDirection(f); return f; }
@@ -239,11 +268,11 @@ export function makeSurvival(R, api) {
     if (S().camPitch > .55 && S().onGround) { const crat = inCrater(P.x, P.z); if (crat) return { kind: 'ice', dig: 1, t: D.GATHER.iceSec * gk(), label: 'Cut ice from the frozen crater floor' }; return { kind: 'dig', t: D.GATHER.digSec * gk(), label: 'Dig regolith' }; }
     return null; }
   function act(o) { const v = st.vit;
-    if (o.kind === 'cache') { const L = st.loot[o.c.i]; const k = L.elec > 0 && (L.scrap === 0 || Math.random() < .4) ? 'elec' : 'scrap'; L[k]--; st.inv[k]++; api.sfx('coin'); if (!vo('cache', { once: true })) {} if (L.scrap + L.elec === 0) { vo('cacheEmpty', { cool: 40, skipIfBusy: true }); o.c.m.userData.beacon.visible = false; o.c.m.userData.beam.visible = false; api.toast('📦 Cache empty', 1200); } }
-    else if (o.kind === 'dig') { st.inv.regolith++; vo('dig', { once: true }); }
+    if (o.kind === 'cache') { const L = st.loot[o.c.i]; const k = L.elec > 0 && (L.scrap === 0 || Math.random() < .4) ? 'elec' : 'scrap'; L[k]--; st.inv[k]++; api.sfx('col'); floater(`+1 ${D.RES[k].icon}`); if (!vo('cache', { once: true })) {} if (L.scrap + L.elec === 0) { vo('cacheEmpty', { cool: 40, skipIfBusy: true }); o.c.m.userData.beacon.visible = false; o.c.m.userData.beam.visible = false; api.toast('📦 Cache empty', 1200); } }
+    else if (o.kind === 'dig') { st.inv.regolith++; floater('+1 🪨'); api.sfx('col'); vo('dig', { once: true }); }
     else if (o.kind === 'sample') { st.carry.push(o.sm.o.id); S().scn.remove(o.sm.g); samples = samples.filter(x => x !== o.sm); api.sfx('coin'); if (!vo('sample', { once: true })) vo('sampleMore', { skipIfBusy: true }); api.toast(`🧪 <b>${o.sm.o.n}</b> collected. Analyse it in the habitat’s geology glovebox.`, 3000); }
     else if (o.kind === 'clean') { o.B.b.dust = 0; vo('clean', { cool: 60, skipIfBusy: true }); api.toast('🧹 Panel clean. Full power again.', 1600); }
-    else if (o.kind === 'ice' && o.dig) { st.inv.ice++; st.flags.iceCut++; vo('ice', { once: true }); }
+    else if (o.kind === 'ice' && o.dig) { st.inv.ice++; st.flags.iceCut++; floater('+1 🧊'); api.sfx('col'); vo('ice', { once: true }); }
     else if (o.kind === 'ice') { if (st.inv.ice > 0) { st.base.iceQ += st.inv.ice; st.inv.ice = 0; api.toast('🧊 Ice loaded. The processor makes oxygen while the base has power.', 2400); } }
     else if (o.kind === 'lander') { const L = st.lander; if (v.food < 70 && L.meals > 0) { L.meals--; v.food = Math.min(100, v.food + D.FOOD.meal); } if (v.water < 80 && L.water >= 10) { L.water -= 10; v.water = Math.min(100, v.water + D.FOOD.drink); }
       const a = Math.min(100 - v.o2, st.lander.o2); v.o2 += a; st.lander.o2 -= a; const b = Math.min(100 - v.pw, st.lander.pw); v.pw += b; st.lander.pw -= b; if (D.JET.refillAtLander) st.jet = 100; if (v.leak) { if (L.kits > 0) { L.kits--; v.leak = 0; api.toast(`🩹 Suit patched with a lander repair kit (${L.kits} left).`, 2200); } else if (st.inv.scrap) { v.leak = 0; st.inv.scrap--; } }
@@ -362,7 +391,7 @@ export function makeSurvival(R, api) {
     if (g.id === 'salvage') done = (st.inv.scrap >= 6 && st.inv.elec >= 3) || st.builds.length > 0; else if (g.id === 'solar') done = built.some(B => B.b.id === 'solar' && B.lit);
     else if (g.id === 'hab') done = c('hab') > 0; else if (g.id === 'ice') done = c('ice') > 0 && f.iceCut >= 4; else if (g.id === 'berm') done = c('berm') > 0 && st.stats.sheltered > 0;
     else if (g.id === 'rover') done = !!f.rover; else if (g.id === 'antenna') done = !!f.reported;
-    if (done) { st.goal++; api.sfx('coin'); const n = D.GOALS[st.goal]; api.toast(`✅ <b>Objective complete.</b>${n ? '<br>Next: ' + n.t : ''}`, 3600); if (n) vo('goal', { skipIfBusy: true }); save(); goals(); } }
+    if (done) { st.goal++; api.sfx('up'); setTimeout(() => api.sfx('big'), 180); const n = D.GOALS[st.goal]; banner('OBJECTIVE COMPLETE', `+${Math.round(D.SCORE.perGoal * DF('score'))}`, n ? 'Next: ' + n.t : 'All objectives done!'); shake(.2); if (n) vo('goal', { skipIfBusy: true }); save(); goals(); } }
 
   /* ---------------- main step ---------------- */
   let lastInp = { x: 0, y: 0 };
@@ -397,7 +426,7 @@ export function makeSurvival(R, api) {
     if (flare && flare.on && !sheltered) { dmg += D.HEALTH.flare * DF('flareDmg'); v.dose += dt * 4; why = why || 'Radiation from the solar flare.'; }
     v.dose += dt * D.DANGER.backgroundDose / 86400 * 60;   // shown in mSv; background dose sped up 60×
     // falls: Moon gravity is 1/6 of Earth's, so you fall slowly, but a long drop still hurts
-    if (!s.onGround) lastVy = s.vel.y; if (s.onGround && !wasG && !driving) { const imp = -lastVy; s.camDip = Math.min(.45, Math.max(0, imp) * .07); if (imp > 1.5) try { AUD.step(Math.min(2, imp / 3)); } catch (e) {} if (imp > D.SUIT.fallSafe) { v.hp -= (imp - D.SUIT.fallSafe) * D.SUIT.fallDamage; api.toast(`🦴 Hard landing (${imp.toFixed(1)} m/s)`, 1500); hurt(.8); setTimeout(() => hurt(0), 300); if (v.hp <= 0) why = 'A fall broke your suit seal.'; } } wasG = s.onGround;
+    if (!s.onGround) lastVy = s.vel.y; if (s.onGround && !wasG && !driving) { const imp = -lastVy; s.camDip = Math.min(.45, Math.max(0, imp) * .07); if (imp > 1.5) try { AUD.step(Math.min(2, imp / 3)); } catch (e) {} if (imp > D.SUIT.fallSafe) { v.hp -= (imp - D.SUIT.fallSafe) * D.SUIT.fallDamage; api.toast(`🦴 Hard landing (${imp.toFixed(1)} m/s)`, 1500); hurt(.8); shake(Math.min(1.4, .4 + (imp - D.SUIT.fallSafe) * .2)); api.sfx('hurt'); setTimeout(() => hurt(0), 300); if (v.hp <= 0) why = 'A fall broke your suit seal.'; } } wasG = s.onGround;
     v.hp -= dmg * dt; if (!dmg && v.o2 > 15 && v.pw > 0) v.hp += (inside ? D.HEALTH.regenInside : D.HEALTH.regen) * dt; v.hp = clamp(v.hp, 0, 100); hurt(dmg ? .35 + .25 * Math.sin(st.t * 6) : 0);
     if (v.hp <= 0) { if (st.mode === 'daily') { gameOver(why || 'Your suit failed.'); return; } die(why || 'Your suit failed.'); return; }
     s.camDip = (s.camDip || 0) * Math.exp(-dt * 5); s.camRoll = -latR * .05;
@@ -415,11 +444,11 @@ export function makeSurvival(R, api) {
     // dangers: solar flares and micrometeorites
     const N = st.next, warn = st.link ? D.DANGER.flareWarnWithAntennaSec : D.DANGER.flareWarnSec;
     if (!flare && st.t > N.flare - warn) { flare = { at: N.flare, on: false }; vo('flareWarn', { urgent: true }); }
-    if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -D.DANGER.flareSec) { if (!flare.on) { flare.on = true; flare.hit = false; flare.out = 0; } if (!sheltered) { flare.out += dt; if (flare.out > (D.DANGER.flareGraceSec ?? 15)) flare.hit = true; } alarm(`☢ SOLAR FLARE · ${Math.ceil(D.DANGER.flareSec + left)} s · ${sheltered ? 'you are sheltered ✓' : flare.hit ? 'TAKE SHELTER!' : `TAKE SHELTER! (${Math.max(0, Math.ceil((D.DANGER.flareGraceSec ?? 15) - flare.out))} s)`}`); $('.tint').style.opacity = .8; }
+    if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -D.DANGER.flareSec) { if (!flare.on) { flare.on = true; flare.hit = false; flare.out = 0; shake(.5); api.sfx('alarm'); } if (!sheltered) { flare.out += dt; if (flare.out > (D.DANGER.flareGraceSec ?? 15)) flare.hit = true; } alarm(`☢ SOLAR FLARE · ${Math.ceil(D.DANGER.flareSec + left)} s · ${sheltered ? 'you are sheltered ✓' : flare.hit ? 'TAKE SHELTER!' : `TAKE SHELTER! (${Math.max(0, Math.ceil((D.DANGER.flareGraceSec ?? 15) - flare.out))} s)`}`); $('.tint').style.opacity = .8; }
       else { const fh = flare.hit; st.stats.flares++; if (!flare.hit) st.stats.sheltered++; flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin) * DF('flare')) * 60; alarm(''); $('.tint').style.opacity = 0; api.toast('☢ The flare is over.', 2000); vo(fh ? 'flareHit' : 'flareSafe'); } }
     if (D.GOALS[st.goal] && D.GOALS[st.goal].id === 'berm' && count('berm') && !flare && N.flare > st.t + (D.DANGER.shieldFlareSec || 150) + warn) { N.flare = st.t + (D.DANGER.shieldFlareSec || 150) + warn * .5; api.toast('📡 Mission Control: <b>a solar flare is building up</b> on the Sun. Your shield is about to get its first test.', 4500); }
     if (st.t > N.meteor && (flare || Math.abs(N.flare - st.t) < (D.DANGER.calmSec || 0))) N.meteor = st.t + (D.DANGER.calmSec || 60);
-    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (Math.random() < Math.min(.8, D.DANGER.meteorChance * DF('meteor')) && !inside && !driving) { v.leak = 1; hurt(1); setTimeout(() => hurt(0), 250); vo('leak', { urgent: true }); api.toast('💥 A micrometeorite punctured your suit! Oxygen is leaking. Press <b>P</b> to patch it (1 🔩 scrap, or 2 🪨 regolith) or refill at the lander or habitat.', 4500); } }
+    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (Math.random() < Math.min(.8, D.DANGER.meteorChance * DF('meteor')) && !inside && !driving) { v.leak = 1; hurt(1); setTimeout(() => hurt(0), 250); shake(1.1); api.sfx('hit'); setTimeout(() => api.sfx('hurt'), 120); vo('leak', { urgent: true }); api.toast('💥 A micrometeorite punctured your suit! Oxygen is leaking. Press <b>P</b> to patch it (1 🔩 scrap, or 2 🪨 regolith) or refill at the lander or habitat.', 4500); } }
     // base: power grid, oxygen from ice
     tSec -= dt; if (tSec <= 0) { tSec = 1; let prod = 0, useP = 0, cap = 0;
       built.forEach(B => { const id = B.b.id; if (id === 'solar') { B.lit = inSun(B.b.x, H(B.b.x, B.b.z) + 5.5, B.b.z); B.b.dust = Math.min(100, (B.b.dust || 0) + D.DUST.perMin / 60 * (U('lotus') ? .4 : 1) * (TW('dusty') ? 3 : 1)); if (B.lit) prod += B.def.power * (1 - D.DUST.loss * B.b.dust / 100); if (B.m.userData.pm) B.m.userData.pm.color.setHex(0x1b2a55).lerp(new THREE.Color(0x6f6b66), B.b.dust / 100 * .85); } if (id === 'battery') cap += B.def.store; if (B.def.use && id !== 'ice') useP += B.def.use; if (id === 'hab') cap += 40; });
@@ -442,7 +471,7 @@ export function makeSurvival(R, api) {
       if (tg) { const can = tg.ok !== false && tg.t > 0; if (holding && can) { use.t += dt; if (use.t >= tg.t) { use.t = 0; act(tg); if (tg.kind === 'hab' || tg.kind === 'rover' || tg.kind === 'antenna') { R.keys.e = 0; mouseDown = touchUse = false; } } } else use.t = 0;
         showPrompt(`${can ? '<b>Hold E</b> ' : ''}${tg.label}`, can ? use.t / tg.t : 0); } else showPrompt('', 0); }
     else showPrompt('', 0);
-    hudUpdate(envT); tSave -= dt; if (tSave <= 0) { tSave = 20; save(); }
+    hudUpdate(envT); feel(dt); tSave -= dt; if (tSave <= 0) { tSave = 20; save(); }
     if (v.o2 < 20 && !st.w1) { st.w1 = 1; vo('o2low', { urgent: true }); } if (v.o2 > 30) st.w1 = 0;
     if (v.pw < 15 && !st.w2) { st.w2 = 1; vo('pwlow'); } if (v.food < 20 && !st.w3) { st.w3 = 1; vo('hungry'); } if (v.food > 35) st.w3 = 0; if (v.water < 20 && !st.w4) { st.w4 = 1; vo('thirsty'); } if (v.water > 35) st.w4 = 0; if (v.tc < 8 && !st.w5) { st.w5 = 1; vo('cold'); } if (v.tc > 14) st.w5 = 0; if (v.pw > 25) st.w2 = 0; }
 
@@ -561,5 +590,5 @@ export function makeSurvival(R, api) {
   function clearWorld() { const scn = S().scn; caches.forEach(c => scn.remove(c.m)); built.forEach(B => scn.remove(B.m)); samples.forEach(x => scn.remove(x.g)); if (rover) scn.remove(rover.g); if (ship) scn.remove(ship); if (lamp) { scn.remove(lamp); scn.remove(lamp.target); }
     caches = []; built = []; samples = []; rover = null; ship = null; if (IN) { IN.g.visible = false; } inside = false; }
   function end() { if (!on) return; VOX.stop(); if (menuDone) save(); on = false; menuDone = false; unbind(); endBuild(); close(); try { hud.remove(); } catch (e) {} R.root.classList.remove('surv'); try { const s = S(); if (s._fov) { R.cam.fov = s._fov; R.cam.updateProjectionMatrix(); } if (earth) s.scn.remove(earth); earth = null; if (IN) { s.scn.remove(IN.g); IN = null; } inside = false; if (s._shc) { const c = s.dl.shadow.camera; c.left = c.bottom = -s._shc[0] * -1; c.left = c.bottom = s._shc[0]; c.right = c.top = -s._shc[0]; c.far = s._shc[1]; c.updateProjectionMatrix(); } s.polar = null; s.traction = 0; s.newton = false; s.thrust = null; s.camDip = 0; s.camRoll = 0; if (lamp) { s.scn.remove(lamp); s.scn.remove(lamp.target); } } catch (e) {} }
-  return { get on() { return on; }, site: D.SITE, begin, end, pre, step, key, reset: () => { try { localStorage.removeItem(KEY); } catch (e) {} }, hasSave: () => !!load('normal'), thrustK: () => Math.max(thrustK, shipK), breath: () => st ? clamp((30 - st.vit.o2) / 30, 0, 1) * .8 + (thrustK > 0 ? .3 : 0) : 0, _st: () => st, _build: (id, x, z) => { const b = { id, x, z, ry: 0 }; st.builds.push(b); addBuild(b, true); }, _built: () => built, _caches: () => caches, _start: m => start(fresh(m || "normal")), _samples: () => samples, _station: id => station(id), _score: () => score(), _enter: () => { const B = built.find(b => b.b.id === "hab"); if (B) enterHab(B.b); }, _exit: () => exitHab(), _fc: () => fc };
+  return { get on() { return on; }, site: D.SITE, begin, end, pre, step, key, reset: () => { try { localStorage.removeItem(KEY); } catch (e) {} }, hasSave: () => !!load('normal'), thrustK: () => Math.max(thrustK, shipK), breath: () => st ? clamp((30 - st.vit.o2) / 30, 0, 1) * .8 + (thrustK > 0 ? .3 : 0) : 0, _st: () => st, _build: (id, x, z) => { const b = { id, x, z, ry: 0 }; st.builds.push(b); addBuild(b, true); }, _built: () => built, _caches: () => caches, _start: m => start(fresh(m || "normal")), _samples: () => samples, _fx: { banner: (...a) => banner(...a), floater: t => floater(t), shake: a => shake(a) }, _station: id => station(id), _score: () => score(), _enter: () => { const B = built.find(b => b.b.id === "hab"); if (B) enterHab(B.b); }, _exit: () => exitHab(), _fc: () => fc };
 }
