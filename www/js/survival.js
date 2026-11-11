@@ -88,6 +88,7 @@ export function makeSurvival(R, api) {
       if (inCrater(x, z) && !big) { x = -x; z = Math.abs(z); } if (big) { const ca = hash(i) * 1.2 - .6; x = D.CRATER.x + Math.sin(ca) * D.CRATER.r * 1.08; z = D.CRATER.z + Math.cos(ca) * D.CRATER.r * 1.08; }
       if (st.loot[i] == null) { const L = big ? { scrap: 10, elec: 5 } : D.CACHE_LOOT[i % D.CACHE_LOOT.length]; st.loot[i] = TW('scarce') ? { scrap: Math.ceil(L.scrap * 2 / 3), elec: Math.ceil(L.elec * 2 / 3) } : { ...L }; }
       const m = cacheMesh(i, big); m.position.set(x, H(x, z), z); scn.add(m); caches.push({ i, x, z, m, big }); if (st.loot[i].scrap + st.loot[i].elec === 0) { m.userData.beacon.visible = false; m.userData.beam.visible = false; } }
+    (st.drops || []).forEach((dp, k) => { const i = D.CACHES + 2 + k; const m = cacheMesh(i, false); m.position.set(dp.x, H(dp.x, dp.z), dp.z); scn.add(m); caches.push({ i, x: dp.x, z: dp.z, m, big: false }); if (st.loot[i].scrap + st.loot[i].elec === 0) { m.userData.beacon.visible = false; m.userData.beam.visible = false; } });
     // science samples: a few special rocks, each in the kind of place it would really be found
     samples = []; const sm = new THREE.MeshStandardMaterial({ color: 0x8fb7c9, roughness: .4, metalness: .1, emissive: 0x0a2a36 });
     D.SAMPLES.forEach((o, i) => { if (st.done.includes(o.id) || st.carry.includes(o.id)) return; const h1 = hash(i * 13 + 2), h2 = hash(i * 7 + 5); let x, z;
@@ -146,9 +147,18 @@ export function makeSurvival(R, api) {
   #sv .sc{display:grid;grid-template-columns:28px 1fr 46px;gap:6px 8px;align-items:center;margin:4px 0}
   #sv .sc .b{height:9px;background:#26323d;border-radius:5px;overflow:hidden}#sv .sc .b i{display:block;height:100%;background:#55D6E8}
   #sv .tint{position:absolute;inset:0;background:radial-gradient(circle,transparent 40%,rgba(255,120,40,.35));opacity:0;transition:opacity .6s}
+  #sv .gd{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:none;text-align:center;white-space:nowrap;font-size:12px;transition:opacity .2s}
+  #sv .gd .ic{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:rgba(85,214,232,.9);color:#06131a;font-size:16px;box-shadow:0 0 0 3px rgba(85,214,232,.3),0 2px 8px rgba(0,0,0,.6)}
+  #sv .gd.urg .ic{background:rgba(255,90,70,.95);box-shadow:0 0 0 3px rgba(255,90,70,.35);animation:svp 1s infinite}@keyframes svp{50%{transform:scale(1.15)}}
+  #sv .gd .ar{position:absolute;left:50%;top:50%;width:0;height:0;margin:-6px 0 0 -6px;border:6px solid transparent;border-left:10px solid #55D6E8;transform-origin:-9px 6px;display:none}
+  #sv .gd.edge .ar{display:block}#sv .gd.urg .ar{border-left-color:#ff5a46}
+  #sv .gd .lb{display:block;margin-top:3px;background:rgba(10,16,24,.7);padding:2px 7px;border-radius:8px}
+  #sv .goal .hint{display:block;margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.12);color:#9fe8f3;font-size:12px;font-weight:600}
+  #sv .goal .hint.urg{color:#ff8a7a}
+  #sv .btns button.pulse{animation:svp 1s infinite;border-color:#55D6E8}
   #sv .hurt{position:absolute;inset:0;box-shadow:inset 0 0 120px rgba(200,0,0,.8);opacity:0;transition:opacity .3s}`; document.head.appendChild(c); }
   function buildHUD() { css(); hud = document.createElement('div'); hud.id = 'sv'; hud.innerHTML = `<div class="tint"></div><div class="hurt"></div><div class="env"></div><div class="alarm"></div><div class="rescue"></div><div class="goal"></div>
-    <div class="cross"></div><div class="ring" style="--p:0%;display:none"></div><div class="prompt" style="display:none"></div>
+    <div class="gd"><span class="ic"></span><i class="ar"></i><span class="lb"></span></div><div class="cross"></div><div class="ring" style="--p:0%;display:none"></div><div class="prompt" style="display:none"></div>
     <div class="vit"><div class="bar hp"><i></i><span></span></div><div class="bar o2"><i></i><span></span></div><div class="bar pw"><i></i><span></span></div><div class="bar tc"><i></i><span></span></div><div class="bar jt"><i></i><span></span></div><div class="bar fd"><i></i><span></span></div><div class="bar wt"><i></i><span></span></div></div>
     <div class="inv"></div><div class="bld"></div>
     <div class="btns"><button data-b="use">USE</button><button data-b="build">BUILD</button><button data-b="zoom">ZOOM</button><button data-b="jet">JET</button><button data-b="lamp">LAMP</button><button data-b="patch" style="display:none">PATCH</button></div>`;
@@ -168,7 +178,7 @@ export function makeSurvival(R, api) {
     let cTxt = ''; if (nc && nd > 4) { const ca = ((Math.atan2(nc.x - P.x, nc.z - P.z) - Math.atan2(-Math.sin(S().camYaw), -Math.cos(S().camYaw))) * 180 / Math.PI + 540) % 360 - 180; cTxt = ` · 📦 cache ${Math.round(nd)} m ${Math.abs(ca) < 20 ? 'ahead' : ca > 0 ? '◀ left' : 'right ▶'}`; }
     const e = `${sunlit ? '<span class="sun">☀ IN SUNLIGHT</span>' : '<span class="sh">● IN SHADOW</span>'} · ground ${envT} °C · Sun ${dir}${cTxt}${built.length ? ` · base ⚡${Math.round(st.base.pw)} O₂${Math.round(st.base.o2)}` : ''}${fc ? ' · ' + fc : ''}`; if ($('.env')._t !== e) { $('.env').innerHTML = e; $('.env')._t = e; }
     const g = D.GOALS[st.goal], gt = g ? `<small>OBJECTIVE ${st.goal + 1} / ${D.GOALS.length}${g.area ? ' · ' + D.AREAS.find(a => a.id === g.area).n.toUpperCase() : ''}</small>${g.t}` : '<small>ALL OBJECTIVES DONE</small>Keep your base alive. Press <b>Tab</b> for your base report.';
-    const gt2 = gt + `<span class="sc2">Score ${score().toLocaleString()}${st.mode === 'daily' ? ' · DAILY: ' + twistOf(st.day).n : st.diff && st.diff !== 'normal' ? ' · ' + D.DIFF[st.diff].n : ''}</span>`; if ($('.goal')._t !== gt2) { $('.goal').innerHTML = gt2; $('.goal')._t = gt2; }
+    const G0 = GUIDE.cur, gt2 = gt + (G0 && G0.t ? `<span class="hint${G0.urg ? ' urg' : ''}">➜ ${G0.t}</span>` : '') + `<span class="sc2">Score ${score().toLocaleString()}${st.mode === 'daily' ? ' · DAILY: ' + twistOf(st.day).n : st.diff && st.diff !== 'normal' ? ' · ' + D.DIFF[st.diff].n : ''}</span>`; if ($('.goal')._t !== gt2) { $('.goal').innerHTML = gt2; $('.goal')._t = gt2; }
     $('[data-b=patch]').style.display = v.leak ? '' : 'none'; }
   function alarm(t) { const a = $('.alarm'); a.style.display = t ? 'block' : 'none'; if (t && a._t !== t) { a.innerHTML = t; a._t = t; } }
   function hurt(k) { $('.hurt').style.opacity = k; }
@@ -176,9 +186,15 @@ export function makeSurvival(R, api) {
   /* ---------------- panels (intro, habitat, report, death) ---------------- */
   function show(html, onBind) { close(); panel = document.createElement('div'); panel.className = 'svp'; panel.innerHTML = `<div class="svc">${html}</div>`; hud.appendChild(panel); try { document.exitPointerLock(); } catch (e) {} if (onBind) onBind(panel); }
   function close() { if (panel) { panel.remove(); panel = null; } }
-  function intro() { show(`<h2>🌑 Moon Survival · ${D.SITE.n}</h2><p><b>${D.STORY.callsign}</b>, ${D.STORY.intro.join(' ')}</p>
-    <p style="opacity:.8;font-size:13px"><b>Controls:</b> WASD move · mouse look (click to lock) · hold <b>E</b> or left mouse to use and gather · <b>B</b> build · <b>F</b> helmet lamp · <b>P</b> patch suit · <b>Tab</b> base report · collect glowing <b>blue samples</b> and analyse them in the habitat · brush <b>dust</b> off your solar panels · watch your <b>food and water</b> · hold <b>Z</b> to zoom your visor (look for Earth on the horizon) · Space jump (hold in the air for the <b>jetpack</b>, C to thrust down; in the air WASD fires the side thrusters and you drift until you counter-thrust) · Shift run. On a phone: left stick to move, drag the right side to look.</p>
-    ${st.mode === 'daily' ? `<p><b>📅 Daily challenge · ${twistOf(st.day).n}:</b> ${twistOf(st.day).d} One life only.</p>` : ''}<p style="opacity:.7;font-size:12px">${D.SITE.facts[0]}</p><div class="row"><button id="svGo">Start surviving</button>${load() && st.t > 5 ? '' : ''}</div>`, p => p.querySelector('#svGo').onclick = () => { close(); vo('start', { once: true }); if (st.mode === 'daily') setTimeout(() => vo('daily'), 500); }); }
+  function intro() { const touch = matchMedia('(pointer:coarse)').matches, tw = st.mode === 'daily' ? twistOf(st.day) : null;
+    const keys = touch ? [['Left stick', 'walk'], ['Drag right side', 'look'], ['USE (hold)', 'gather, open, repair'], ['BUILD', 'build menu'], ['JET (hold)', 'jetpack'], ['ZOOM', 'visor zoom'], ['LAMP', 'helmet light']]
+      : [['WASD', 'walk · Shift run'], ['Mouse', 'look (click to lock)'], ['E (hold)', 'gather, open, repair'], ['B', 'build menu'], ['Space (hold)', 'jump, then jetpack'], ['F', 'helmet lamp'], ['P', 'patch a suit leak'], ['Z', 'visor zoom'], ['Tab', 'base report']];
+    show(`<h2>🌑 ${D.SITE.n}</h2><p><b>${D.STORY.callsign}</b>, ${D.STORY.intro[0]}</p>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;margin:8px 0;padding:10px;background:#0a1219;border-radius:8px"><b style="grid-column:1/-1;color:#55D6E8">Your first moves</b>
+      <span>1.</span><span>Follow the <b style="color:#55D6E8">blue marker</b> to a supply cache and hold ${touch ? 'USE' : 'E'}.</span><span>2.</span><span>Build a solar tower in the sunlight, then your habitat.</span><span>3.</span><span>Watch the bars on the right: oxygen, power, food, water.</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:3px 12px;font-size:12px;opacity:.85">${keys.map(([k, d]) => `<span><b style="color:#F4A259">${k}</b> ${d}</span>`).join('')}</div>
+    ${tw ? `<p><b>📅 Daily challenge · ${tw.n}:</b> ${tw.d} One life only.</p>` : st.diff && st.diff !== 'normal' ? `<p>${D.DIFF[st.diff].icon} <b>${D.DIFF[st.diff].n}</b>: ${D.DIFF[st.diff].d}</p>` : ''}
+    <div class="row"><button id="svGo">Start surviving</button></div>`, p => p.querySelector('#svGo').onclick = () => { close(); vo('start', { once: true }); if (st.mode === 'daily') setTimeout(() => vo('daily'), 500); }); }
   function habPanel() { const v = st.vit, b = st.base; inside = true;
     show(`<h2>🏠 Inside the habitat</h2><p>Warm, pressurised and shielded. You heal faster in here.</p>
       <p>Base power <b>${Math.round(b.pw)}</b> · Base oxygen <b>${Math.round(b.o2)}%</b> · Ice waiting <b>${b.iceQ}</b></p>
@@ -281,6 +297,66 @@ export function makeSurvival(R, api) {
   function showPrompt(t, p) { const pr = $('.prompt'), ring = $('.ring'); pr.style.display = t ? 'block' : 'none'; if (t && pr._t !== t) { pr.innerHTML = t; pr._t = t; } ring.style.display = p > 0 ? 'block' : 'none'; ring.style.setProperty('--p', Math.round(p * 100) + '%'); }
   let factT = 0; function fact(t) { if (!t) return; factT = 7; api.toast('🔭 ' + t, 6500); }
 
+  /* ---------------- the guide: always one clear next step ---------------- */
+  // Picks what matters most right now (danger first, then the objective) and shows it as a marker in the world
+  // plus one line of plain instructions under the objective.
+  const GUIDE = { cur: null, t: 0 };
+  const lack = c => Object.entries(c).filter(([k, n]) => (st.inv[k] || 0) < n);
+  function nearCache(want) { const P = S().player.position; let best = null, bd = 1e9;
+    caches.forEach(c => { const L = st.loot[c.i]; if (L.scrap + L.elec <= 0) return; if (want && !want.some(([k]) => L[k] > 0)) return; const d = Math.hypot(c.x - P.x, c.z - P.z); if (d < bd) { bd = d; best = c; } }); return best; }
+  function shelterSpot() { const P = S().player.position; let best = null, bd = 1e9; for (const b of st.builds) if (b.id === 'hab' || b.id === 'berm') { const d = Math.hypot(b.x - P.x, b.z - P.z); if (d < bd) { bd = d; best = b; } } return best; }
+  function refillSpot() { const hb = st.builds.find(b => b.id === 'hab'); if (hb && (st.base.o2 > 10 || st.lander.o2 < 3)) return { x: hb.x, z: hb.z, n: 'the habitat' }; return { x: -12, z: -8, n: 'your lander' }; }
+  function gatherStep(cost, what) { const L = lack(cost); if (!L.length) return null; const c = nearCache(L);
+    const txt = L.map(([k, n]) => `${n - (st.inv[k] || 0)} ${D.RES[k].icon}`).join(' + ');
+    return c ? { x: c.x, z: c.z, icon: '📦', t: `Get ${txt} for the ${what}: hold <b>E</b> at the supply cache`, lb: 'cache' } : { t: `Need ${txt} for the ${what}. Mission Control is sending a supply pod…` }; }
+  function buildStep(id) { const d = D.BUILD.find(b => b.id === id); return { t: `Press <b>B</b> (BUILD), pick <b>${d.icon} ${d.n}</b>${id === 'solar' ? ' and put it where the ghost turns <b>green</b> (sunlight)' : id === 'antenna' ? ' and put it where the ghost turns <b>green</b> (Earth in view)' : ''}, then <b>E</b>`, build: 1 }; }
+  function guideTarget() { const v = st.vit, g = D.GOALS[st.goal], c = count, P = S().player.position;
+    if (inside) return { t: v.o2 < 90 || v.pw < 90 ? 'Refill your suit at the <b>EVA station</b>. The <b>airlock</b> takes you back outside.' : 'Eat at the galley, drink at the water dispenser, analyse samples at the geology glovebox. Airlock = outside.' };
+    if (flare) { const sh = shelterSpot(); if (sh) return { x: sh.x, z: sh.z, icon: '☢', urg: 1, lb: sh.id === 'hab' ? 'shelter' : 'shield', t: `${flare.on ? 'Flare!' : 'Flare coming!'} Get ${sh.id === 'hab' ? 'inside the habitat' : 'right next to your regolith shield'}` };
+      return { urg: 1, t: 'Flare! No shelter yet. Stay put and keep your health up. Build a habitat or a regolith shield before the next one.' }; }
+    const rg = D.SUIT.patchRegolith || 2;
+    if (v.leak) { if (st.inv.scrap >= 1 || st.inv.regolith >= rg) return { urg: 1, t: 'Suit leak! Press <b>P</b> (PATCH) now' }; const r = refillSpot(); return { x: r.x, z: r.z, icon: '🩹', urg: 1, lb: 'patch', t: `Suit leak! Look down and hold <b>E</b> to dig ${rg} regolith, then <b>P</b>. Or get to ${r.n}.` }; }
+    if (v.o2 < 30 || v.pw < 25 || v.food < 18 || v.water < 18) { const r = refillSpot(); const w = v.o2 < 30 ? 'Oxygen' : v.pw < 25 ? 'Suit power' : v.food < 18 ? 'Food' : 'Water'; return { x: r.x, z: r.z, icon: '⛽', urg: 1, lb: 'refill', t: `${w} low: go to ${r.n} and hold <b>E</b>` }; }
+    if (st.rescue && !st.rescued) { const pd = st.rescue.pad; return pd ? { x: pd[0], z: pd[1], icon: '🚀', lb: 'landing zone', t: 'The supply ship is coming. Watch it land, but not too close!' } : null; }
+    if (!g) { const sm = samples[0]; return sm ? { x: sm.x, z: sm.z, icon: '🧪', lb: 'sample', t: 'Explore: collect the glowing blue science samples' } : { t: 'Keep the base running. Press Tab for your base report.' }; }
+    const cost = id => D.BUILD.find(b => b.id === id).cost;
+    if (g.id === 'salvage') { const c0 = nearCache(); return c0 ? { x: c0.x, z: c0.z, icon: '📦', lb: 'cache', t: `Walk to the blinking <b>supply cache</b> and hold <b>E</b> (${st.inv.scrap}/6 🔩 ${st.inv.elec}/3 💾)` } : null; }
+    if (g.id === 'solar') { if (c('solar') && !built.some(B => B.b.id === 'solar' && B.lit)) return { t: 'Your solar tower is in <b>shadow</b>. Build another where the ghost turns green.', build: 1 }; return gatherStep(cost('solar'), 'solar tower') || buildStep('solar'); }
+    if (g.id === 'hab') return gatherStep(cost('hab'), 'habitat') || buildStep('hab');
+    if (g.id === 'ice') { if (st.flags.iceCut < 4) { if (inCrater(P.x, P.z)) return { t: `Look down and hold <b>E</b> to cut ice (${st.flags.iceCut}/4). It's dark: <b>F</b> = helmet lamp. Mind your suit power!` };
+        const dx = D.CRATER.x - P.x, dz = D.CRATER.z - P.z, L = Math.hypot(dx, dz), k = (L - D.CRATER.r * .55) / L; return { x: P.x + dx * k, z: P.z + dz * k, icon: '🧊', lb: 'ice', t: `Go down into the dark crater for ice (${st.flags.iceCut}/4). It's very cold: fill your suit first.` }; }
+      if (!c('ice')) return gatherStep(cost('ice'), 'ice processor') || buildStep('ice');
+      return null; }
+    if (g.id === 'berm') { if (!c('berm')) { const need = D.BUILD.find(b => b.id === 'berm').cost.regolith; if (st.inv.regolith < need) return { t: `Look down at the ground and hold <b>E</b> to dig regolith (${st.inv.regolith}/${need})` }; return buildStep('berm'); }
+      const b = st.builds.find(x => x.id === 'berm'); return { x: b.x, z: b.z, icon: '⛰️', lb: 'shield', t: 'A flare is coming. Wait next to your shield and survive it.' }; }
+    if (g.id === 'rover') { const gs = gatherStep(D.ROVER.cost, 'rover'); if (gs) return gs; return rover ? { x: rover.st.x, z: rover.st.z, icon: '🚙', lb: 'rover', t: 'Walk to the broken rover and hold <b>E</b> to repair it' } : null; }
+    if (g.id === 'antenna') { const ant = st.builds.find(b => b.id === 'antenna'); if (!ant) return gatherStep(cost('antenna'), 'laser comms') || buildStep('antenna');
+      if (!st.link) return { t: 'Earth is hidden from your antenna. Build another on higher ground where the ghost turns green.', build: 1 };
+      return { x: ant.x, z: ant.z, icon: '📡', lb: 'comms', t: 'Hold <b>E</b> at the laser comms terminal to send your base report to Earth' }; }
+    return null; }
+  const gv = new V3();
+  function guideStep(dt) { if ((GUIDE.t -= dt) <= 0) { GUIDE.t = .5; GUIDE.cur = guideTarget(); const bb = hud.querySelector('[data-b=build]'); if (bb) bb.classList.toggle('pulse', !!(GUIDE.cur && GUIDE.cur.build) && bsel < 0); }
+    const G0 = GUIDE.cur, el = $('.gd'); if (!G0 || G0.x == null || panel || inside || bsel >= 0) { el.style.display = 'none'; return; }
+    const P = S().player.position, d = Math.hypot(G0.x - P.x, G0.z - P.z); if (d < 4) { el.style.display = 'none'; return; }
+    gv.set(G0.x, H(G0.x, G0.z) + 2, G0.z).project(R.cam); const W = innerWidth, Hh = innerHeight; let x = (gv.x * .5 + .5) * W, y = (-gv.y * .5 + .5) * Hh; const behind = gv.z > 1;
+    const m = 46, top = 120, bot = Hh - 190; let off = behind || x < m || x > W - m || y < top || y > bot;
+    if (behind) { // behind you: show it on the left or right edge, at eye height, pointing the way to turn
+      const yaw = S().camYaw, fx = -Math.sin(yaw), fz = -Math.cos(yaw), tx = G0.x - P.x, tz = G0.z - P.z, side = fx * tz - fz * tx; x = side > 0 ? W - m : m; y = Hh * .45; } el.classList.toggle('edge', off); el.classList.toggle('urg', !!G0.urg);
+    if (off) { const cx = W / 2, cy = Hh * .45; if (!behind) { x = clamp(x, m, W - m); y = clamp(y, top, bot); } el.querySelector('.ar').style.transform = `rotate(${Math.atan2(y - cy, x - cx)}rad)`; }
+    el.style.display = 'block'; el.style.left = x + 'px'; el.style.top = y + 'px';
+    const lbl = `${G0.lb || ''} ${Math.round(d)} m`; if (el._l !== lbl) { el._l = lbl; el.querySelector('.lb').textContent = lbl; } if (el._i !== G0.icon) { el._i = G0.icon; el.querySelector('.ic').textContent = G0.icon || '➜'; } }
+  // safety net: if there is no longer enough scrap and electronics left on the Moon to finish (suit failures, a tower built in shadow…),
+  // Mission Control drops a supply pod near the base. The game can never get stuck.
+  function ensureSupplies() { const need = { scrap: 0, elec: 0 }, add = c => { for (const k in c) if (k in need) need[k] += c[k]; }, c = count, cost = id => D.BUILD.find(b => b.id === id).cost;
+    if (!built.some(B => B.b.id === 'solar' && B.lit) && st.goal <= 1) add(cost('solar')); if (!c('hab')) add(cost('hab')); if (!c('ice')) add(cost('ice')); if (!st.flags.rover) add(D.ROVER.cost); if (!c('antenna') || (!st.link && c('antenna'))) add(cost('antenna'));
+    const have = { scrap: st.inv.scrap, elec: st.inv.elec }; caches.forEach(cc => { const L = st.loot[cc.i]; have.scrap += L.scrap; have.elec += L.elec; });
+    const def = { scrap: Math.max(0, need.scrap - have.scrap), elec: Math.max(0, need.elec - have.elec) }; if (!def.scrap && !def.elec) return;
+    const hb = st.builds.find(b => b.id === 'hab'), bx = hb ? hb.x : -12, bz = hb ? hb.z : -8; let x = bx + 18, z = bz + 6;
+    for (let k = 0; k < 12; k++) { const a = k / 12 * TAU; x = bx + Math.cos(a) * 18; z = bz + Math.sin(a) * 18; if (!canPlace(x, z, 'battery')) break; }
+    st.drops = st.drops || []; const i = D.CACHES + 2 + st.drops.length; st.drops.push({ x, z }); st.loot[i] = { scrap: def.scrap + 3, elec: def.elec + 2 };
+    const m = cacheMesh(i, false); m.position.set(x, H(x, z), z); S().scn.add(m); caches.push({ i, x, z, m, big: false });
+    api.toast('📦 Mission Control: <b>we dropped a supply pod</b> next to your base. Follow the marker.', 4500); vo('goal', { skipIfBusy: true }); save(); }
+
   /* ---------------- goals ---------------- */
   function goals() { const g = D.GOALS[st.goal]; if (!g) return; const c = count, f = st.flags; let done = false;
     if (g.id === 'salvage') done = (st.inv.scrap >= 6 && st.inv.elec >= 3) || st.builds.length > 0; else if (g.id === 'solar') done = built.some(B => B.b.id === 'solar' && B.lit);
@@ -331,7 +407,7 @@ export function makeSurvival(R, api) {
         const gy = H(P.x, P.z); if (P.y - gy < 4 && TH.y > 0) for (let i = 0; i < 3; i++) { const a = Math.random() * TAU, sp = 1.5 + Math.random() * 2.5, up = .6 + Math.random() * 1.2; s.dust.emit(new V3(P.x, gy + .05, P.z), new V3(Math.cos(a) * sp, up, Math.sin(a) * sp), s.dc, .12, 2 * up / 1.62, 1, .1, { grow: 1, drag: 0, grav: 1.62, a: .8 }); } } }   // airless: dust flies in clean arcs, no billowing
     // dust kicked up by your thrusters or the rover settles on nearby panels
     if (thrustK > 0 || (driving && Math.hypot(s.vel.x, s.vel.z) > 1)) built.forEach(B => { if (B.b.id === 'solar' && Math.hypot(B.b.x - P.x, B.b.z - P.z) < 15) B.b.dust = Math.min(100, (B.b.dust || 0) + D.DUST.nearThrust * dt); });
-    rescueStep(dt);
+    rescueStep(dt); guideStep(dt); if ((st._sup = (st._sup || 0) - dt) <= 0) { st._sup = 10; ensureSupplies(); }
     if (!inside) { walked += Math.hypot(s.vel.x, s.vel.z) * dt; if (walked > 12) vo('move', { once: true }); if (thrustK > 0 && !s.onGround) vo('jet', { once: true });
       if (!sunlit && !crat && st.t > 20) vo('shadow', { once: true, skipIfBusy: true }); if (crat) vo('crater', { once: true }); if ((R.keys.z || touchZoom)) vo('earth', { once: true });
       if (built.some(B => B.b.id === 'solar' && B.b.dust > 30)) vo('dust', { once: true, skipIfBusy: true }); }
