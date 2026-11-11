@@ -67,16 +67,21 @@ export function makeSurvival(R, api) {
     glow: new THREE.MeshBasicMaterial({ color: 0x66e0ff }), red: new THREE.MeshBasicMaterial({ color: 0xff4a3a }), regolith: new THREE.MeshStandardMaterial({ color: 0x6f6b66, roughness: 1 }) };
   const box = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), cyl = (r, h, m, s = 16) => new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, s), m);
   function shadowAll(g) { g.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } }); return g; }
-  function nasa(name, width, g) { // a NASA 3D Resources model, scaled to a real width; the box stands in until it loads
+  function nasa(name, width, g, noShadow) { // a NASA 3D Resources model, scaled to a real width; the box stands in until it loads
     api.loader.load('models/nasa/' + name + '.glb', gl => { const o = gl.scene; try { api.fixMat(o); } catch (e) {} const bb = new THREE.Box3().setFromObject(o), sz = bb.getSize(new V3()), k = width / Math.max(sz.x, sz.z, .01);
-      o.scale.setScalar(k); bb.setFromObject(o); o.position.y -= bb.min.y; while (g.children.length) g.remove(g.children[0]); g.add(shadowAll(o)); }, undefined, () => {}); }
+      o.scale.setScalar(k); bb.setFromObject(o); o.position.y -= bb.min.y; while (g.children.length) g.remove(g.children[0]); shadowAll(o); if (noShadow) o.traverse(n => { if (n.isMesh) n.castShadow = false; }); g.add(o); }, undefined, () => {}); }
   function makeMesh(id) { const g = new THREE.Group();
     if (id === 'solar') { const m = cyl(.12, 6.2, M.grey); m.position.y = 3.1; g.add(m); const p = new THREE.Group(); p.position.y = 4.4; const pan = box(2.4, 3.6, .08, M.panel); p.add(pan); const fr = box(2.5, .08, .12, M.grey); fr.position.y = 1.82; p.add(fr); g.add(p); g.userData.pivot = p; const b = cyl(.6, .3, M.grey); b.position.y = .15; g.add(b); }
     else if (id === 'battery') { const b = box(1.8, 1.1, 1.1, M.white); b.position.y = .55; g.add(b); const s = box(1.82, .12, 1.12, M.dark); s.position.y = .85; g.add(s); const l = box(.5, .08, .02, M.glow); l.position.set(0, .6, .56); g.add(l); g.userData.light = l; }
     else if (id === 'hab') { const c = cyl(2.9, 3.2, M.white, 24); c.position.y = 1.6; g.add(c); nasa('habitat-demonstration-unit', 7.2, g); }
     else if (id === 'ice') { const t = cyl(.75, 2.2, M.white); t.position.y = 1.1; g.add(t); const t2 = cyl(.45, 1.6, M.foil); t2.position.set(1.2, .8, 0); g.add(t2); const p = box(1.2, .12, .12, M.grey); p.position.set(.6, 1.5, 0); g.add(p); const l = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), M.glow); l.position.set(0, 2.3, 0); g.add(l); g.userData.light = l; }
     else if (id === 'berm') { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, TAU, 0, Math.PI / 2), M.regolith); m.scale.set(4.2, 1.9, 1.7); g.add(m); }
-    else if (id === 'antenna') { const m = cyl(.1, 3, M.grey); m.position.y = 1.5; g.add(m); const h = new THREE.Group(); h.position.y = 3; g.add(h); const d = box(.8, .8, .8, M.white); h.add(d); nasa('lunar-laser-communications-demonstration-llcd', 1.6, h); }
+    else if (id === 'antenna') { const m = cyl(.1, 3, M.grey); m.position.y = 1.5; g.add(m); const h = new THREE.Group(); h.position.y = 3; g.add(h);
+      if (matchMedia('(pointer:coarse)').matches) { // phones: a light hand-built laser telescope (the NASA LLCD model alone is ~183k triangles)
+        const fork = box(.9, .12, .5, M.grey); h.add(fork); for (const sx of [-.42, .42]) { const arm = box(.08, .6, .3, M.grey); arm.position.set(sx, .3, 0); h.add(arm); }
+        const tube = cyl(.26, 1, M.white, 14); tube.rotation.x = Math.PI / 2 - .25; tube.position.y = .42; h.add(tube); const lens = new THREE.Mesh(new THREE.CircleGeometry(.22, 16), M.dark); lens.position.set(0, .54, .5); lens.rotation.x = -.25; h.add(lens);
+        const led = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), M.glow); led.position.set(.3, .1, .26); h.add(led); }
+      else { const d = box(.8, .8, .8, M.white); h.add(d); nasa('lunar-laser-communications-demonstration-llcd', 1.6, h, true); } }
     return shadowAll(g); }
   function cacheMesh(i, big) { const g = new THREE.Group(); const n = big ? 5 : 2 + (i % 2);
     for (let k = 0; k < n; k++) { const b = box(rnd(.7, 1.2), rnd(.5, .8), rnd(.6, 1), k % 2 ? M.white : M.foil); b.position.set(rnd(-1.2, 1.2), .3, rnd(-1.2, 1.2)); b.rotation.set(rnd(-.2, .2), rnd(0, 3), rnd(-.25, .25)); g.add(b); }
@@ -167,6 +172,7 @@ export function makeSurvival(R, api) {
   #sv .ban b{display:block;font-size:30px;letter-spacing:.06em;color:#7dffb0;text-shadow:0 0 18px rgba(80,255,160,.55),0 2px 4px #000}
   #sv .ban i{display:block;font-style:normal;font-size:22px;color:#F4A259;margin-top:2px}#sv .ban span{display:block;font-size:14px;margin-top:6px;opacity:.9}
   @keyframes svban{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
+  #sv.banon .alarm,#sv.banon .rescue{opacity:.12;transition:opacity .3s}
   #sv .vs{position:absolute;left:calc(50% + 34px);top:calc(50% - 9px);font-size:13px;font-weight:800;display:none}
   #sv .vs.bad{color:#ff6a5a;animation:svw .5s infinite}
   /* landscape phones: everything has to fit in ~360 px of height, and thumbs need USE and JET in reach */
@@ -256,7 +262,7 @@ export function makeSurvival(R, api) {
   let shakeA = 0, beepT = 0, heartT = 0; const prevV = { o2: null, pw: null, t: 0, ro2: 0, rpw: 0 };
   function shake(a) { shakeA = Math.min(1.6, Math.max(shakeA, a)); }
   function floater(t) { if (!hud) return; const f = document.createElement('div'); f.className = 'fl'; f.innerHTML = t; hud.appendChild(f); setTimeout(() => f.remove(), 1000); }
-  function banner(big, pts, small) { const b = $('.ban'); b.querySelector('b').textContent = big; b.querySelector('i').textContent = pts || ''; b.querySelector('span').innerHTML = small || ''; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on'); }
+  function banner(big, pts, small) { const b = $('.ban'); b.querySelector('b').textContent = big; b.querySelector('i').textContent = pts || ''; b.querySelector('span').innerHTML = small || ''; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on'); hud.classList.add('banon'); clearTimeout(banner.t); banner.t = setTimeout(() => hud && hud.classList.remove('banon'), 3200); }
   function feel(dt) { const v = st.vit, s = S();
     // camera shake (applied after the surface engine has placed the camera this frame)
     if (shakeA > .01) { const k = shakeA * shakeA; R.cam.position.x += (Math.random() - .5) * .14 * k; R.cam.position.y += (Math.random() - .5) * .1 * k; R.cam.rotateZ((Math.random() - .5) * .03 * k); shakeA *= Math.exp(-dt * 5); }
