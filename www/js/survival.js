@@ -250,12 +250,23 @@ export function makeSurvival(R, api) {
     built.forEach(B => { if (B.pop != null) { B.pop += dt; const k = Math.min(1, B.pop / .55), c1 = 1.70158, e = 1 + (c1 + 1) * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); B.m.scale.setScalar(Math.max(.05, e)); if (k >= 1) { B.m.scale.setScalar(1); B.pop = null; } } }); }
   const minsLeft = r => r > .02 ? Math.max(0, Math.round(r)) : null;
 
+  /* ---------------- solid things: you can't walk through buildings, crates, the lander or the rover ---------------- */
+  const SOLID = { hab: 3.3, berm: 2.6, battery: 1.1, ice: 1.2, solar: .7, antenna: .6 };
+  function collide() { const s = S(); if (inside || s.drive || !s.onGround && s.vel.y > 2) return; const P = s.player.position, pr = .45; let mx = 0, mz = 0;
+    const push = (x, z, r) => { const dx = P.x - x, dz = P.z - z, d = Math.hypot(dx, dz), R0 = r + pr; if (d >= R0 || d < 1e-4) return; const k = (R0 - d) / d; mx += dx * k; mz += dz * k;
+      const nx = dx / d, nz = dz / d, vn = s.vel.x * nx + s.vel.z * nz; if (vn < 0) { s.vel.x -= vn * nx; s.vel.z -= vn * nz; } };
+    for (const B of built) push(B.b.x, B.b.z, SOLID[B.b.id] || .8); for (const c of caches) if (Math.abs(c.x - P.x) < 6 && Math.abs(c.z - P.z) < 6) push(c.x, c.z, c.big ? 1.9 : 1.05);
+    push(-12, -8, 2.4); if (rover && !st.flags.rover) push(rover.st.x, rover.st.z, 1.5);
+    if (mx || mz) { P.x += mx; P.z += mz; const gy = H(P.x, P.z); if (P.y < gy) P.y = gy; R.cam.position.x += mx; R.cam.position.z += mz; } }
+  // look speed (menu setting), for mouse and touch
+  const LOOKS = { slow: .65, normal: 1, fast: 1.45 }; let lookK = (() => { try { return LOOKS[localStorage.getItem(KEY + '-look')] || 1; } catch (e) { return 1; } })();
+
   /* ---------------- interaction ---------------- */
   function forward() { const c = R.cam, f = new V3(); c.getWorldDirection(f); return f; }
   function findTarget() { const P = S().player.position, f = forward(), fx = new V3(f.x, 0, f.z).normalize(), list = [];
-    const add = (x, z, r, o) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz) - r; if (d > 3.2) return; const dot = (dx * fx.x + dz * fx.z) / Math.max(.01, Math.hypot(dx, dz)); if (dot > .55 || d < .6) list.push([d - dot, o]); };
+    const add = (x, z, r, o, cone = .55) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz) - r; if (d > 3.4) return; const dot = (dx * fx.x + dz * fx.z) / Math.max(.01, Math.hypot(dx, dz)); if (dot > cone || d < .6) list.push([d * .6 - dot * 2, o]); };
     caches.forEach(c => { const L = st.loot[c.i]; if (L.scrap + L.elec > 0) add(c.x, c.z, c.big ? 2 : 1.2, { kind: 'cache', c, t: D.GATHER.cacheSec * gk(), label: `Salvage ${c.big ? 'the wrecked lander' : 'supply cache'} <small>(${L.scrap}🔩 ${L.elec}💾 left)</small>` }); });
-    samples.forEach(sm => add(sm.x, sm.z, .4, { kind: 'sample', sm, t: 1.2 * gk(), label: `Collect sample: <b>${sm.o.n}</b>` }));
+    samples.forEach(sm => add(sm.x, sm.z, 1, { kind: 'sample', sm, t: 1.2 * gk(), label: `Collect sample: <b>${sm.o.n}</b>` }, .35));
     add(-12, -8, 3, { kind: 'lander', t: .8, label: `Your lander: refill <small>(O₂ ${Math.round(st.lander.o2)}% · power ${Math.round(st.lander.pw)}% left)</small>` });
     if (rover && !st.flags.rover) add(rover.st.x, rover.st.z, 1.8, { kind: 'rover', t: 2.5, label: has(D.ROVER.cost) ? `Repair the lunar rover <small>${costTxt(D.ROVER.cost)}</small>` : `Broken lunar rover — needs ${costTxt(D.ROVER.cost)}`, ok: has(D.ROVER.cost) });
     built.forEach(B => { const b = B.b, r = b.id === 'hab' ? 3.4 : b.id === 'berm' ? 3 : 1.2;
@@ -265,7 +276,7 @@ export function makeSurvival(R, api) {
       else if (b.id === 'solar' && (b.dust || 0) > 5) add(b.x, b.z, r, { kind: 'clean', B, t: D.DUST.cleanSec * gk(), label: `Brush the dust off the panel <small>(dust ${Math.round(b.dust)}% · power −${Math.round(b.dust * D.DUST.loss)}%)</small>` });
       else add(b.x, b.z, r, { kind: 'info', t: 0, label: `${B.def.icon} ${B.def.n}${b.id === 'solar' ? (B.lit ? ' · in sunlight ✓' : ' · in shadow ✗') + ` · dust ${Math.round(b.dust || 0)}%` : ''}`, ok: false }); });
     if (list.length) return list.sort((a, b) => a[0] - b[0])[0][1];
-    if (S().camPitch > .55 && S().onGround) { const crat = inCrater(P.x, P.z); if (crat) return { kind: 'ice', dig: 1, t: D.GATHER.iceSec * gk(), label: 'Cut ice from the frozen crater floor' }; return { kind: 'dig', t: D.GATHER.digSec * gk(), label: 'Dig regolith' }; }
+    if (S().camPitch > .42 && S().onGround) { const crat = inCrater(P.x, P.z); if (crat) return { kind: 'ice', dig: 1, t: D.GATHER.iceSec * gk(), label: 'Cut ice from the frozen crater floor' }; return { kind: 'dig', t: D.GATHER.digSec * gk(), label: 'Dig regolith' }; }
     return null; }
   function act(o) { const v = st.vit;
     if (o.kind === 'cache') { const L = st.loot[o.c.i]; const k = L.elec > 0 && (L.scrap === 0 || Math.random() < .4) ? 'elec' : 'scrap'; L[k]--; st.inv[k]++; api.sfx('col'); floater(`+1 ${D.RES[k].icon}`); if (!vo('cache', { once: true })) {} if (L.scrap + L.elec === 0) { vo('cacheEmpty', { cool: 40, skipIfBusy: true }); o.c.m.userData.beacon.visible = false; o.c.m.userData.beam.visible = false; api.toast('📦 Cache empty', 1200); } }
@@ -313,11 +324,11 @@ export function makeSurvival(R, api) {
     if (k === 'g') { if (!st.flags.rover) { api.toast('The rover is broken. Repair it first (look for it next to your lander).', 2200); return true; } st.flags.drove = 1; return false; }
     if (k === 'c') { R.keys.c = 1; return true; } if (k === 'z') { R.keys.z = 1; return true; } if (k === 'l' || k === 'm' || k === 'k' || k === 'n' || k === 'h') return true; return false; }
   function bindInput() { const cv = R.ren ? R.ren.domElement : R.root.querySelector('canvas');
-    const onMove = e => { if (document.pointerLockElement !== cv || panel) return; const s = S(); s.camYaw -= e.movementX * .0024; s.camPitch = clamp(s.camPitch + e.movementY * .0019, .05, 1.2); };
+    const onMove = e => { if (document.pointerLockElement !== cv || panel) return; const s = S(); s.camYaw -= e.movementX * .0024 * lookK; s.camPitch = clamp(s.camPitch + e.movementY * .0019 * lookK, .05, 1.2); };
     const onDown = e => { if (e.pointerType === 'touch' || e.button !== 0 || panel) return; if (document.pointerLockElement !== cv) { try { cv.requestPointerLock(); } catch (er) {} return; } if (bsel >= 0) place(); else mouseDown = true; };
     const onUp = () => { mouseDown = false; };
     const tS = e => { for (const t of e.changedTouches) if (t.clientX > innerWidth * .45 && !look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; };
-    const tM = e => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { const s = S(); s.camYaw -= (t.clientX - look.x) * .006; s.camPitch = clamp(s.camPitch + (t.clientY - look.y) * .005, .05, 1.2); look.x = t.clientX; look.y = t.clientY; } };
+    const tM = e => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { const s = S(); s.camYaw -= (t.clientX - look.x) * .006 * lookK; s.camPitch = clamp(s.camPitch + (t.clientY - look.y) * .005 * lookK, .05, 1.2); look.x = t.clientX; look.y = t.clientY; } };
     const tE = e => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
     cv.addEventListener('mousemove', onMove); document.addEventListener('mousemove', onMove); cv.addEventListener('pointerdown', onDown); addEventListener('pointerup', onUp);
     cv.addEventListener('touchstart', tS, { passive: true }); cv.addEventListener('touchmove', tM, { passive: true }); cv.addEventListener('touchend', tE); cv.addEventListener('touchcancel', tE);
@@ -471,7 +482,7 @@ export function makeSurvival(R, api) {
       if (tg) { const can = tg.ok !== false && tg.t > 0; if (holding && can) { use.t += dt; if (use.t >= tg.t) { use.t = 0; act(tg); if (tg.kind === 'hab' || tg.kind === 'rover' || tg.kind === 'antenna') { R.keys.e = 0; mouseDown = touchUse = false; } } } else use.t = 0;
         showPrompt(`${can ? '<b>Hold E</b> ' : ''}${tg.label}`, can ? use.t / tg.t : 0); } else showPrompt('', 0); }
     else showPrompt('', 0);
-    hudUpdate(envT); feel(dt); tSave -= dt; if (tSave <= 0) { tSave = 20; save(); }
+    collide(); hudUpdate(envT); feel(dt); tSave -= dt; if (tSave <= 0) { tSave = 20; save(); }
     if (v.o2 < 20 && !st.w1) { st.w1 = 1; vo('o2low', { urgent: true }); } if (v.o2 > 30) st.w1 = 0;
     if (v.pw < 15 && !st.w2) { st.w2 = 1; vo('pwlow'); } if (v.food < 20 && !st.w3) { st.w3 = 1; vo('hungry'); } if (v.food > 35) st.w3 = 0; if (v.water < 20 && !st.w4) { st.w4 = 1; vo('thirsty'); } if (v.water > 35) st.w4 = 0; if (v.tc < 8 && !st.w5) { st.w5 = 1; vo('cold'); } if (v.tc > 14) st.w5 = 0; if (v.pw > 25) st.w2 = 0; }
 
@@ -572,11 +583,11 @@ export function makeSurvival(R, api) {
   function menu() { const has = !!load('normal'), dsave = load('daily'), tw = twistOf(today()), b = bests();
     show(`<h2>🌑 Moon Survival · ${D.SITE.n}</h2><p style="opacity:.85">How long can you last at the lunar south pole? Build a base, find water, survive the cold, the flares and the dust.</p>
       <div class="row" style="flex-direction:column;align-items:stretch">${has ? '<button id="mC">▶ Continue your mission</button>' : ''}<button id="mN" class="${has ? 'sec' : ''}">✚ New mission</button>
-      <button id="mD">📅 Daily challenge · <b>${tw.n}</b>: ${tw.d}${dsave ? ' (continue)' : ''}</button><button class="sec" id="mL">🏆 Leaderboard</button></div>
+      <button id="mD">📅 Daily challenge · <b>${tw.n}</b>: ${tw.d}${dsave ? ' (continue)' : ''}</button><button class="sec" id="mL">🏆 Leaderboard</button><button class="sec" id="mK">🖱 Look speed: <b>${Object.keys(LOOKS).find(k => LOOKS[k] === lookK) || 'normal'}</b></button></div>
       <p style="font-size:12px;opacity:.7">Best score ${(b.best || 0).toLocaleString()} · today’s daily best ${((b.daily || {})[today()] || 0).toLocaleString()}. Daily challenge: one life, the same twist for everyone today.</p>`,
       p => { const go = st0 => { close(); start(st0); };
         if (has) p.querySelector('#mC').onclick = () => go(load('normal')); p.querySelector('#mN').onclick = () => diffMenu(go);
-        p.querySelector('#mD').onclick = () => go(dsave || fresh('daily')); p.querySelector('#mL').onclick = () => { board(false); }; }); }
+        p.querySelector('#mD').onclick = () => go(dsave || fresh('daily')); p.querySelector('#mL').onclick = () => { board(false); }; p.querySelector('#mK').onclick = () => { const ks = Object.keys(LOOKS), cur = ks.find(k => LOOKS[k] === lookK) || 'normal', nx = ks[(ks.indexOf(cur) + 1) % ks.length]; lookK = LOOKS[nx]; try { localStorage.setItem(KEY + '-look', nx); } catch (e) {} menu(); }; }); }
 
   /* ---------------- start / end ---------------- */
   function begin() { on = true; menuDone = false; const s = S(); s.arrive = null; if (!s.helmet) api.helmet(); buildHUD(); bindInput(); earth = makeEarth(); s._fov = R.cam.fov;
