@@ -7,6 +7,7 @@ import * as D from './survival_data.js';
 import { makeRover } from './adv_rover.js';
 import { AUD } from './adv_audio.js';
 import { buildHab, HAB_R } from './survival_hab.js';
+import { makeVoice } from './survival_voice.js';
 
 const KEY = 'rdo2-surv', V3 = THREE.Vector3, TAU = Math.PI * 2;
 const rnd = (a, b) => a + Math.random() * (b - a), clamp = THREE.MathUtils.clamp;
@@ -14,7 +15,9 @@ function hash(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s 
 
 export function makeSurvival(R, api) {
   let st = null, on = false, hud = null, built = [], caches = [], rover = null, lamp = null, ghost = null, bsel = -1, brot = 0, panel = null;
-  let IN = null, earth = null, fcT = 0, fc = '', zoom = false, touchZoom = false, samples = [], ship = null, menuDone = false;
+  let IN = null, earth = null, fcT = 0, fc = '', zoom = false, touchZoom = false, samples = [], ship = null, menuDone = false, idleT = 120, walked = 0;
+  const VOX = makeVoice({ state: () => st, voiceOn: () => (api.voiceOn ? api.voiceOn() : true), radio: () => AUD.radio(), host: () => hud });
+  const vo = (ev, o) => { try { return VOX.play(ev, o); } catch (e) { return false; } };
   let use = { t: 0, target: null }, mouseDown = false, touchUse = false, touchJet = false, thrustK = 0, latR = 0, look = null, wasG = true, lastVy = 0, sunT = 0, sunlit = true, tSave = 0, tSec = 0, flare = null, inside = false;
   const S = () => R.surf.S, H = (x, z) => R.surf.H(x, z);
   const sd = new V3(1, .04, 0), TH = new V3();
@@ -174,7 +177,7 @@ export function makeSurvival(R, api) {
   function close() { if (panel) { panel.remove(); panel = null; } }
   function intro() { show(`<h2>🌑 Moon Survival · ${D.SITE.n}</h2><p><b>${D.STORY.callsign}</b>, ${D.STORY.intro.join(' ')}</p>
     <p style="opacity:.8;font-size:13px"><b>Controls:</b> WASD move · mouse look (click to lock) · hold <b>E</b> or left mouse to use and gather · <b>B</b> build · <b>F</b> helmet lamp · <b>P</b> patch suit · <b>Tab</b> base report · collect glowing <b>blue samples</b> and analyse them in the habitat · brush <b>dust</b> off your solar panels · watch your <b>food and water</b> · hold <b>Z</b> to zoom your visor (look for Earth on the horizon) · Space jump (hold in the air for the <b>jetpack</b>, C to thrust down; in the air WASD fires the side thrusters and you drift until you counter-thrust) · Shift run. On a phone: left stick to move, drag the right side to look.</p>
-    ${st.mode === 'daily' ? `<p><b>📅 Daily challenge · ${twistOf(st.day).n}:</b> ${twistOf(st.day).d} One life only.</p>` : ''}<p style="opacity:.7;font-size:12px">${D.SITE.facts[0]}</p><div class="row"><button id="svGo">Start surviving</button>${load() && st.t > 5 ? '' : ''}</div>`, p => p.querySelector('#svGo').onclick = () => { close(); api.say(D.STORY.intro[0]); }); }
+    ${st.mode === 'daily' ? `<p><b>📅 Daily challenge · ${twistOf(st.day).n}:</b> ${twistOf(st.day).d} One life only.</p>` : ''}<p style="opacity:.7;font-size:12px">${D.SITE.facts[0]}</p><div class="row"><button id="svGo">Start surviving</button>${load() && st.t > 5 ? '' : ''}</div>`, p => p.querySelector('#svGo').onclick = () => { close(); vo('start', { once: true }); if (st.mode === 'daily') setTimeout(() => vo('daily'), 500); }); }
   function habPanel() { const v = st.vit, b = st.base; inside = true;
     show(`<h2>🏠 Inside the habitat</h2><p>Warm, pressurised and shielded. You heal faster in here.</p>
       <p>Base power <b>${Math.round(b.pw)}</b> · Base oxygen <b>${Math.round(b.o2)}%</b> · Ice waiting <b>${b.iceQ}</b></p>
@@ -195,7 +198,7 @@ export function makeSurvival(R, api) {
       <div class="row"><button id="rX">Back to the base</button></div>`, p => p.querySelector('#rX').onclick = () => close()); }
   function die(cause) { const s = st.stats; s.deaths++; const lost = {}; for (const k in st.inv) { lost[k] = Math.floor(st.inv[k] / 2); st.inv[k] -= lost[k]; }
     const hab = st.builds.find(b => b.id === 'hab'), P = S().player.position, sx = hab ? hab.x + 5 : -8, sz = hab ? hab.z + 5 : -4; P.set(sx, H(sx, sz), sz); S().vel.set(0, 0, 0);
-    Object.assign(st.vit, { hp: 60, o2: 70, pw: 70, tc: 20, leak: 0 }); api.say('Suit failure.');
+    Object.assign(st.vit, { hp: 60, o2: 70, pw: 70, tc: 20, leak: 0 }); vo('dead', { urgent: true });
     show(`<h2>☠ Suit failure</h2><p>${cause}</p><p>You wake up ${hab ? 'in the habitat' : 'in your lander'}. You dropped half of what you carried.</p><div class="row"><button id="dX">Try again</button></div>`, p => p.querySelector('#dX').onclick = () => close()); }
 
   /* ---------------- interaction ---------------- */
@@ -216,21 +219,21 @@ export function makeSurvival(R, api) {
     if (S().camPitch > .55 && S().onGround) { const crat = inCrater(P.x, P.z); if (crat) return { kind: 'ice', dig: 1, t: D.GATHER.iceSec * gk(), label: 'Cut ice from the frozen crater floor' }; return { kind: 'dig', t: D.GATHER.digSec * gk(), label: 'Dig regolith' }; }
     return null; }
   function act(o) { const v = st.vit;
-    if (o.kind === 'cache') { const L = st.loot[o.c.i]; const k = L.elec > 0 && (L.scrap === 0 || Math.random() < .4) ? 'elec' : 'scrap'; L[k]--; st.inv[k]++; api.sfx('coin'); if (L.scrap + L.elec === 0) { o.c.m.userData.beacon.visible = false; o.c.m.userData.beam.visible = false; api.toast('📦 Cache empty', 1200); } }
-    else if (o.kind === 'dig') st.inv.regolith++;
-    else if (o.kind === 'sample') { st.carry.push(o.sm.o.id); S().scn.remove(o.sm.g); samples = samples.filter(x => x !== o.sm); api.sfx('coin'); api.toast(`🧪 <b>${o.sm.o.n}</b> collected. Analyse it in the habitat’s geology glovebox.`, 3000); }
-    else if (o.kind === 'clean') { o.B.b.dust = 0; api.toast('🧹 Panel clean. Full power again.', 1600); }
-    else if (o.kind === 'ice' && o.dig) { st.inv.ice++; st.flags.iceCut++; }
+    if (o.kind === 'cache') { const L = st.loot[o.c.i]; const k = L.elec > 0 && (L.scrap === 0 || Math.random() < .4) ? 'elec' : 'scrap'; L[k]--; st.inv[k]++; api.sfx('coin'); if (!vo('cache', { once: true })) {} if (L.scrap + L.elec === 0) { vo('cacheEmpty', { cool: 40, skipIfBusy: true }); o.c.m.userData.beacon.visible = false; o.c.m.userData.beam.visible = false; api.toast('📦 Cache empty', 1200); } }
+    else if (o.kind === 'dig') { st.inv.regolith++; vo('dig', { once: true }); }
+    else if (o.kind === 'sample') { st.carry.push(o.sm.o.id); S().scn.remove(o.sm.g); samples = samples.filter(x => x !== o.sm); api.sfx('coin'); if (!vo('sample', { once: true })) vo('sampleMore', { skipIfBusy: true }); api.toast(`🧪 <b>${o.sm.o.n}</b> collected. Analyse it in the habitat’s geology glovebox.`, 3000); }
+    else if (o.kind === 'clean') { o.B.b.dust = 0; vo('clean', { cool: 60, skipIfBusy: true }); api.toast('🧹 Panel clean. Full power again.', 1600); }
+    else if (o.kind === 'ice' && o.dig) { st.inv.ice++; st.flags.iceCut++; vo('ice', { once: true }); }
     else if (o.kind === 'ice') { if (st.inv.ice > 0) { st.base.iceQ += st.inv.ice; st.inv.ice = 0; api.toast('🧊 Ice loaded. The processor makes oxygen while the base has power.', 2400); } }
     else if (o.kind === 'lander') { const L = st.lander; if (v.food < 70 && L.meals > 0) { L.meals--; v.food = Math.min(100, v.food + D.FOOD.meal); } if (v.water < 80 && L.water >= 10) { L.water -= 10; v.water = Math.min(100, v.water + D.FOOD.drink); }
       const a = Math.min(100 - v.o2, st.lander.o2); v.o2 += a; st.lander.o2 -= a; const b = Math.min(100 - v.pw, st.lander.pw); v.pw += b; st.lander.pw -= b; if (D.JET.refillAtLander) st.jet = 100; if (v.leak && st.inv.scrap) { v.leak = 0; st.inv.scrap--; }
       api.toast(st.lander.o2 < 1 ? '⚠ The lander has no oxygen left. You need a habitat and ice.' : `Refilled. Lander reserve: O₂ ${Math.round(st.lander.o2)}%, power ${Math.round(st.lander.pw)}%, ${st.lander.meals} meals, water ${st.lander.water}`, 2600); }
-    else if (o.kind === 'rover' && o.ok) { pay(D.ROVER.cost); st.flags.rover = 1; try { S().scn.remove(rover.g); } catch (e) {} const P = S().player.position; P.set(rover.st.x - 2, H(rover.st.x - 2, rover.st.z), rover.st.z); rover = null; api.toast('🚙 Rover repaired! Press <b>G</b> to drive, G again to park.', 3200); fact(D.ROVER.fact); }
+    else if (o.kind === 'rover' && o.ok) { pay(D.ROVER.cost); st.flags.rover = 1; vo('rover', { once: true }); try { S().scn.remove(rover.g); } catch (e) {} const P = S().player.position; P.set(rover.st.x - 2, H(rover.st.x - 2, rover.st.z), rover.st.z); rover = null; api.toast('🚙 Rover repaired! Press <b>G</b> to drive, G again to park.', 3200); fact(D.ROVER.fact); }
     else if (o.kind === 'hab') enterHab(o.B);
-    else if (o.kind === 'antenna' && o.ok) { st.flags.reported = 1; if (!st.rescue) st.rescue = { eta: st.t + D.RESCUE.etaSec }; api.say(D.STORY.win); report(true); } }
+    else if (o.kind === 'antenna' && o.ok) { st.flags.reported = 1; if (!st.rescue) st.rescue = { eta: st.t + D.RESCUE.etaSec }; vo('report', { urgent: true }); report(true); } }
 
   /* ---------------- building ---------------- */
-  function toggleBuild() { if (bsel >= 0) return endBuild(); bsel = 0; renderBuildBar(); setGhost(); }
+  function toggleBuild() { if (bsel >= 0) return endBuild(); vo('build', { once: true }); bsel = 0; renderBuildBar(); setGhost(); }
   function endBuild() { bsel = -1; $('.bld').style.display = 'none'; if (ghost) { S().scn.remove(ghost); ghost = null; } }
   function renderBuildBar() { const el = $('.bld'); el.style.display = 'flex'; el.innerHTML = D.BUILD.map((b, i) => `<button data-i="${i}" class="${i === bsel ? 'sel' : ''} ${has(b.cost) ? '' : 'no'}"><b>${b.icon}</b>${i + 1}. ${b.n}<br><small>${costTxt(b.cost)}</small></button>`).join('');
     el.querySelectorAll('button').forEach(b => b.onclick = () => { bsel = +b.dataset.i; renderBuildBar(); setGhost(); }); }
@@ -243,11 +246,11 @@ export function makeSurvival(R, api) {
   function stepGhost() { if (!ghost) return; const [x, z] = ghostPos(), d = D.BUILD[bsel], why = canPlace(x, z, d.id), lit = d.id === 'solar' ? inSun(x, H(x, z) + 5.5, z) : d.id === 'antenna' ? seesEarth(x, H(x, z) + 3.2, z) : true;
     ghost.position.set(x, H(x, z), z); ghost.rotation.y = brot; const ok = !why && has(d.cost); ghost.traverse(n => { if (n.isMesh) n.material.color.set(ok ? (lit ? 0x66ff99 : 0xffd040) : 0xff5040); });
     showPrompt(why ? `Can't build here: ${why}` : !has(d.cost) ? `Need ${costTxt(d.cost)}` : `<b>E / click</b> build ${d.n}${d.id === 'solar' ? (lit ? ' · in sunlight ✓' : ' · <b>in shadow</b> — it won’t make power here') : d.id === 'antenna' ? (lit ? ' · Earth in view ✓' : ' · <b>Earth hidden</b> — no link from here') : ''} · <b>R</b> rotate · <b>B</b> cancel`, 0); return ok ? [x, z] : null; }
-  function place() { const p = stepGhost(); if (!p) return; const d = D.BUILD[bsel]; pay(d.cost); const b = { id: d.id, x: p[0], z: p[1], ry: brot }; st.builds.push(b); addBuild(b); fact(d.fact); renderBuildBar(); save(); }
+  function place() { const p = stepGhost(); if (!p) return; const d = D.BUILD[bsel]; pay(d.cost); const b = { id: d.id, x: p[0], z: p[1], ry: brot }; st.builds.push(b); addBuild(b); fact(d.fact); endBuild(); save(); vo('b_' + d.id, { once: true }); if (d.id === 'hab') setTimeout(() => api.toast('🏠 Habitat built! Walk to it, look at it and <b>hold E</b> (or USE) to go inside.', 4200), 1800); }
 
   /* ---------------- controls ---------------- */
   function toggleLamp() { st.lamp = !st.lamp; api.sfx('click'); }
-  function patch() { if (!st.vit.leak) return; if (st.inv.scrap < 1) return api.toast('You need 1 🔩 scrap to patch the suit (or go inside).', 2000); st.inv.scrap--; st.vit.leak = 0; api.toast('🩹 Suit patched.', 1500); }
+  function patch() { if (!st.vit.leak) return; if (st.inv.scrap < 1) return api.toast('You need 1 🔩 scrap to patch the suit (or go inside).', 2000); st.inv.scrap--; st.vit.leak = 0; vo('patched'); api.toast('🩹 Suit patched.', 1500); }
   function key(e, down) { if (!on) return false; const k = e.key.toLowerCase();
     if (!down) { if (k === 'e') R.keys.e = 0; return false; }
     if (panel) { if (k === 'escape' || k === 'e' || k === 'enter') { close(); return true; } return true; }
@@ -276,7 +279,7 @@ export function makeSurvival(R, api) {
     if (g.id === 'salvage') done = (st.inv.scrap >= 6 && st.inv.elec >= 3) || st.builds.length > 0; else if (g.id === 'solar') done = built.some(B => B.b.id === 'solar' && B.lit);
     else if (g.id === 'hab') done = c('hab') > 0; else if (g.id === 'ice') done = c('ice') > 0 && f.iceCut >= 4; else if (g.id === 'berm') done = c('berm') > 0 && st.stats.sheltered > 0;
     else if (g.id === 'rover') done = !!f.rover; else if (g.id === 'antenna') done = !!f.reported;
-    if (done) { st.goal++; api.sfx('coin'); const n = D.GOALS[st.goal]; api.toast(`✅ <b>Objective complete.</b>${n ? '<br>Next: ' + n.t : ''}`, 3600); if (n) api.say('Objective complete.'); save(); goals(); } }
+    if (done) { st.goal++; api.sfx('coin'); const n = D.GOALS[st.goal]; api.toast(`✅ <b>Objective complete.</b>${n ? '<br>Next: ' + n.t : ''}`, 3600); if (n) vo('goal', { skipIfBusy: true }); save(); goals(); } }
 
   /* ---------------- main step ---------------- */
   let lastInp = { x: 0, y: 0 };
@@ -322,12 +325,16 @@ export function makeSurvival(R, api) {
     // dust kicked up by your thrusters or the rover settles on nearby panels
     if (thrustK > 0 || (driving && Math.hypot(s.vel.x, s.vel.z) > 1)) built.forEach(B => { if (B.b.id === 'solar' && Math.hypot(B.b.x - P.x, B.b.z - P.z) < 15) B.b.dust = Math.min(100, (B.b.dust || 0) + D.DUST.nearThrust * dt); });
     rescueStep(dt);
+    if (!inside) { walked += Math.hypot(s.vel.x, s.vel.z) * dt; if (walked > 12) vo('move', { once: true }); if (thrustK > 0 && !s.onGround) vo('jet', { once: true });
+      if (!sunlit && !crat && st.t > 20) vo('shadow', { once: true, skipIfBusy: true }); if (crat) vo('crater', { once: true }); if ((R.keys.z || touchZoom)) vo('earth', { once: true });
+      if (built.some(B => B.b.id === 'solar' && B.b.dust > 30)) vo('dust', { once: true, skipIfBusy: true }); }
+    if (!panel && !VOX.busy && !flare) { idleT -= dt; if (idleT <= 0) { idleT = rnd(140, 220); vo('idle'); } }
     // dangers: solar flares and micrometeorites
     const N = st.next, warn = st.link ? D.DANGER.flareWarnWithAntennaSec : D.DANGER.flareWarnSec;
-    if (!flare && st.t > N.flare - warn) flare = { at: N.flare, on: false };
-    if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -D.DANGER.flareSec) { if (!flare.on) { flare.on = true; flare.hit = false; api.say('Solar flare. Take shelter.'); } if (!sheltered) flare.hit = true; alarm(`☢ SOLAR FLARE · ${Math.ceil(D.DANGER.flareSec + left)} s · ${sheltered ? 'you are sheltered ✓' : 'TAKE SHELTER!'}`); $('.tint').style.opacity = .8; }
-      else { st.stats.flares++; if (!flare.hit) st.stats.sheltered++; flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin)) * 60; alarm(''); $('.tint').style.opacity = 0; api.toast('☢ The flare is over.', 2000); } }
-    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (Math.random() < D.DANGER.meteorChance && !inside && !driving) { v.leak = 1; hurt(1); setTimeout(() => hurt(0), 250); api.say('Suit breach.'); api.toast('💥 A micrometeorite punctured your suit! Oxygen is leaking. Press <b>P</b> to patch it (1 🔩) or get inside.', 4500); } }
+    if (!flare && st.t > N.flare - warn) { flare = { at: N.flare, on: false }; vo('flareWarn', { urgent: true }); }
+    if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -D.DANGER.flareSec) { if (!flare.on) { flare.on = true; flare.hit = false; } if (!sheltered) flare.hit = true; alarm(`☢ SOLAR FLARE · ${Math.ceil(D.DANGER.flareSec + left)} s · ${sheltered ? 'you are sheltered ✓' : 'TAKE SHELTER!'}`); $('.tint').style.opacity = .8; }
+      else { const fh = flare.hit; st.stats.flares++; if (!flare.hit) st.stats.sheltered++; flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin)) * 60; alarm(''); $('.tint').style.opacity = 0; api.toast('☢ The flare is over.', 2000); vo(fh ? 'flareHit' : 'flareSafe'); } }
+    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (Math.random() < D.DANGER.meteorChance && !inside && !driving) { v.leak = 1; hurt(1); setTimeout(() => hurt(0), 250); vo('leak', { urgent: true }); api.toast('💥 A micrometeorite punctured your suit! Oxygen is leaking. Press <b>P</b> to patch it (1 🔩) or get inside.', 4500); } }
     // base: power grid, oxygen from ice
     tSec -= dt; if (tSec <= 0) { tSec = 1; let prod = 0, useP = 0, cap = 0;
       built.forEach(B => { const id = B.b.id; if (id === 'solar') { B.lit = inSun(B.b.x, H(B.b.x, B.b.z) + 5.5, B.b.z); B.b.dust = Math.min(100, (B.b.dust || 0) + D.DUST.perMin / 60 * (U('lotus') ? .4 : 1) * (TW('dusty') ? 3 : 1)); if (B.lit) prod += B.def.power * (1 - D.DUST.loss * B.b.dust / 100); if (B.m.userData.pm) B.m.userData.pm.color.setHex(0x1b2a55).lerp(new THREE.Color(0x6f6b66), B.b.dust / 100 * .85); } if (id === 'battery') cap += B.def.store; if (B.def.use && id !== 'ice') useP += B.def.use; if (id === 'hab') cap += 40; });
@@ -351,8 +358,8 @@ export function makeSurvival(R, api) {
         showPrompt(`${can ? '<b>Hold E</b> ' : ''}${tg.label}`, can ? use.t / tg.t : 0); } else showPrompt('', 0); }
     else showPrompt('', 0);
     hudUpdate(envT); tSave -= dt; if (tSave <= 0) { tSave = 20; save(); }
-    if (v.o2 < 20 && !st.w1) { st.w1 = 1; api.say('Warning. Oxygen low.'); } if (v.o2 > 30) st.w1 = 0;
-    if (v.pw < 15 && !st.w2) { st.w2 = 1; api.say('Warning. Suit power low.'); } if (v.pw > 25) st.w2 = 0; }
+    if (v.o2 < 20 && !st.w1) { st.w1 = 1; vo('o2low', { urgent: true }); } if (v.o2 > 30) st.w1 = 0;
+    if (v.pw < 15 && !st.w2) { st.w2 = 1; vo('pwlow'); } if (v.food < 20 && !st.w3) { st.w3 = 1; vo('hungry'); } if (v.food > 35) st.w3 = 0; if (v.water < 20 && !st.w4) { st.w4 = 1; vo('thirsty'); } if (v.water > 35) st.w4 = 0; if (v.tc < 8 && !st.w5) { st.w5 = 1; vo('cold'); } if (v.tc > 14) st.w5 = 0; if (v.pw > 25) st.w2 = 0; }
 
   /* ---------------- Earth on the horizon ---------------- */
   function makeEarth() { const tl = new THREE.TextureLoader(), m = new THREE.MeshStandardMaterial({ roughness: .9, metalness: 0, emissive: 0x0a1426, emissiveIntensity: .35 });
@@ -373,7 +380,7 @@ export function makeSurvival(R, api) {
     paint('farm', 'ATRIUM', [`Crops: ${b.meals} meals · growing ${Math.round(b.grow / D.FOOD.growSec * 100)}%`], '#9cff8a'); }
   function enterHab(hb) { if (!IN) IN = buildInterior(); IN.hab = hb; IN.g.position.set(hb.x, IY, hb.z); IN.g.visible = true; inside = true; endBuild();
     IN.pos.set(HAB_R - 1.1, 0, 0); S().camYaw = Math.PI / 2; S().camPitch = .38; $('.tint').style.background = '#000'; $('.tint').style.opacity = 1; setTimeout(() => { $('.tint').style.opacity = 0; $('.tint').style.background = ''; }, 500);
-    api.sfx('whoosh'); api.toast('🏠 Airlock cycled. Dust brushed off. You are inside: warm, pressurised and shielded.', 2600); screens(); }
+    if (!vo('hab', { once: true })) vo('habAgain', { cool: 120, skipIfBusy: true }); api.sfx('whoosh'); api.toast('🏠 Airlock cycled. Dust brushed off. You are inside: warm, pressurised and shielded.', 2600); screens(); }
   function exitHab() { if (!IN) return; inside = false; IN.g.visible = false; const hb = IN.hab, P = S().player.position, x = hb.x + 4.6, z = hb.z; P.set(x, H(x, z), z); S().vel.set(0, 0, 0); S().camYaw = -Math.PI / 2; api.sfx('whoosh'); api.toast('Outside. Mind your oxygen.', 1600); }
   function stepInside(dt, inp) { const I = IN, s = S(); I.t += dt; const y = s.camYaw, fx = -Math.sin(y), fz = -Math.cos(y), rx = Math.cos(y), rz = -Math.sin(y), sp = (inp.run ? 2.2 : 1.4);
     I.pos.x += (rx * inp.x - fx * inp.y) * sp * dt; I.pos.z += (rz * inp.x - fz * inp.y) * sp * dt;
@@ -391,19 +398,19 @@ export function makeSurvival(R, api) {
     else if (id === 'eva') { if (v.leak) { v.leak = 0; api.toast('🩹 Suit patched at the EVA workstation.', 1800); }
       const need = 100 - v.o2, got = Math.min(need, b.o2); v.o2 += got; b.o2 -= got; const pn = 100 - v.pw, pg = Math.min(pn, b.pw); v.pw += pg; b.pw -= pg; if (b.pw > 5 || st.lander.pw > 0) st.jet = 100; v.tc = 22; api.sfx('coin');
       api.toast(got < need - .5 ? `⚠ Base oxygen ran short (suit ${Math.round(v.o2)}%). Make more from ice.` : '✅ Suit refilled: oxygen, power and jetpack fuel.', 2600); }
-    else if (id === 'med') { const mins = 5; st.t += mins * 60; st.sunA = (st.sunA + TAU * mins / D.SUN.circleMin) % TAU; v.hp = Math.min(100, v.hp + 35); v.food = Math.max(0, v.food - 8); v.water = Math.max(0, v.water - 10); api.toast(`😴 You rested ${mins} minutes. Health +35. The Sun moved ${Math.round(360 * mins / D.SUN.circleMin)}° around the sky.`, 3000); }
+    else if (id === 'med') { const mins = 5; st.t += mins * 60; st.sunA = (st.sunA + TAU * mins / D.SUN.circleMin) % TAU; v.hp = Math.min(100, v.hp + 35); vo('rest'); v.food = Math.max(0, v.food - 8); v.water = Math.max(0, v.water - 10); api.toast(`😴 You rested ${mins} minutes. Health +35. The Sun moved ${Math.round(360 * mins / D.SUN.circleMin)}° around the sky.`, 3000); }
     else if (id === 'hyg') { v.hp = Math.min(100, v.hp + 5); api.toast('🚿 Clean. Lunar dust is sharp and clingy: Apollo crews said it smelled like spent gunpowder.', 3200); }
-    else if (id === 'galley') { if (b.meals > 0 && v.food < 95) { b.meals--; v.food = Math.min(100, v.food + D.FOOD.meal); api.toast(`🍲 You ate a meal from the atrium. ${b.meals} left.`, 2200); }
+    else if (id === 'galley') { if (b.meals > 0 && v.food < 95) { b.meals--; v.food = Math.min(100, v.food + D.FOOD.meal); vo('eat', { cool: 90, skipIfBusy: true }); api.toast(`🍲 You ate a meal from the atrium. ${b.meals} left.`, 2200); }
       else api.toast(b.meals ? 'You are not hungry.' : `🌱 No meals ready. Plants need power and water (${Math.round(b.water)} water stored). Bring ice to the processor.`, 3000); }
-    else if (id === 'stow') { if (b.water >= 10 && v.water < 95) { b.water -= 10; v.water = Math.min(100, v.water + D.FOOD.drink); api.toast('💧 You drank recycled water.', 1800); } else api.toast(b.water < 10 ? 'The water tank is empty. Melt ice in the processor.' : 'You are not thirsty.', 2400); }
+    else if (id === 'stow') { if (b.water >= 10 && v.water < 95) { b.water -= 10; v.water = Math.min(100, v.water + D.FOOD.drink); vo('drink', { cool: 90, skipIfBusy: true }); api.toast('💧 You drank recycled water.', 1800); } else api.toast(b.water < 10 ? 'The water tank is empty. Melt ice in the processor.' : 'You are not thirsty.', 2400); }
     else if (id === 'geo') geoPanel();
     else if (id === 'tele') telePanel(); }
-  function geoPanel() { const got = st.carry.map(id => D.SAMPLES.find(x => x.id === id)).filter(Boolean); let gain = 0; got.forEach(o => { gain += o.rp; st.done.push(o.id); }); st.rp += gain; st.carry = [];
+  function geoPanel() { const got = st.carry.map(id => D.SAMPLES.find(x => x.id === id)).filter(Boolean); let gain = 0; got.forEach(o => { gain += o.rp; st.done.push(o.id); }); st.rp += gain; st.carry = []; if (gain) vo('geo', { skipIfBusy: true });
     const facts = got.map(o => `<p><b>🧪 ${o.n}</b> · +${o.rp} research<br><span style="opacity:.85">${o.fact}</span></p>`).join('');
     const ups = D.UPGRADES.map(u => `<button class="${st.upg[u.id] ? 'sec' : ''}" data-u="${u.id}" ${st.upg[u.id] || st.rp < u.cost ? 'disabled' : ''}>${st.upg[u.id] ? '✓ ' : ''}${u.n} · ${u.cost} 🔬</button>`).join('');
     show(`<h2>🔬 Geology lab glovebox</h2>${facts || '<p>No new samples. Look for glowing blue markers around the site: the crater floor, the rim and the plains.</p>'}
       <p><b>Research points: ${st.rp}</b> · samples analysed ${st.done.length} / ${D.SAMPLES.length}</p><p style="font-size:12px;opacity:.8">${D.UPGRADES.map(u => `<b>${u.n}</b>: ${u.desc}`).join('<br>')}</p><div class="row">${ups}<button class="sec" id="gX">Close</button></div>`,
-      p => { p.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { const u = D.UPGRADES.find(x => x.id === b.dataset.u); if (st.rp >= u.cost && !st.upg[u.id]) { st.rp -= u.cost; st.upg[u.id] = 1; api.sfx('coin'); save(); geoPanel(); } }); p.querySelector('#gX').onclick = () => close(); });
+      p => { p.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { const u = D.UPGRADES.find(x => x.id === b.dataset.u); if (st.rp >= u.cost && !st.upg[u.id]) { st.rp -= u.cost; st.upg[u.id] = 1; api.sfx('coin'); vo('upgrade'); save(); geoPanel(); } }); p.querySelector('#gX').onclick = () => close(); });
     if (gain) save(); }
   function telePanel() { show(`<h2>🖥 Tele-robotics workstation</h2><p>Score <b>${score().toLocaleString()}</b> · survived ${Math.floor(st.t / 60)} min · ${st.goal} objectives · ${st.done.length} samples analysed</p>
       <div class="row"><button id="tR">Base Design Report</button><button id="tB">Leaderboard</button><button class="sec" id="tX">Close</button></div>`,
@@ -417,12 +424,12 @@ export function makeSurvival(R, api) {
   function rescueStep(dt) { const R0 = st.rescue; if (!R0 || st.rescued) { if ($('.rescue')) $('.rescue').style.display = 'none'; return; } const left = R0.eta - st.t, el = $('.rescue'); el.style.display = 'block';
     const pad = R0.pad || (R0.pad = (() => { const hb = st.builds.find(b => b.id === 'hab'), bx = hb ? hb.x : 0, bz = hb ? hb.z : 0; for (let k = 0; k < 16; k++) { const a = k / 16 * TAU, x = bx + Math.cos(a) * 26, z = bz + Math.sin(a) * 26; if (!canPlace(x, z, 'hab')) return [x, z]; } return [bx + 26, bz]; })());
     el.textContent = left > 0 ? `🚀 Supply ship ETA ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')} · it will land ${Math.round(Math.hypot(pad[0] - S().player.position.x, pad[1] - S().player.position.z))} m from you` : '🚀 Supply ship landing!';
-    const T = 32; if (left < T && !ship) { ship = new THREE.Group(); nasa('lm', 9, ship); S().scn.add(ship); api.say('Supply ship on final approach.'); }
+    const T = 32; if (left < T && !ship) { ship = new THREE.Group(); nasa('lm', 9, ship); S().scn.add(ship); vo('approach', { urgent: true }); }
     if (ship) { const k = clamp(1 - left / T, 0, 1), gy = H(pad[0], pad[1]), y = gy + 260 * Math.pow(1 - k, 2.2); ship.position.set(pad[0], y, pad[1]);
       const s = S(); if (k < 1 && Math.random() < dt * 40) { s.fx.emit(new V3(pad[0], y - .2, pad[1]), new V3((Math.random() - .5) * 2, -14, (Math.random() - .5) * 2), 0xffd9a0, 1.2, .5, 4, 2, { grow: 2.5 });
         if (y - gy < 30) for (let i = 0; i < 4; i++) { const a = Math.random() * TAU, sp = 6 + Math.random() * 8, up = .5 + Math.random() * 1.5; s.dust.emit(new V3(pad[0], gy + .1, pad[1]), new V3(Math.cos(a) * sp, up, Math.sin(a) * sp), s.dc, .2, 2 * up / 1.62 + .5, 1, .3, { grow: 1, drag: 0, grav: 1.62, a: .8 }); } }   // the plume blasts dust out in flat, fast arcs
       shipK = k < 1 ? .9 : 0;
-      if (k >= 1) { st.rescued = 1; shipK = 0; api.sfx('lnd'); api.say('Touchdown. The supply ship has landed.'); finish(true); } } }
+      if (k >= 1) { st.rescued = 1; shipK = 0; api.sfx('lnd'); vo('landed', { urgent: true }); finish(true); } } }
   let shipK = 0;
   function bests() { try { return JSON.parse(localStorage.getItem(KEY + '-best') || '{}'); } catch (e) { return {}; } }
   function keepBest(sc) { const b = bests(); if (st.mode === 'daily') { b.daily = b.daily || {}; b.daily[st.day] = Math.max(b.daily[st.day] || 0, sc); } else b.best = Math.max(b.best || 0, sc); try { localStorage.setItem(KEY + '-best', JSON.stringify(b)); } catch (e) {} return b; }
@@ -442,7 +449,7 @@ export function makeSurvival(R, api) {
       <p id="svRank" style="font-size:13px">Sending your score…</p><div class="row"><button id="fB">Leaderboard</button><button id="fR">Base report</button>${rescued ? '<button class="sec" id="fK">Keep playing</button>' : ''}<button class="sec" id="fT">Back to the title</button></div>`,
       p => { p.querySelector('#fB').onclick = () => board(st.mode === 'daily'); p.querySelector('#fR').onclick = () => report(); if (rescued) p.querySelector('#fK').onclick = () => close(); p.querySelector('#fT').onclick = () => api.exit(); });
     const msg = await submit(sc); const el = hud && hud.querySelector('#svRank'); if (el) el.textContent = msg; }
-  function gameOver(why) { st.over = 1; api.say('Suit failure.'); finish(false).then(() => { const el = hud && hud.querySelector('#svRank'); if (el) el.insertAdjacentHTML('beforebegin', `<p>${why} In the daily challenge there is no second chance.</p>`); }); }
+  function gameOver(why) { st.over = 1; vo('dead', { urgent: true }); finish(false).then(() => { const el = hud && hud.querySelector('#svRank'); if (el) el.insertAdjacentHTML('beforebegin', `<p>${why} In the daily challenge there is no second chance.</p>`); }); }
   /* ---------------- the mission menu ---------------- */
   function menu() { const has = !!load('normal'), dsave = load('daily'), tw = twistOf(today()), b = bests();
     show(`<h2>🌑 Moon Survival · ${D.SITE.n}</h2><p style="opacity:.85">How long can you last at the lunar south pole? Build a base, find water, survive the cold, the flares and the dust.</p>
@@ -461,9 +468,9 @@ export function makeSurvival(R, api) {
     if (st.t < 1) { const P = s.player.position; for (let i = 0; i < 36; i++) { sunDir(); if (inSun(P.x, P.y + 1.5, P.z) && inSun(P.x + 8, H(P.x + 8, P.z + 6) + 5, P.z + 6)) break; st.sunA = (st.sunA + TAU / 36) % TAU; } }   // a new mission starts in sunlight
     s.polar = { sd: sunDir() }; placeWorld(); flare = null; menuDone = true;
     if (st.pos) { const [x, z] = st.pos; s.player.position.set(x, H(x, z), z); }
-    if (st.t < 5) intro(); else api.toast(`Welcome back, ${D.STORY.callsign}. Mission time ${Math.floor(st.t / 60)} min.`, 2600); save(); }
+    if (st.t < 5) intro(); else { vo('welcome'); api.toast(`Welcome back, ${D.STORY.callsign}. Mission time ${Math.floor(st.t / 60)} min.`, 2600); } save(); }
   function clearWorld() { const scn = S().scn; caches.forEach(c => scn.remove(c.m)); built.forEach(B => scn.remove(B.m)); samples.forEach(x => scn.remove(x.g)); if (rover) scn.remove(rover.g); if (ship) scn.remove(ship); if (lamp) { scn.remove(lamp); scn.remove(lamp.target); }
     caches = []; built = []; samples = []; rover = null; ship = null; if (IN) { IN.g.visible = false; } inside = false; }
-  function end() { if (!on) return; if (menuDone) save(); on = false; menuDone = false; unbind(); endBuild(); close(); try { hud.remove(); } catch (e) {} R.root.classList.remove('surv'); try { const s = S(); if (s._fov) { R.cam.fov = s._fov; R.cam.updateProjectionMatrix(); } if (earth) s.scn.remove(earth); earth = null; if (IN) { s.scn.remove(IN.g); IN = null; } inside = false; if (s._shc) { const c = s.dl.shadow.camera; c.left = c.bottom = -s._shc[0] * -1; c.left = c.bottom = s._shc[0]; c.right = c.top = -s._shc[0]; c.far = s._shc[1]; c.updateProjectionMatrix(); } s.polar = null; s.traction = 0; s.newton = false; s.thrust = null; s.camDip = 0; s.camRoll = 0; if (lamp) { s.scn.remove(lamp); s.scn.remove(lamp.target); } } catch (e) {} }
+  function end() { if (!on) return; VOX.stop(); if (menuDone) save(); on = false; menuDone = false; unbind(); endBuild(); close(); try { hud.remove(); } catch (e) {} R.root.classList.remove('surv'); try { const s = S(); if (s._fov) { R.cam.fov = s._fov; R.cam.updateProjectionMatrix(); } if (earth) s.scn.remove(earth); earth = null; if (IN) { s.scn.remove(IN.g); IN = null; } inside = false; if (s._shc) { const c = s.dl.shadow.camera; c.left = c.bottom = -s._shc[0] * -1; c.left = c.bottom = s._shc[0]; c.right = c.top = -s._shc[0]; c.far = s._shc[1]; c.updateProjectionMatrix(); } s.polar = null; s.traction = 0; s.newton = false; s.thrust = null; s.camDip = 0; s.camRoll = 0; if (lamp) { s.scn.remove(lamp); s.scn.remove(lamp.target); } } catch (e) {} }
   return { get on() { return on; }, site: D.SITE, begin, end, pre, step, key, reset: () => { try { localStorage.removeItem(KEY); } catch (e) {} }, hasSave: () => !!load('normal'), thrustK: () => Math.max(thrustK, shipK), breath: () => st ? clamp((30 - st.vit.o2) / 30, 0, 1) * .8 + (thrustK > 0 ? .3 : 0) : 0, _st: () => st, _build: (id, x, z) => { const b = { id, x, z, ry: 0 }; st.builds.push(b); addBuild(b, true); }, _built: () => built, _caches: () => caches, _start: m => start(fresh(m || "normal")), _samples: () => samples, _station: id => station(id), _score: () => score(), _enter: () => { const B = built.find(b => b.b.id === "hab"); if (B) enterHab(B.b); }, _exit: () => exitHab(), _fc: () => fc };
 }
