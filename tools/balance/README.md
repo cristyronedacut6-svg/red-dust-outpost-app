@@ -14,3 +14,17 @@ vital below 25% (tension), idle minutes (boredom) and when each objective is don
 
 Targets used for tuning (Nov 2026): a new player is rescued in 25–35 min and dies at most once in most runs;
 an average player gets low on something at least once (tension) but rarely dies; every daily twist is winnable.
+
+## Story mode bot (`storybot.py`)
+
+Plays each Story world with the real game code in a headless browser, fast-forwarded (one world in about
+3 seconds). Needs the game served on `localhost:8093` and Playwright.
+
+```
+python3 tools/balance/storybot.py 5 0,1,2,3,4,5 avg
+```
+
+Limits (Nov 2026): the bot builds a sensible base, shoots and dodges telegraphed hazards, but it does not use
+upgrades, the EMP, Earth call-ins or boss tactics, so it loses the wave-5 bosses everywhere. Use it to compare
+the early game between worlds, not to judge the boss fights. First finding: Europa and Titan are the hardest
+on food and radiation in waves 2–3 with a simple strategy; worth a human playtest before changing numbers.
