@@ -177,9 +177,16 @@ Each landing world now has its own ground recipe in `www/js/adv_terrain.js`. The
 | Radiation background 1.37 mSv per day | Measured on the lunar surface by Chang'e 4's LND instrument. | Zhang et al., *Science Advances*, 2020 |
 | Solar flares: shelter behind regolith | Packed regolith 1–2 m thick sharply cuts solar particle radiation. | NASA radiation shielding studies |
 | Habitat model | NASA's Habitat Demonstration Unit, a real prototype tested in the Arizona desert (Desert RATS). | NASA 3D Resources |
+| Habitat interior (8 sections: airlock, EVA, geology glovebox, tele-robotics, medical, hygiene, galley/atrium, stowage) | Laid out after the real Habitat Demonstration Unit / Deep Space Habitat, whose core lab was split into eight sections around a central ladder to the loft. Built from simple shapes in the game, not a scanned model. | NASA HDU-DSH papers (Kennedy et al., 2011–2012) |
+| Science samples (ice core, anorthosite, impact glass, breccia, orange glass, helium-3 regolith…) | Each fact on the sample card comes from Apollo, LCROSS or LRO results. The research points and upgrades are game rules. | Apollo sample catalogue (NASA JSC); LCROSS; LRO |
+| Plants grow on water from ice | NASA's Veggie and Advanced Plant Habitat grow crops on the ISS under red/blue LEDs; lunar ice can be melted for water. Growth is hugely sped up in the game. | NASA Veggie / APH |
+| Dust on solar panels | Apollo crews found lunar dust sticky, sharp and hard to remove; it settles on everything, worst near engine plumes. NASA tests "lotus" coatings that shed it. | Apollo mission reports; NASA Lotus coating |
+| The supply ship lands and blasts dust outwards | Plume–surface interaction throws regolith out in fast, flat arcs, which is why landing pads sit away from the base. | NASA plume–surface interaction studies |
 | Laser comms terminal | NASA's Lunar Laser Communication Demonstration reached 622 Mb/s from lunar orbit in 2013. | NASA 3D Resources; NASA LLCD |
 
 **Simplified for play:**
-- Time runs fast: a full suit lasts 14 minutes, not 8 hours.
+- Time runs fast: a full suit lasts 14 minutes, not 8 hours. Food lasts 30 minutes and water 20.
 - Shackleton Crater is squeezed from 21 km across to about 460 m.
 - The crater shape is procedural, not real elevation data.
+
+The online Moon Survival leaderboard needs the SQL in `supabase/survival.sql` run once in the Supabase SQL editor. Until then the game keeps scores on the device.

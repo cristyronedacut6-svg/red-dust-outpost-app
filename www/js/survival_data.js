@@ -108,3 +108,48 @@ export const GOALS = [
   { id: 'rover', t: 'Repair the lunar rover', area: 'mobility' },
   { id: 'antenna', t: 'Build the laser comms terminal and send your base report', area: 'comms' },
 ];
+
+// ---- Science samples (collect with E, analyse in the habitat's geology glovebox) --------------------------
+// where: 'crater' = on the dark crater floor, 'rim' = near the crater rim, 'far' = out on the plains
+export const SAMPLES = [
+  { id: 'icecore', n: 'Ice core', where: 'crater', rp: 3, fact: 'In 2009 NASA crashed the LCROSS impactor into Cabeus crater near the south pole. The plume held about 5.6% water by mass.' },
+  { id: 'psr', n: 'Frozen regolith', where: 'crater', rp: 2, fact: 'Permanently shadowed soil traps volatiles such as water, carbon monoxide, ammonia and mercury: a frozen record of comets and the solar wind.' },
+  { id: 'anorthosite', n: 'Highland anorthosite', where: 'rim', rp: 2, fact: 'The bright lunar highlands are anorthosite, rock that floated to the top of an ancient magma ocean. Apollo 15’s “Genesis Rock” is about 4.46 billion years old.' },
+  { id: 'glass', n: 'Impact glass beads', where: 'far', rp: 2, fact: 'Tiny glass beads made by impacts can hold water from the solar wind. Samples from China’s Chang’e 5 (2020) showed this in 2023.' },
+  { id: 'breccia', n: 'Impact breccia', where: 'rim', rp: 1, fact: 'Breccia is rock smashed apart by impacts and welded back together by the heat and pressure. It is the most common rock Apollo brought home.' },
+  { id: 'orange', n: 'Volcanic orange glass', where: 'far', rp: 2, fact: 'Apollo 17 found orange glass from “fire fountain” eruptions about 3.6 billion years ago. The Moon was volcanically active then.' },
+  { id: 'zap', n: 'Micrometeorite “zap pit” rock', where: 'far', rp: 1, fact: 'Without air, even dust-sized meteorites hit at kilometres per second, leaving tiny glass-lined “zap pits” on lunar rocks.' },
+  { id: 'he3', n: 'Solar-wind regolith', where: 'far', rp: 1, fact: 'Lunar soil holds helium-3 and hydrogen implanted by the solar wind over billions of years. Helium-3 is studied as a possible fusion fuel.' },
+];
+// What research points buy (at the glovebox). mult changes a number in SUIT/JET/GATHER/DUST.
+export const UPGRADES = [
+  { id: 'tank', n: 'Bigger oxygen tank', cost: 3, desc: 'Suit oxygen lasts 30% longer.' },
+  { id: 'cell', n: 'Better suit battery', cost: 3, desc: 'Suit power lasts 30% longer.' },
+  { id: 'thrust', n: 'Efficient thrusters', cost: 2, desc: 'Jetpack fuel lasts 50% longer.' },
+  { id: 'tools', n: 'Better tools', cost: 2, desc: 'Gather and salvage 30% faster.' },
+  { id: 'lotus', n: 'Lotus dust coating', cost: 3, desc: 'Dust sticks to solar panels 60% slower. (NASA tested a “Lotus” coating on the HDU.)' },
+];
+
+// ---- Food and water ----------------------------------------------------------------------------------
+// The atrium's plants need water and power. Water comes from melting the ice you bring back.
+export const FOOD = { foodMin: 30, waterMin: 20, starve: .6,   // minutes until empty; health lost per second when one is empty
+  meal: 35, drink: 40,                                           // how much one meal / one drink refills (%)
+  growSec: 50, growWater: 3, mealsMax: 12,                       // one meal grows every 50 s if the base has power and 3 water
+  waterPerIce: 25,                                               // water from each ice (besides the oxygen)
+  start: { meals: 4, water: 40 } };                              // what your lander carries
+
+// ---- Lunar dust on solar panels ----------------------------------------------------------------------
+// Lunar dust is sharp, clingy and electrically charged. It cuts the power of dusty panels.
+export const DUST = { perMin: 4, nearThrust: 25, loss: .85, cleanSec: 2 };   // % dust per minute; extra % per second when you thrust or drive within 15 m; power lost at 100% dust
+
+// ---- Score, daily challenge and rescue --------------------------------------------------------------
+export const SCORE = { perSec: 1, perGoal: 300, perSample: 150 };
+// one twist per day, the same for everyone (picked from the date)
+export const DAILY = [
+  { id: 'flares', n: 'Flare storm', d: 'Solar flares come every 3–5 minutes.' },
+  { id: 'leak', n: 'Damaged suit', d: 'You start with a leaking suit and 20% less oxygen.' },
+  { id: 'shadow', n: 'Long shadows', d: 'The Sun is even lower: 2.5° above the horizon.' },
+  { id: 'scarce', n: 'Scarce supplies', d: 'Supply caches hold half as much.' },
+  { id: 'dusty', n: 'Dust day', d: 'Dust coats your solar panels three times faster.' },
+];
+export const RESCUE = { etaSec: 150 };   // seconds after you send your report until the supply ship lands

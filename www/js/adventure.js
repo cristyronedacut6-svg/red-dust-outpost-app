@@ -407,7 +407,7 @@ function build() {
         const o = OI[i]; return { ...it, o: site.lm && i === 'lm' ? { ...o, n: 'Lunar Module ' + site.lm + ' (' + site.n.split(' ·')[0] + ')' } : o }; }); },
     sampleFacts: (id, site) => [...(site && site.facts ? site.facts : []), ...(SAMPLE_FACTS[id] || []), ...(BI[id] ? BI[id].facts : [])],
     ui: (b, W, mode) => surfUI(b, W, mode), trophy, ship: () => R.shipStat || SHIPS[0], fixMat, craftUI: (on, cr) => { if (!cr || !cr.n) cr = (R.surf && R.surf.S.body && craftFor(R.surf.S.body.id)) || { n: 'craft' }; const b = R.root.querySelector('#aFly'); b.innerHTML = on ? '🧑‍🚀 LAND & WALK' : (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); R.root.querySelector('#aThr').innerHTML = on ? (cr.heli ? '⬆<br>CLIMB' : '⬆<br>PULL UP') : '⤒<br>JUMP'; R.root.querySelector('#aBst').innerHTML = on ? (cr.heli ? 'FAST' : 'THROTTLE') : 'RUN'; } });
-  R.sv = makeSurvival(R, { loader, fixMat, toast: (t, ms) => toast(t, ms), say: t => { try { AUD.radio(); } catch (e) {} say(t, 1); }, sfx, helmet: () => helmToggle() });   // Moon Survival mode
+  R.sv = makeSurvival(R, { loader, fixMat, toast: (t, ms) => toast(t, ms), say: t => { try { AUD.radio(); } catch (e) {} say(t, 1); }, sfx, helmet: () => helmToggle(), exit: () => setTimeout(close, 0) });   // Moon Survival mode
   root.querySelector('#aLand').onclick = () => landOrLaunch(); root.querySelector('#aQ').innerHTML = '⚙<span class="lb"> ' + PRE().n + '</span>'; root.querySelector('#aQ').onclick = () => settings();
 }
 let R_HDR = true; const dprCap = () => Math.min(devicePixelRatio || 1, PRE().dpr) * SET.scale / 100; // blinking navigation lights (red port, green starboard, white strobe) on spacecraft, like real ones
