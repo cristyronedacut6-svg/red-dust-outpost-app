@@ -45,6 +45,10 @@ export const SUIT = {
   fallSafe: 5,           // landing speed (m/s) you can take without getting hurt
   fallDamage: 12,        // health lost for each m/s above that
 };
+// Jetpack (manoeuvring thrusters, like the MMU flown in 1984 — not part of Artemis suits, added for play).
+// In the air there is no friction: you keep drifting until you thrust the other way (Newton's first law).
+export const JET = { fuelSec: 22, up: 2.6, side: 1.6, refillAtLander: true };   // seconds of full thrust; accelerations in m/s² (Moon gravity is 1.62)
+export const MOVE = { traction: 3.2 };   // grip on loose regolith (the original walk uses 8): lower = more sliding and momentum
 export const HEALTH = { regen: .5, regenInside: 4, suffocate: 9, cold: 2.5, flare: .8 };   // per second
 
 // ---- Things to collect ------------------------------------------------------------------------

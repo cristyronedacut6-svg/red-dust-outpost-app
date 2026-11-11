@@ -262,7 +262,7 @@ export function makeSurface(ctx) {
     S.camYaw += inp.look * dt * 2.2; S.camPitch = THREE.MathUtils.clamp(S.camPitch + inp.lookY * dt * 1.5, .05, 1.2);
     const fx = -Math.sin(S.camYaw), fz = -Math.cos(S.camYaw), mx = inp.x * Math.cos(S.camYaw) + inp.y * fx * -1, mz = -inp.x * Math.sin(S.camYaw) + inp.y * fz * -1, l = Math.hypot(inp.x, inp.y);
     const tv = new THREE.Vector3(mx, 0, mz); if (l > .05) { tv.normalize().multiplyScalar(speed * Math.min(1, l)); S.yaw = Math.atan2(-tv.x, -tv.z) + Math.PI; }
-    const k = Math.min(1, dt * (S.onGround ? 8 : 1.5)); S.vel.x += (tv.x - S.vel.x) * k; S.vel.z += (tv.z - S.vel.z) * k;
+    const k = Math.min(1, dt * (S.onGround ? (S.traction || 8) : (S.newton ? 0 : 1.5))); S.vel.x += (tv.x - S.vel.x) * k; S.vel.z += (tv.z - S.vel.z) * k; if (S.thrust) S.vel.addScaledVector(S.thrust, dt);   // newton: no steering in the air, only thrust
     const gy = H(P.position.x, P.position.z);
     if (inp.jumpPress && S.onGround) { S.vel.y = Math.min(4.6 + (run > 1 ? .8 : 0), Math.sqrt(2 * g * 30)); S.onGround = false; ctx.sfx('jump'); }
     S.vel.y -= g * dt; if (!S.onGround && inp.jump && S.vel.y < -1.6) S.vel.y = -1.6; // jetpack glide (hold jump)
@@ -288,7 +288,7 @@ export function makeSurface(ctx) {
     // camera: behind and above, Genshin style
     const cd = 7.5, cx = P.position.x + Math.sin(S.camYaw) * cd * Math.cos(S.camPitch), cz = P.position.z + Math.cos(S.camYaw) * cd * Math.cos(S.camPitch); let cy = P.position.y + 1.6 + Math.sin(S.camPitch) * cd; cy = Math.max(cy, H(cx, cz) + .8);
     if (S.helmet) { const hp = new THREE.Vector3(P.position.x, P.position.y + 1.66 + (P.userData.rig ? P.userData.rig.root.children[0].position.y : 0), P.position.z); ctx.cam.position.copy(hp);   // inside the helmet: you see what the astronaut sees
-      const lp = -(S.camPitch - .35) * 1.4; ctx.cam.lookAt(hp.x - Math.sin(S.camYaw) * Math.cos(lp) * 10, hp.y + Math.sin(lp) * 10, hp.z - Math.cos(S.camYaw) * Math.cos(lp) * 10); if (P.userData.rig) P.userData.rig.root.visible = false; }
+      const lp = -(S.camPitch - .35) * 1.4; hp.y -= S.camDip || 0; ctx.cam.position.y = hp.y; ctx.cam.lookAt(hp.x - Math.sin(S.camYaw) * Math.cos(lp) * 10, hp.y + Math.sin(lp) * 10, hp.z - Math.cos(S.camYaw) * Math.cos(lp) * 10); if (S.camRoll) ctx.cam.rotateZ(S.camRoll); if (P.userData.rig) P.userData.rig.root.visible = false; }
     else if (S.arrive) { const A = S.arrive; if (!A.t0) A.t0 = performance.now() + 400; A.t = Math.max(0, performance.now() - A.t0) / 1000;   // the clock starts once the new scene is actually on screen
       if (P.userData.rig) P.userData.rig.root.visible = true;
       // smootherstep from a high, wide view of the site down to the usual shoulder camera; any movement hands control back early

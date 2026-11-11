@@ -30,6 +30,9 @@ const AIR = { ship: [18000, 1], vac: [320, .6], mars: [1400, .4], earth: [18000,
 const BREEZE = { earth: .08, mars: .05, titan: .07, venus: .1, pluto: .01 };
 export const AUD = {
   start() { if (!A) A = build(); if (A) ramp(A.padG.gain, .05, A.ctx, 1.5); },
+  // a short burst of radio static before Mission Control speaks (heard through the suit radio)
+  radio() { if (!A) return; const c = A.ctx, b = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); b.buffer = A.nb || (A.nb = (() => { const n = c.createBuffer(1, c.sampleRate * .3, c.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return n; })());
+    f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = .8; g.gain.setValueAtTime(.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(.05, c.currentTime + .01); g.gain.exponentialRampToValueAtTime(.0001, c.currentTime + .22); b.connect(f); f.connect(g); g.connect(A.out); b.start(); b.stop(c.currentTime + .25); },
   stop() { if (!A) return; [A.enG, A.subG, A.wG, A.padG, A.suG, A.brG, A.bzG].forEach(n => ramp(n.gain, 0, A.ctx, .3)); },
   // eng 0..1 throttle, boost 0/1, wind 0..1, cockpit bool
   set({ eng = 0, boost = 0, wind = 0, cockpit = false, dt = .016, air = 'ship', suit = 0, gust = 0, effort = 0 }) { if (!A) return; const c = A.ctx, k = cockpit ? 1.25 : 1;
