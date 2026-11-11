@@ -186,6 +186,8 @@ Each landing world now has its own ground recipe in `www/js/adv_terrain.js`. The
 
 **Simplified for play:**
 - Time runs fast: a full suit lasts 14 minutes, not 8 hours. Food lasts 30 minutes and water 20.
+- Plugging a suit hole with packed regolith, the lander's repair kits, and Mission Control's supply pods are game rules, not real procedures. Real suits carry small repair kits and astronauts would head straight back to the airlock.
+- Easy and Hard change how long air, power and food last and how often flares and micrometeorites come; Normal is the reference.
 - Shackleton Crater is squeezed from 21 km across to about 460 m.
 - The crater shape is procedural, not real elevation data.
 
