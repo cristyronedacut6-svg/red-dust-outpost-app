@@ -169,6 +169,23 @@ export function makeSurvival(R, api) {
   @keyframes svban{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
   #sv .vs{position:absolute;left:calc(50% + 34px);top:calc(50% - 9px);font-size:13px;font-weight:800;display:none}
   #sv .vs.bad{color:#ff6a5a;animation:svw .5s infinite}
+  /* landscape phones: everything has to fit in ~360 px of height, and thumbs need USE and JET in reach */
+  @media (max-height:520px){
+    #sv .vit{width:150px;right:calc(52px + env(safe-area-inset-right));bottom:auto;top:46px;gap:1px}#sv .bar{height:12px!important}#sv .bar span{line-height:12px!important;font-size:9px!important;padding-left:5px}
+    #sv .btns{bottom:calc(84px + env(safe-area-inset-bottom));gap:5px;display:none;grid-template-columns:repeat(2,54px);gap:6px;flex-direction:unset}
+    #sv .btns button{width:54px;height:40px;font-size:11px;border-radius:10px}
+    #sv .inv{bottom:6px;gap:4px}#sv .inv div{min-width:38px;font-size:12px;padding:2px 4px}#sv .inv small{font-size:8.5px}
+    #sv .goal{top:46px;max-width:225px;font-size:11.5px;padding:5px 8px}#sv .goal .hint{font-size:11px}#sv .goal .sc2{font-size:11px}
+    #sv .env{left:250px;right:215px;top:48px;transform:none;white-space:normal;text-align:center;font-size:10.5px;padding:3px 8px}
+    #sv .alarm{left:250px;right:215px;transform:none;top:auto;bottom:calc(50% + 46px);font-size:12px}
+    #sv .rescue{left:250px;right:215px;top:auto;bottom:calc(50% + 46px);transform:none;font-size:12px;text-align:center}
+    #sv .prompt{font-size:12px;top:calc(50% + 28px)}
+    #sv .bld{bottom:52px;gap:4px;max-width:calc(100% - 340px)}#sv .bld button{min-width:52px;padding:4px 5px;font-size:10px}#sv .bld button b{font-size:15px}
+    #sv .svc{padding:12px 14px;max-height:92vh}#sv .svc h2{font-size:17px}#sv .svc p{font-size:13px;margin:6px 0}#sv .svc button{padding:7px 11px;min-height:38px}
+    #sv .ban b{font-size:22px}#sv .ban i{font-size:17px}
+    .svvo{bottom:52px!important;max-width:44vw!important;font-size:12px!important;padding:5px 9px!important}
+  }
+  @media (max-height:520px) and (pointer:coarse){#sv .btns{display:grid}}
   #sv .hurt{position:absolute;inset:0;box-shadow:inset 0 0 120px rgba(200,0,0,.8);opacity:0;transition:opacity .3s}`; document.head.appendChild(c); }
   function buildHUD() { css(); hud = document.createElement('div'); hud.id = 'sv'; hud.innerHTML = `<div class="tint"></div><div class="hurt"></div><div class="env"></div><div class="alarm"></div><div class="rescue"></div><div class="goal"></div>
     <div class="ban"><b></b><i></i><span></span></div><div class="vs"></div><div class="gd"><span class="ic"></span><i class="ar"></i><span class="lb"></span></div><div class="cross"></div><div class="ring" style="--p:0%;display:none"></div><div class="prompt" style="display:none"></div>
@@ -589,11 +606,11 @@ export function makeSurvival(R, api) {
     show(`<h2>🏆 Moon Survival · ${daily ? 'today’s daily challenge' : 'all time'}</h2>${note ? `<p style="font-size:13px;opacity:.8">${note}</p>` : ''}${list}<div class="row"><button id="lbO">${daily ? 'All-time board' : 'Today’s daily board'}</button><button class="sec" id="lbX">Close</button></div>`,
       p => { p.querySelector('#lbO').onclick = () => board(!daily); p.querySelector('#lbX').onclick = () => close(); }); }
   async function finish(rescued) { if (st.mode === 'demo') { show(`<h2>🚀 Pitch demo complete</h2><p>That was a 3-minute taste of Moon Survival: build at the lunar south pole, shelter from a solar flare, find Earth on the horizon, and get rescued. A full mission takes 25 to 35 minutes.</p><div class="row"><button id="fK" class="sec">Keep exploring</button><button id="fT">Back to the title</button></div>`, p => { p.querySelector('#fK').onclick = () => close(); p.querySelector('#fT').onclick = () => api.exit(); }); return; }
-    const sc = score(); keepBest(sc); save();
+    const sc = score(); if (st.mode === 'daily') st.over = 1; keepBest(sc); save();   // a daily ends at the rescue (or the first suit failure)
     show(`<h2>${rescued ? '🚀 Rescued! Mission complete' : '☠ Mission over'}</h2><p>${rescued ? 'The supply ship touched down beside your base. Fresh oxygen, food and a crew to take over. You built the first base at the lunar south pole.' : ''}</p>
       <p style="font-size:26px;margin:6px 0"><b>${sc.toLocaleString()}</b> points</p><p style="font-size:12px;opacity:.75">${Math.floor(tPts())} for time out on the surface + ${st.goal} objectives × ${D.SCORE.perGoal} + ${st.done.length} samples × ${D.SCORE.perSample}${DF('score') !== 1 ? ` · × ${DF('score')} (${D.DIFF[st.diff].n})` : ''}</p><p style="font-size:13px;opacity:.85">${Math.floor(st.t / 60)} min survived · ${st.goal} objectives · ${st.done.length} samples analysed${st.mode === 'daily' ? ' · daily: ' + twistOf(st.day).n : ''}</p>
-      <p id="svRank" style="font-size:13px">Sending your score…</p><div class="row"><button id="fB">Leaderboard</button><button id="fR">Base report</button>${rescued ? '<button class="sec" id="fK">Keep playing</button>' : ''}<button class="sec" id="fT">Back to the title</button></div>`,
-      p => { p.querySelector('#fB').onclick = () => board(st.mode === 'daily'); p.querySelector('#fR').onclick = () => report(); if (rescued) p.querySelector('#fK').onclick = () => close(); p.querySelector('#fT').onclick = () => api.exit(); });
+      <p id="svRank" style="font-size:13px">Sending your score…</p><div class="row"><button id="fB">Leaderboard</button><button id="fR">Base report</button>${rescued && st.mode !== 'daily' ? '<button class="sec" id="fK">Keep playing</button>' : ''}<button class="sec" id="fT">Back to the title</button></div>`,
+      p => { p.querySelector('#fB').onclick = () => board(st.mode === 'daily'); p.querySelector('#fR').onclick = () => report(); if (rescued && st.mode !== 'daily') p.querySelector('#fK').onclick = () => close(); p.querySelector('#fT').onclick = () => api.exit(); });
     const msg = await submit(sc); const el = hud && hud.querySelector('#svRank'); if (el) el.textContent = msg; }
   function gameOver(why) { st.over = 1; vo('dead', { urgent: true }); finish(false).then(() => { const el = hud && hud.querySelector('#svRank'); if (el) el.insertAdjacentHTML('beforebegin', `<p>${why} In the daily challenge there is no second chance.</p>`); }); }
   /* ---------------- the mission menu ---------------- */
@@ -601,14 +618,15 @@ export function makeSurvival(R, api) {
     show(`<h2>✚ New mission · how hard?</h2><div class="row" style="flex-direction:column;align-items:stretch">${L.map(([k, o]) => `<button data-d="${k}" class="${k === 'normal' ? '' : 'sec'}">${o.icon} <b>${o.n}</b> · ${o.d}</button>`).join('')}<button class="sec" id="dB">◀ Back</button></div>
       <p style="font-size:12px;opacity:.7">This replaces your saved mission. Scores from every difficulty go on the same board; Hard earns 1.5× points, Easy 0.6×.</p>`,
       p => { p.querySelectorAll('[data-d]').forEach(b => b.onclick = () => go(fresh('normal', b.dataset.d))); p.querySelector('#dB').onclick = () => menu(); }); }
-  function menu() { const has = !!load('normal'), dsave = load('daily'), tw = twistOf(today()), b = bests();
+  function dailyDone() { try { const d = JSON.parse(localStorage.getItem(KEY + '-daily') || 'null'); return !!(d && d.day === today() && d.over); } catch (e) { return false; } }
+  function menu() { const has = !!load('normal'), dsave = load('daily'), tw = twistOf(today()), b = bests(), dd = dailyDone();
     show(`<h2>🌑 Moon Survival · ${D.SITE.n}</h2><p style="opacity:.85">How long can you last at the lunar south pole? Build a base, find water, survive the cold, the flares and the dust.</p>
       <div class="row" style="flex-direction:column;align-items:stretch">${has ? '<button id="mC">▶ Continue your mission</button>' : ''}<button id="mN" class="${has ? 'sec' : ''}">✚ New mission</button>
-      <button id="mD">📅 Daily challenge · <b>${tw.n}</b>: ${tw.d}${dsave ? ' (continue)' : ''}</button><button class="sec" id="mP">🎤 Pitch demo · a guided 3-minute run</button><button class="sec" id="mL">🏆 Leaderboard</button><button class="sec" id="mK">🖱 Look speed: <b>${Object.keys(LOOKS).find(k => LOOKS[k] === lookK) || 'normal'}</b></button></div>
+      <button id="mD" ${dd ? 'disabled class="sec"' : ''}>📅 Daily challenge · <b>${tw.n}</b>: ${dd ? `done for today (${((b.daily || {})[today()] || 0).toLocaleString()} points). A new one tomorrow!` : tw.d + (dsave ? ' (continue)' : '')}</button><button class="sec" id="mP">🎤 Pitch demo · a guided 3-minute run</button><button class="sec" id="mL">🏆 Leaderboard</button><button class="sec" id="mK">🖱 Look speed: <b>${Object.keys(LOOKS).find(k => LOOKS[k] === lookK) || 'normal'}</b></button></div>
       <p style="font-size:12px;opacity:.7">Best score ${(b.best || 0).toLocaleString()} · today’s daily best ${((b.daily || {})[today()] || 0).toLocaleString()}. Daily challenge: one life, the same twist for everyone today.</p>`,
       p => { const go = st0 => { close(); start(st0); };
         if (has) p.querySelector('#mC').onclick = () => go(load('normal')); p.querySelector('#mN').onclick = () => diffMenu(go);
-        p.querySelector('#mD').onclick = () => go(dsave || fresh('daily')); p.querySelector('#mL').onclick = () => { board(false); }; p.querySelector('#mP').onclick = () => go(freshDemo()); p.querySelector('#mK').onclick = () => { const ks = Object.keys(LOOKS), cur = ks.find(k => LOOKS[k] === lookK) || 'normal', nx = ks[(ks.indexOf(cur) + 1) % ks.length]; lookK = LOOKS[nx]; try { localStorage.setItem(KEY + '-look', nx); } catch (e) {} menu(); }; }); }
+        p.querySelector('#mD').onclick = () => { if (!dailyDone()) go(dsave || fresh('daily')); }; p.querySelector('#mL').onclick = () => { board(false); }; p.querySelector('#mP').onclick = () => go(freshDemo()); p.querySelector('#mK').onclick = () => { const ks = Object.keys(LOOKS), cur = ks.find(k => LOOKS[k] === lookK) || 'normal', nx = ks[(ks.indexOf(cur) + 1) % ks.length]; lookK = LOOKS[nx]; try { localStorage.setItem(KEY + '-look', nx); } catch (e) {} menu(); }; }); }
 
   /* ---------------- start / end ---------------- */
   function begin() { on = true; menuDone = false; const s = S(); s.arrive = null; if (!s.helmet) api.helmet(); buildHUD(); bindInput(); earth = makeEarth(); s._fov = R.cam.fov;
@@ -617,6 +635,7 @@ export function makeSurvival(R, api) {
   function start(st0) { st = st0; if (st.jet == null) st.jet = 100; const s = S(); clearWorld();
     if (st.t < 1) { const P = s.player.position; for (let i = 0; i < 36; i++) { sunDir(); if (inSun(P.x, P.y + 1.5, P.z) && inSun(P.x + 8, H(P.x + 8, P.z + 6) + 5, P.z + 6)) break; st.sunA = (st.sunA + TAU / 36) % TAU; } }   // a new mission starts in sunlight
     s.polar = { sd: sunDir() }; placeWorld(); flare = null; menuDone = true;
+    { const N = st.next; if (N.flare < st.t + 30) N.flare = st.t + 75; if (N.meteor < st.t + 30) N.meteor = st.t + 90; }   // coming back mid-flare must not count as sheltering; give a moment to get your bearings
     if (st.pos) { const [x, z] = st.pos; s.player.position.set(x, H(x, z), z); }
     if (st.t < 5) intro(); else { vo('welcome'); api.toast(`Welcome back, ${D.STORY.callsign}. Mission time ${Math.floor(st.t / 60)} min.`, 2600); } save(); }
   function clearWorld() { const scn = S().scn; caches.forEach(c => scn.remove(c.m)); built.forEach(B => scn.remove(B.m)); samples.forEach(x => scn.remove(x.g)); if (rover) scn.remove(rover.g); if (ship) scn.remove(ship); if (lamp) { scn.remove(lamp); scn.remove(lamp.target); }
