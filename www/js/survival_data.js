@@ -26,6 +26,11 @@ export const SITE = { id: 'southpole', n: 'Shackleton Rim · Lunar South Pole', 
     'NASA chose the south pole for Artemis because of the ice in these dark craters and the long sunlight on the ridges.'] };
 export const CRATER = { x: 0, z: -330, r: 230, depth: 62 };   // where the dark crater is (metres) — the ice is on its floor
 
+// ---- Earth in the sky ------------------------------------------------------------------------------
+// From the south pole Earth hangs almost still, just above the horizon (it wobbles a few degrees, "libration").
+// Your laser comms antenna only works where it can SEE Earth.
+export const EARTH = { azDeg: 20, elDeg: 4.5, dist: 3000 };
+
 // ---- The Sun and temperatures ----------------------------------------------------------------
 export const SUN = {
   elevationDeg: 4,            // how high the Sun stands (real: about −1.5° to +1.5° at the pole; higher here so you can see to play)

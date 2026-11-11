@@ -30,6 +30,9 @@ const AIR = { ship: [18000, 1], vac: [320, .6], mars: [1400, .4], earth: [18000,
 const BREEZE = { earth: .08, mars: .05, titan: .07, venus: .1, pluto: .01 };
 export const AUD = {
   start() { if (!A) A = build(); if (A) ramp(A.padG.gain, .05, A.ctx, 1.5); },
+  // a footstep in vacuum: no air carries it, you only feel the thud through the boot and the suit (low and dull)
+  step(k = 1) { if (!A) return; const c = A.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(70 + Math.random() * 20, t); o.frequency.exponentialRampToValueAtTime(38, t + .12);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.09 * k, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + .16); o.connect(g); g.connect(A.out); o.start(t); o.stop(t + .18); },
   // a short burst of radio static before Mission Control speaks (heard through the suit radio)
   radio() { if (!A) return; const c = A.ctx, b = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); b.buffer = A.nb || (A.nb = (() => { const n = c.createBuffer(1, c.sampleRate * .3, c.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return n; })());
     f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = .8; g.gain.setValueAtTime(.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(.05, c.currentTime + .01); g.gain.exponentialRampToValueAtTime(.0001, c.currentTime + .22); b.connect(f); f.connect(g); g.connect(A.out); b.start(); b.stop(c.currentTime + .25); },
