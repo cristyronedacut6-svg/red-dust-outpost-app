@@ -46,7 +46,8 @@ export const SUIT = {
   craterX: 5,            // ...and this much faster on the dark crater floor
   runO2X: 1.7,           // running uses this much more oxygen
   lampDrain: .3,         // extra battery drain while the helmet lamp is on
-  leakPerSec: .7,        // oxygen lost per second through a micrometeorite hole (% of a full suit)
+  leakPerSec: .4,        // oxygen lost per second through a micrometeorite hole (% of a full suit): a full suit empties in about 4 minutes
+  patchRegolith: 2,      // with no scrap metal, you can plug a hole with this much packed regolith (press P)
   fallSafe: 5,           // landing speed (m/s) you can take without getting hurt
   fallDamage: 12,        // health lost for each m/s above that
 };
@@ -84,12 +85,16 @@ export const BUILD = [
     desc: 'Talks to Earth by laser. Gives early warning of solar flares and sends your base report.', fact: 'NASA’s Lunar Laser Communication Demonstration sent data from the Moon to Earth at 622 megabits per second in 2013.' },
 ];
 export const ROVER = { cost: { scrap: 8, elec: 3 }, area: 'mobility', fact: 'Apollo 15, 16 and 17 used Lunar Roving Vehicles. Artemis astronauts will drive a new Lunar Terrain Vehicle.' };
-export const LANDER = { o2: 220, power: 80 };   // what is left in your crashed lander (% of a full suit)
+export const LANDER = { o2: 220, power: 80, kits: 3 };   // what is left in your crashed lander (% of a full suit); kits = suit repair kits used when you refill with a hole in your suit
 
 // ---- Dangers --------------------------------------------------------------------------------
 export const DANGER = {
-  flareFirstMin: 9, flareEveryMin: [8, 13], flareWarnSec: 45, flareWarnWithAntennaSec: 120, flareSec: 70,
-  meteorEveryMin: [4, 8], meteorChance: .45,
+  flareFirstMin: 9, flareEveryMin: [8, 13], flareWarnSec: 60, flareWarnWithAntennaSec: 120, flareSec: 70,
+  shieldFlareSec: 150,         // once your regolith shield stands, Mission Control spots a flare building: it arrives within this many seconds (no waiting around)
+  meteorFirstMin: 5, meteorEveryMin: [4, 8], meteorChance: .45,
+  calmSec: 90,                 // no micrometeorite this close to a solar flare: one crisis at a time
+  graceAfterDeathSec: 180,     // after a suit failure, nothing new goes wrong for this long
+  deathLoss: .33,              // share of what you carry that you drop when your suit fails
   backgroundDose: 1.37,        // mSv per Earth day on the lunar surface (Chang'e 4, 2020) — shown as a fact
 };
 
@@ -149,7 +154,7 @@ export const DAILY = [
   { id: 'flares', n: 'Flare storm', d: 'Solar flares come every 3–5 minutes.' },
   { id: 'leak', n: 'Damaged suit', d: 'You start with a leaking suit and 20% less oxygen.' },
   { id: 'shadow', n: 'Long shadows', d: 'The Sun is even lower: 2.5° above the horizon.' },
-  { id: 'scarce', n: 'Scarce supplies', d: 'Supply caches hold half as much.' },
+  { id: 'scarce', n: 'Scarce supplies', d: 'Supply caches hold a third less. Every bolt counts.' },
   { id: 'dusty', n: 'Dust day', d: 'Dust coats your solar panels three times faster.' },
 ];
 export const RESCUE = { etaSec: 150 };   // seconds after you send your report until the supply ship lands

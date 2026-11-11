@@ -28,13 +28,13 @@ export function makeSurvival(R, api) {
   function fresh(mode = 'normal') { const daily = mode === 'daily', tw = daily ? twistOf(today()) : null; return { v: 1, mode, day: daily ? today() : null, twist: tw ? tw.id : null,
     inv: { scrap: 0, elec: 0, regolith: 0, ice: 0 }, vit: { hp: 100, o2: tw && tw.id === 'leak' ? 80 : 100, pw: 100, tc: 22, dose: 0, leak: tw && tw.id === 'leak' ? 1 : 0, food: 90, water: 90 }, jet: 100,
     carry: [], done: [], rp: 0, upg: {}, rescue: null,
-    t: 0, sunA: 2.4, builds: [], loot: null, lander: { o2: D.LANDER.o2, pw: D.LANDER.power, meals: D.FOOD.start.meals, water: D.FOOD.start.water }, base: { pw: 0, o2: 0, iceQ: 0, water: 0, meals: 0, grow: 0 }, goal: 0,
+    t: 0, sunA: 2.4, builds: [], loot: null, lander: { o2: D.LANDER.o2, pw: D.LANDER.power, meals: D.FOOD.start.meals, water: D.FOOD.start.water, kits: D.LANDER.kits }, base: { pw: 0, o2: 0, iceQ: 0, water: 0, meals: 0, grow: 0 }, goal: 0,
     flags: { iceCut: 0 }, stats: { flares: 0, sheltered: 0, deaths: 0, o2made: 0, powered: 0, total: 0, inside: 0 },
-    next: { flare: D.DANGER.flareFirstMin * 60, meteor: rnd(...D.DANGER.meteorEveryMin) * 60 }, pos: null }; }
+    next: { flare: D.DANGER.flareFirstMin * 60, meteor: (D.DANGER.meteorFirstMin || 5) * 60 + rnd(0, 120) }, pos: null }; }
   const keyOf = mode => mode === 'daily' ? KEY + '-daily' : KEY;
   function load(mode = 'normal') { try { const s = JSON.parse(localStorage.getItem(keyOf(mode)) || 'null'); if (!s || s.v !== 1) return null; if (mode === 'daily' && (s.day !== today() || s.over)) return null;
     // older saves: fill in what newer versions added
-    const f = fresh(mode); for (const k of ['carry', 'done', 'rp', 'upg']) if (s[k] == null) s[k] = f[k]; s.vit.food ??= 90; s.vit.water ??= 90; s.lander.meals ??= f.lander.meals; s.lander.water ??= f.lander.water; for (const k of ['water', 'meals', 'grow']) s.base[k] ??= 0; s.mode ??= mode; return s; } catch (e) { return null; } }
+    const f = fresh(mode); for (const k of ['carry', 'done', 'rp', 'upg']) if (s[k] == null) s[k] = f[k]; s.vit.food ??= 90; s.vit.water ??= 90; s.lander.meals ??= f.lander.meals; s.lander.kits ??= f.lander.kits; s.lander.water ??= f.lander.water; for (const k of ['water', 'meals', 'grow']) s.base[k] ??= 0; s.mode ??= mode; return s; } catch (e) { return null; } }
   function save() { if (!st) return; try { const P = S().player.position; st.pos = [P.x, P.z]; localStorage.setItem(keyOf(st.mode), JSON.stringify(st)); } catch (e) {} }
   const U = id => !!(st && st.upg && st.upg[id]);
   const TW = id => !!(st && st.twist === id);
@@ -85,7 +85,7 @@ export function makeSurvival(R, api) {
     if (!st.loot) st.loot = []; caches = [];
     for (let i = 0; i < D.CACHES + 2; i++) { const big = i >= D.CACHES; let a = hash(i + 3) * TAU, d = big ? 210 + hash(i + 9) * 60 : 45 + hash(i + 5) * 330, x = Math.cos(a) * d, z = Math.sin(a) * d;
       if (inCrater(x, z) && !big) { x = -x; z = Math.abs(z); } if (big) { const ca = hash(i) * 1.2 - .6; x = D.CRATER.x + Math.sin(ca) * D.CRATER.r * 1.08; z = D.CRATER.z + Math.cos(ca) * D.CRATER.r * 1.08; }
-      if (st.loot[i] == null) { const L = big ? { scrap: 10, elec: 5 } : D.CACHE_LOOT[i % D.CACHE_LOOT.length]; st.loot[i] = TW('scarce') ? { scrap: Math.ceil(L.scrap / 2), elec: Math.ceil(L.elec / 2) } : { ...L }; }
+      if (st.loot[i] == null) { const L = big ? { scrap: 10, elec: 5 } : D.CACHE_LOOT[i % D.CACHE_LOOT.length]; st.loot[i] = TW('scarce') ? { scrap: Math.ceil(L.scrap * 2 / 3), elec: Math.ceil(L.elec * 2 / 3) } : { ...L }; }
       const m = cacheMesh(i, big); m.position.set(x, H(x, z), z); scn.add(m); caches.push({ i, x, z, m, big }); if (st.loot[i].scrap + st.loot[i].elec === 0) { m.userData.beacon.visible = false; m.userData.beam.visible = false; } }
     // science samples: a few special rocks, each in the kind of place it would really be found
     samples = []; const sm = new THREE.MeshStandardMaterial({ color: 0x8fb7c9, roughness: .4, metalness: .1, emissive: 0x0a2a36 });
@@ -196,10 +196,13 @@ export function makeSurvival(R, api) {
       <p style="font-size:13px;opacity:.8">Scored on the six areas of NASA's Moon Base Student Challenge (2026–27): power, habitat, life support, mobility, communications and astronaut safety. <i>Red Dust Outpost is not affiliated with NASA.</i></p>${rows}
       <p style="font-size:12px;opacity:.7">Survived ${Math.floor(st.t / 60)} min · ${st.stats.flares} solar flares · ${st.stats.deaths} suit failures · ${Math.round(st.stats.o2made)}% oxygen made from ice · dose ${st.vit.dose.toFixed(1)} mSv</p>
       <div class="row"><button id="rX">Back to the base</button></div>`, p => p.querySelector('#rX').onclick = () => close()); }
-  function die(cause) { const s = st.stats; s.deaths++; const lost = {}; for (const k in st.inv) { lost[k] = Math.floor(st.inv[k] / 2); st.inv[k] -= lost[k]; }
+  function die(cause) { const s = st.stats; s.deaths++; const lost = {}, dl = D.DANGER.deathLoss ?? .5; for (const k in st.inv) { lost[k] = Math.floor(st.inv[k] * dl); st.inv[k] -= lost[k]; } calm(D.DANGER.graceAfterDeathSec || 0);
     const hab = st.builds.find(b => b.id === 'hab'), P = S().player.position, sx = hab ? hab.x + 5 : -8, sz = hab ? hab.z + 5 : -4; P.set(sx, H(sx, sz), sz); S().vel.set(0, 0, 0);
-    Object.assign(st.vit, { hp: 60, o2: 70, pw: 70, tc: 20, leak: 0 }); vo('dead', { urgent: true });
-    show(`<h2>☠ Suit failure</h2><p>${cause}</p><p>You wake up ${hab ? 'in the habitat' : 'in your lander'}. You dropped half of what you carried.</p><div class="row"><button id="dX">Try again</button></div>`, p => p.querySelector('#dX').onclick = () => close()); }
+    Object.assign(st.vit, { hp: 70, o2: 85, pw: 85, tc: 20, leak: 0 }); vo('dead', { urgent: true });
+    show(`<h2>☠ Suit failure</h2><p>${cause}</p><p>You wake up ${hab ? 'in the habitat' : 'in your lander'}. You dropped ${Math.round(dl * 100)}% of what you carried${Object.values(lost).some(n => n) ? ': ' + Object.entries(lost).filter(([, n]) => n).map(([k, n]) => `${n} ${D.RES[k].icon}`).join(' ') : ''}. Nothing else will go wrong for a few minutes: catch your breath.</p><div class="row"><button id="dX">Try again</button></div>`, p => p.querySelector('#dX').onclick = () => close()); }
+
+  // one crisis at a time: push the next danger back so the player gets a calm window
+  function calm(sec) { const N = st.next; if (!sec) return; N.meteor = Math.max(N.meteor, st.t + sec); if (!flare && N.flare < st.t + sec) N.flare = st.t + sec + 30; }
 
   /* ---------------- interaction ---------------- */
   function forward() { const c = R.cam, f = new V3(); c.getWorldDirection(f); return f; }
@@ -226,7 +229,7 @@ export function makeSurvival(R, api) {
     else if (o.kind === 'ice' && o.dig) { st.inv.ice++; st.flags.iceCut++; vo('ice', { once: true }); }
     else if (o.kind === 'ice') { if (st.inv.ice > 0) { st.base.iceQ += st.inv.ice; st.inv.ice = 0; api.toast('🧊 Ice loaded. The processor makes oxygen while the base has power.', 2400); } }
     else if (o.kind === 'lander') { const L = st.lander; if (v.food < 70 && L.meals > 0) { L.meals--; v.food = Math.min(100, v.food + D.FOOD.meal); } if (v.water < 80 && L.water >= 10) { L.water -= 10; v.water = Math.min(100, v.water + D.FOOD.drink); }
-      const a = Math.min(100 - v.o2, st.lander.o2); v.o2 += a; st.lander.o2 -= a; const b = Math.min(100 - v.pw, st.lander.pw); v.pw += b; st.lander.pw -= b; if (D.JET.refillAtLander) st.jet = 100; if (v.leak && st.inv.scrap) { v.leak = 0; st.inv.scrap--; }
+      const a = Math.min(100 - v.o2, st.lander.o2); v.o2 += a; st.lander.o2 -= a; const b = Math.min(100 - v.pw, st.lander.pw); v.pw += b; st.lander.pw -= b; if (D.JET.refillAtLander) st.jet = 100; if (v.leak) { if (L.kits > 0) { L.kits--; v.leak = 0; api.toast(`🩹 Suit patched with a lander repair kit (${L.kits} left).`, 2200); } else if (st.inv.scrap) { v.leak = 0; st.inv.scrap--; } }
       api.toast(st.lander.o2 < 1 ? '⚠ The lander has no oxygen left. You need a habitat and ice.' : `Refilled. Lander reserve: O₂ ${Math.round(st.lander.o2)}%, power ${Math.round(st.lander.pw)}%, ${st.lander.meals} meals, water ${st.lander.water}`, 2600); }
     else if (o.kind === 'rover' && o.ok) { pay(D.ROVER.cost); st.flags.rover = 1; vo('rover', { once: true }); try { S().scn.remove(rover.g); } catch (e) {} const P = S().player.position; P.set(rover.st.x - 2, H(rover.st.x - 2, rover.st.z), rover.st.z); rover = null; api.toast('🚙 Rover repaired! Press <b>G</b> to drive, G again to park.', 3200); fact(D.ROVER.fact); }
     else if (o.kind === 'hab') enterHab(o.B);
@@ -250,7 +253,10 @@ export function makeSurvival(R, api) {
 
   /* ---------------- controls ---------------- */
   function toggleLamp() { st.lamp = !st.lamp; api.sfx('click'); }
-  function patch() { if (!st.vit.leak) return; if (st.inv.scrap < 1) return api.toast('You need 1 🔩 scrap to patch the suit (or go inside).', 2000); st.inv.scrap--; st.vit.leak = 0; vo('patched'); api.toast('🩹 Suit patched.', 1500); }
+  function patch() { if (!st.vit.leak) return; const rg = D.SUIT.patchRegolith || 2;
+    if (st.inv.scrap >= 1) { st.inv.scrap--; st.vit.leak = 0; vo('patched'); api.toast('🩹 Suit patched with scrap metal.', 1500); return; }
+    if (st.inv.regolith >= rg) { st.inv.regolith -= rg; st.vit.leak = 0; vo('patched'); api.toast(`🩹 Hole plugged with packed regolith (−${rg} 🪨). Not pretty, but it holds.`, 2200); return; }
+    api.toast(`No scrap! Look down and <b>hold E to dig ${rg} regolith</b>, then press <b>P</b> to plug the hole. Or get to the lander or habitat.`, 3500); }
   function key(e, down) { if (!on) return false; const k = e.key.toLowerCase();
     if (!down) { if (k === 'e') R.keys.e = 0; return false; }
     if (panel) { if (k === 'escape' || k === 'e' || k === 'enter') { close(); return true; } return true; }
@@ -334,7 +340,9 @@ export function makeSurvival(R, api) {
     if (!flare && st.t > N.flare - warn) { flare = { at: N.flare, on: false }; vo('flareWarn', { urgent: true }); }
     if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -D.DANGER.flareSec) { if (!flare.on) { flare.on = true; flare.hit = false; } if (!sheltered) flare.hit = true; alarm(`☢ SOLAR FLARE · ${Math.ceil(D.DANGER.flareSec + left)} s · ${sheltered ? 'you are sheltered ✓' : 'TAKE SHELTER!'}`); $('.tint').style.opacity = .8; }
       else { const fh = flare.hit; st.stats.flares++; if (!flare.hit) st.stats.sheltered++; flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin)) * 60; alarm(''); $('.tint').style.opacity = 0; api.toast('☢ The flare is over.', 2000); vo(fh ? 'flareHit' : 'flareSafe'); } }
-    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (Math.random() < D.DANGER.meteorChance && !inside && !driving) { v.leak = 1; hurt(1); setTimeout(() => hurt(0), 250); vo('leak', { urgent: true }); api.toast('💥 A micrometeorite punctured your suit! Oxygen is leaking. Press <b>P</b> to patch it (1 🔩) or get inside.', 4500); } }
+    if (D.GOALS[st.goal] && D.GOALS[st.goal].id === 'berm' && count('berm') && !flare && N.flare > st.t + (D.DANGER.shieldFlareSec || 150) + warn) { N.flare = st.t + (D.DANGER.shieldFlareSec || 150) + warn * .5; api.toast('📡 Mission Control: <b>a solar flare is building up</b> on the Sun. Your shield is about to get its first test.', 4500); }
+    if (st.t > N.meteor && (flare || Math.abs(N.flare - st.t) < (D.DANGER.calmSec || 0))) N.meteor = st.t + (D.DANGER.calmSec || 60);
+    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (Math.random() < D.DANGER.meteorChance && !inside && !driving) { v.leak = 1; hurt(1); setTimeout(() => hurt(0), 250); vo('leak', { urgent: true }); api.toast('💥 A micrometeorite punctured your suit! Oxygen is leaking. Press <b>P</b> to patch it (1 🔩 scrap, or 2 🪨 regolith) or refill at the lander or habitat.', 4500); } }
     // base: power grid, oxygen from ice
     tSec -= dt; if (tSec <= 0) { tSec = 1; let prod = 0, useP = 0, cap = 0;
       built.forEach(B => { const id = B.b.id; if (id === 'solar') { B.lit = inSun(B.b.x, H(B.b.x, B.b.z) + 5.5, B.b.z); B.b.dust = Math.min(100, (B.b.dust || 0) + D.DUST.perMin / 60 * (U('lotus') ? .4 : 1) * (TW('dusty') ? 3 : 1)); if (B.lit) prod += B.def.power * (1 - D.DUST.loss * B.b.dust / 100); if (B.m.userData.pm) B.m.userData.pm.color.setHex(0x1b2a55).lerp(new THREE.Color(0x6f6b66), B.b.dust / 100 * .85); } if (id === 'battery') cap += B.def.store; if (B.def.use && id !== 'ice') useP += B.def.use; if (id === 'hab') cap += 40; });
