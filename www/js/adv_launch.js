@@ -207,30 +207,63 @@ export function makeLaunch(ctx) {
     #aLaunch .tm b{display:block;font:300 clamp(15px,2.6vw,22px)/1.1 var(--disp,system-ui);letter-spacing:.04em}
     #aLaunch .tl{position:absolute;left:calc(18px + env(safe-area-inset-left));top:calc(16px + env(safe-area-inset-top));font:600 10px var(--disp,system-ui);letter-spacing:.3em;opacity:.8}
     #aLaunch .sk{pointer-events:auto;position:absolute;right:calc(14px + env(safe-area-inset-right));top:calc(12px + env(safe-area-inset-top));background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:7px 14px;font:600 12px var(--disp,system-ui);letter-spacing:.08em}
-    #aLaunch .fd{position:absolute;inset:0;background:#000;opacity:1;transition:opacity 1.2s}#aLaunch .fd.w{background:#fff}</style>
+    #aLaunch .fd{position:absolute;inset:0;background:#000;opacity:1;transition:opacity 1.2s}#aLaunch .fd.w{background:#fff}
+    #aLaunch .ac{position:absolute;left:50%;bottom:24%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:10px;pointer-events:auto;text-align:center}
+    #aLaunch .ac.on{display:flex;animation:laIn .35s ease-out}@keyframes laIn{from{opacity:0;transform:translate(-50%,14px)}}
+    #aLaunch .ac p{margin:0;font:600 clamp(12px,1.8vw,15px)/1.3 var(--disp,system-ui);letter-spacing:.18em;text-transform:uppercase;text-shadow:0 1px 8px #000}
+    #aLaunch .ac button{position:relative;overflow:hidden;min-width:min(78vw,300px);padding:16px 26px;border-radius:999px;border:2px solid #fff;background:rgba(232,93,4,.85);color:#fff;font:800 clamp(17px,2.6vw,22px) var(--disp,system-ui);letter-spacing:.14em;box-shadow:0 0 0 6px rgba(232,93,4,.25),0 10px 30px rgba(0,0,0,.5);animation:laP 1.1s infinite;touch-action:none;-webkit-user-select:none;user-select:none}
+    #aLaunch .ac button i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.35)}
+    #aLaunch .ac button.go{background:rgba(30,150,80,.9);box-shadow:0 0 0 6px rgba(30,150,80,.3),0 10px 30px rgba(0,0,0,.5)}
+    @keyframes laP{50%{box-shadow:0 0 0 14px rgba(232,93,4,0),0 10px 30px rgba(0,0,0,.5)}}
+    #aLaunch .ac small{font:500 11px var(--disp,system-ui);opacity:.75;letter-spacing:.1em}
+    #aLaunch .rt{position:absolute;left:50%;top:24%;transform:translateX(-50%);font:800 clamp(18px,3vw,26px) var(--disp,system-ui);letter-spacing:.12em;color:#7dffb0;text-shadow:0 0 18px rgba(80,255,160,.5),0 2px 6px #000;opacity:0;transition:opacity .3s}</style>
     <div class="fd"></div><div class="tl">KENNEDY SPACE CENTER · LAUNCH COMPLEX 39B</div><div class="cd"></div><div class="ev"></div>
-    <div class="tm"><div>MISSION TIME<b id="lT">T−00:10</b></div><div>ALTITUDE<b id="lA">0.0 km</b></div><div>SPEED<b id="lV">0 km/h</b></div></div><button class="sk">Skip launch</button>`;
+    <div class="tm"><div>MISSION TIME<b id="lT">T−00:10</b></div><div>ALTITUDE<b id="lA">0.0 km</b></div><div>SPEED<b id="lV">0 km/h</b></div></div><button class="sk">Skip launch</button><div class="ac"><p></p><button><i></i><span></span></button><small></small></div><div class="rt"></div>`;
   root.appendChild(ov); const $ = q => ov.querySelector(q); setTimeout(() => { $('.fd').style.opacity = 0; }, 60);
   $('.sk').onclick = () => finish(true);
   const TX = {}, tx = (q, v) => { if (TX[q] !== v) { TX[q] = v; $(q).textContent = v; } };   /* touch the DOM only when the text changes */
   const ev = (txt, ms = 2600) => { const e = $('.ev'); e.textContent = txt; e.style.opacity = 1; clearTimeout(e._t); e._t = setTimeout(() => e.style.opacity = 0, ms); };
   const fired = new Set(), once = (k, f) => { if (!fired.has(k)) { fired.add(k); f(); } };
+  // ---- you fly it: the flight director asks for GO, you hold to light the engines, you call each staging in slow motion
+  const G = { cur: null, hold: false, prog: 0, score: 0, n: 0 }, ac = $('.ac'), acB = ac.querySelector('button');
+  const GATES = [
+    { id: 'go', at: 3.3, stop: true, p: 'Flight director: all stations are GO', b: 'GO FOR LAUNCH', sm: 'tap · or press Space', go: 1 },
+    { id: 'ign', at: 6.5, stop: true, hold: 1.1, p: 'Main engines ready', b: 'HOLD TO IGNITE', sm: 'hold · or hold Space' },
+    { id: 'srb', at: 26.2, slow: .22, win: [26.7, 27.6], auto: 28.4, p: 'Boosters are burning out', b: 'SEPARATE BOOSTERS', sm: 'tap when the boosters burn out' },
+    { id: 'core', at: 31.2, slow: .22, win: [31.7, 32.6], auto: 33.4, p: 'Core stage fuel almost gone', b: 'CUT OFF · SEPARATE', sm: 'tap at main engine cutoff' }];
+  function gateOpen(g) { G.cur = g; G.prog = 0; G.hold = false; ac.querySelector('p').textContent = g.p; acB.querySelector('span').textContent = g.b; ac.querySelector('small').textContent = g.sm; acB.classList.toggle('go', !!g.go); acB.querySelector('i').style.width = '0'; ac.classList.add('on'); ctx.sfx && ctx.sfx('up'); }
+  function rate(txt) { const r = $('.rt'); r.textContent = txt; r.style.opacity = 1; clearTimeout(r._t); r._t = setTimeout(() => r.style.opacity = 0, 1600); }
+  function gateDone(manual) { const g = G.cur; if (!g) return; G.cur = null; ac.classList.remove('on');
+    if (g.win) { G.n++; if (manual && L.t >= g.win[0] && L.t <= g.win[1]) { G.score++; rate('PERFECT TIMING'); } else if (manual) rate(L.t < g.win[0] ? 'A LITTLE EARLY' : 'A LITTLE LATE'); else rate('AUTO-SEQUENCER TOOK OVER');
+      if (g.id === 'srb') S.srbAt = L.t; else S.coreAt = L.t; }
+    if (g.id === 'go') ctx.say && ctx.say('We are GO for launch.', 1); }
+  const press = d => { if (!G.cur) return; if (G.cur.hold) G.hold = d; else if (d) gateDone(true); };
+  acB.addEventListener('pointerdown', e => { e.preventDefault(); press(true); }); addEventListener('pointerup', () => press(false)); acB.addEventListener('pointerleave', () => { if (G.cur && G.cur.hold) G.hold = false; });
+  const kd = e => { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) { e.preventDefault(); press(true); } }, ku = e => { if (e.code === 'Space' || e.code === 'Enter') press(false); };
+  addEventListener('keydown', kd, true); addEventListener('keyup', ku, true);
+  function gateTime(dt) { const t = L.t; if (!G.cur) { const g = GATES.find(x => !fired.has('g_' + x.id) && t >= x.at); if (g) { fired.add('g_' + g.id); gateOpen(g); } }
+    const g = G.cur; if (!g) return dt;
+    if (g.hold) { G.prog = Math.max(0, G.prog + (G.hold ? dt : -dt * 2)); acB.querySelector('i').style.width = Math.min(100, G.prog / g.hold * 100) + '%'; if (ctx.audio) ctx.audio({ eng: Math.min(.5, G.prog / g.hold * .5), dt }); if (G.prog >= g.hold) gateDone(true); return 0; }
+    if (g.stop) return 0;
+    if (g.win) { const now = t >= g.win[0] && t <= g.win[1]; if (acB._now !== now) { acB._now = now; acB.classList.toggle('go', now); acB.querySelector('span').textContent = now ? 'NOW!' : g.b; if (now) ctx.sfx && ctx.sfx('up'); } }
+    if (g.auto && t >= g.auto) gateDone(false);
+    return dt * (g.slow || 1); }
   // ---- motion state
   const S = { y: 0, x: 0, vy: 0, tilt: 0, vel: new THREE.Vector3(), lift: 9.8, srb: null, core: null };
   const sep = [];   // separated parts: { g, v, w }
   function detach(g, v, w) { if (!g) return; scn.attach(g); sep.push({ g, v, w }); }
   let prevPos = new THREE.Vector3(); const HV = new THREE.Vector3();
-  function step(dt) { if (L.done) return; L.t += dt; const t = L.t, T = missionT(t), lt = t - S.lift;
+  function step(dt) { if (L.done) return; dt = gateTime(dt); L.t += dt; const t = L.t, T = missionT(t), lt = t - S.lift;
     // countdown digits, callouts
     const cd = $('.cd'); if (t < S.lift) { const n = Math.ceil(-T); tx('.cd', n > 0 ? String(n) : ''); cd.style.opacity = n > 0 && n <= 10 ? 1 : 0; } else cd.style.opacity = 0;
     if (t > .4) once('c10', () => ctx.say('T minus ten.', 1)); if (t > 3.5) once('go', () => ev('Go for launch')); if (t > 6.6) once('mes', () => { ev('Main engine start'); ctx.say('Main engine start.', 1); ctx.sfx('burst'); });
     if (t > S.lift) once('lo', () => { ev('Lift-off', 3200); ctx.say('Booster ignition, and lift-off!', 1); ctx.sfx('liftoff'); }); if (t > 21.5) once('mq', () => { ev('Max-Q · maximum aerodynamic pressure'); ctx.say('Through max Q.', 1); });
-    if (t > 27) once('srb', () => { ev('Booster separation'); ctx.say('Booster separation confirmed.', 1); ctx.sfx('burst'); S.srb = t; ['srb_l', 'srb_r'].forEach((n, i) => { detach(P[n], new THREE.Vector3((i ? -1 : 1) * 9, -6, 0), new THREE.Vector3(0, 0, (i ? 1 : -1) * .5)); }); srbF.forEach(p => p.visible = false); });
-    if (t > 32) once('meco', () => { ev('Main engine cutoff · core stage separation'); ctx.say('Main engine cutoff. Core stage separation.', 1); S.core = t; rs25.forEach(p => p.visible = false); detach(P.core, new THREE.Vector3(0, -14, 0), new THREE.Vector3(.12, 0, .05)); });
+    if (S.srbAt != null && t >= S.srbAt) once('srb', () => { ev('Booster separation'); ctx.say('Booster separation confirmed.', 1); ctx.sfx('burst'); S.srb = t; ['srb_l', 'srb_r'].forEach((n, i) => { detach(P[n], new THREE.Vector3((i ? -1 : 1) * 9, -6, 0), new THREE.Vector3(0, 0, (i ? 1 : -1) * .5)); }); srbF.forEach(p => p.visible = false); });
+    if (S.coreAt != null && t >= S.coreAt) once('meco', () => { ev('Main engine cutoff · core stage separation'); ctx.say('Main engine cutoff. Core stage separation.', 1); S.core = t; rs25.forEach(p => p.visible = false); detach(P.core, new THREE.Vector3(0, -14, 0), new THREE.Vector3(.12, 0, .05)); });
     if (t > 33.4) once('rl10', () => { ev('Upper stage ignition'); ctx.say('Upper stage ignition.', 1); });
     if (t > 34.6) once('fair', () => { ev('Service module fairing separation'); for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3 + Math.PI / 3, g = P['fair' + i]; detach(g, new THREE.Vector3(Math.cos(a) * 7, 4, -Math.sin(a) * 7).applyQuaternion(rkt.quaternion), new THREE.Vector3(Math.sin(a) * .9, 0, Math.cos(a) * .9)); } });
     if (t > 35.3) once('las', () => { ev('Launch abort system jettison'); ctx.say('Launch abort system jettisoned.', 1); S.las = t; detach(P.las, new THREE.Vector3(0, 46, 0).applyQuaternion(rkt.quaternion), new THREE.Vector3(.02, 0, .03)); });
-    if (t > 38) once('orbit', () => { ev('Orbit', 3000); ctx.say('Welcome to orbit.', 1); });
+    if (t > 38) once('orbit', () => { ev('Orbit', 3000); rate(G.score === 2 ? '★★★ FLAWLESS ASCENT' : G.score === 1 ? '★★ GOOD ASCENT' : '★ ORBIT REACHED'); try { localStorage.setItem('adv_launch_best', Math.max(+localStorage.getItem('adv_launch_best') || 0, G.score + 1)); } catch (e) {} ctx.say('Welcome to orbit.', 1); });
     // flight: slow and heavy at first, then faster and faster; pitch over toward the Atlantic
     if (t >= S.lift) { const a = 2.4 + lt * .55 + Math.max(0, lt - 6) * 2.2 + Math.max(0, lt - 12) * 7; S.vy += a * dt; S.tilt = clamp((lt - 4) * .055, 0, 1.25); S.y += S.vy * Math.cos(S.tilt) * dt; S.x += S.vy * Math.sin(S.tilt) * dt; }
     rkt.position.set(S.x, 12.5 + S.y, 0); rkt.rotation.set(0, 0, -S.tilt * .9); rkt.position.y += t > S.lift - 3 && t < S.lift + 2 ? (Math.random() - .5) * .08 : 0;
@@ -283,7 +316,7 @@ export function makeLaunch(ctx) {
     else if (t < 31.5) { const q = rkt.localToWorld(new THREE.Vector3(10, 66, 14)); shot(q, rkt.localToWorld(new THREE.Vector3(0, -40, 0)), 58, dt, 1); }
     else { const p = rkt.localToWorld(new THREE.Vector3(0, 75, 0)); shot(p.clone().add(new THREE.Vector3(-30, 10, 45)), p.clone().add(new THREE.Vector3(70, -10, -15)), 52, dt, 1); }   /* along the flight path: the stage, the blue limb, black space */
     sky.position.copy(cam.position); stars.position.copy(cam.position); }
-  function finish(skipped) { if (L.done) return; L.done = true; const fd = $('.fd'); fd.classList.add('w'); fd.style.transition = 'opacity .7s'; fd.style.opacity = 1;
+  function finish(skipped) { if (L.done) return; L.done = true; removeEventListener('keydown', kd, true); removeEventListener('keyup', ku, true); const fd = $('.fd'); fd.classList.add('w'); fd.style.transition = 'opacity .7s'; fd.style.opacity = 1;
     setTimeout(() => { ov.remove(); dispose(); ctx.onDone && ctx.onDone(skipped); }, skipped ? 80 : 750); }
   function dispose() { smoke.dispose(); fire.dispose(); scn.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   return { scn, step, finish, get t() { return L.t; }, get heat() { return L.heat; } };
