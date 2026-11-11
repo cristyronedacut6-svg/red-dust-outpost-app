@@ -216,6 +216,7 @@ export function makeLaunch(ctx) {
     #aLaunch .ac button.go{background:rgba(30,150,80,.9);box-shadow:0 0 0 6px rgba(30,150,80,.3),0 10px 30px rgba(0,0,0,.5)}
     @keyframes laP{50%{box-shadow:0 0 0 14px rgba(232,93,4,0),0 10px 30px rgba(0,0,0,.5)}}
     #aLaunch .ac small{font:500 11px var(--disp,system-ui);opacity:.75;letter-spacing:.1em}
+    @media (max-height:520px){#aLaunch .ac{bottom:22%;gap:6px}#aLaunch .ac p{font-size:11px;letter-spacing:.12em;max-width:80vw}#aLaunch .ac button{padding:12px 20px}#aLaunch .ac small{display:none}#aLaunch .tm{bottom:6px}}
     #aLaunch .rt{position:absolute;left:50%;top:24%;transform:translateX(-50%);font:800 clamp(18px,3vw,26px) var(--disp,system-ui);letter-spacing:.12em;color:#7dffb0;text-shadow:0 0 18px rgba(80,255,160,.5),0 2px 6px #000;opacity:0;transition:opacity .3s}</style>
     <div class="fd"></div><div class="tl">KENNEDY SPACE CENTER · LAUNCH COMPLEX 39B</div><div class="cd"></div><div class="ev"></div>
     <div class="tm"><div>MISSION TIME<b id="lT">T−00:10</b></div><div>ALTITUDE<b id="lA">0.0 km</b></div><div>SPEED<b id="lV">0 km/h</b></div></div><button class="sk">Skip launch</button><div class="ac"><p></p><button><i></i><span></span></button><small></small></div><div class="rt"></div>`;
@@ -255,7 +256,7 @@ export function makeLaunch(ctx) {
   let prevPos = new THREE.Vector3(); const HV = new THREE.Vector3();
   function step(dt) { if (L.done) return; dt = gateTime(dt); L.t += dt; const t = L.t, T = missionT(t), lt = t - S.lift;
     // countdown digits, callouts
-    const cd = $('.cd'); if (t < S.lift) { const n = Math.ceil(-T); tx('.cd', n > 0 ? String(n) : ''); cd.style.opacity = n > 0 && n <= 10 ? 1 : 0; } else cd.style.opacity = 0;
+    const cd = $('.cd'); if (t < S.lift) { const n = Math.ceil(-T); tx('.cd', n > 0 ? String(n) : ''); cd.style.opacity = n > 0 && n <= 10 && !G.cur ? 1 : 0; } else cd.style.opacity = 0;
     if (t > .4) once('c10', () => ctx.say('T minus ten.', 1)); if (t > 3.5) once('go', () => ev('Go for launch')); if (t > 6.6) once('mes', () => { ev('Main engine start'); ctx.say('Main engine start.', 1); ctx.sfx('burst'); });
     if (t > S.lift) once('lo', () => { ev('Lift-off', 3200); ctx.say('Booster ignition, and lift-off!', 1); ctx.sfx('liftoff'); }); if (t > 21.5) once('mq', () => { ev('Max-Q · maximum aerodynamic pressure'); ctx.say('Through max Q.', 1); });
     if (S.srbAt != null && t >= S.srbAt) once('srb', () => { ev('Booster separation'); ctx.say('Booster separation confirmed.', 1); ctx.sfx('burst'); S.srb = t; ['srb_l', 'srb_r'].forEach((n, i) => { detach(P[n], new THREE.Vector3((i ? -1 : 1) * 9, -6, 0), new THREE.Vector3(0, 0, (i ? 1 : -1) * .5)); }); srbF.forEach(p => p.visible = false); });

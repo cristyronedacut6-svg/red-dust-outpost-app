@@ -108,6 +108,7 @@ export function makeVoice(api, SET = VO) {
   const base = 'audio/vo/';
   function box() { if (el && el.isConnected) return el; el = document.createElement('div'); el.className = 'svvo';
     el.style.cssText = 'position:absolute;left:50%;bottom:118px;transform:translateX(-50%);max-width:min(640px,90vw);background:rgba(8,14,22,.86);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 14px;font:15px/1.35 system-ui;color:#e8f1f5;display:none;pointer-events:none;z-index:6;text-align:left';
+    if (innerHeight < 520) el.style.cssText += ';bottom:10px;max-width:46vw;font-size:12px;padding:5px 10px';   // phones in landscape: low and small, clear of the controls
     const host = api.host && api.host(); (host || document.body).appendChild(el); return el; }
   function sub(line) { const b = box(); if (!line) { b.style.display = 'none'; return; } const c = CAST[line.who]; b.innerHTML = `<b style="color:${c.col}">${c.n}</b> <small style="opacity:.6">${c.role}</small><br>${line.text}`; b.style.display = 'block'; }
   function tts(line, done) { const ss = window.speechSynthesis; if (!ss || !api.voiceOn()) return setTimeout(done, 900 + line.text.length * 55);
