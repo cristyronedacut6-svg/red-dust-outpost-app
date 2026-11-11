@@ -187,7 +187,16 @@ function painter(o) { const lo = new THREE.Color(o.lo), mid = new THREE.Color(o.
 Object.assign(SURF, {
   moon: { tile: 9, pits: 260, clasts: 300, bump: .9, rough: .98, rock: 'angular', rockN: 1.2, dust: .25, far: [70, 1400],
     C: { dust: '#77736d', rock: ['#5a5753', '#6e6a65', '#47443f', '#83807a'], dustTop: '#8a8680' },
-    make: (seed, o = {}) => ({ paint: painter({ lo: '#55524e', mid: '#77736d', hi: '#97938c', rockZ: '#8a867f', slope: [.12, .34], patch: .4, ejecta: '#b4b0a8', slopeDark: .1 }) }) },
+    make: (seed, o = {}) => { const paint = painter({ lo: '#55524e', mid: '#77736d', hi: '#97938c', rockZ: '#8a867f', slope: [.12, .34], patch: .4, ejecta: '#b4b0a8', slopeDark: .1 });
+      if (!(o.site && o.site.polar)) return { paint };
+      // Lunar south pole (Moon Survival): the rim of a Shackleton-like crater. A steep-walled bowl (walls ~30 degrees, as LOLA measured) whose
+      // floor never sees the Sun, a raised rim, and the ridge the base stands on. Squeezed to fit: the real crater is 21 km wide and 4 km deep.
+      const C = { x: 0, z: -330, r: 230, d: 62 };
+      return { paint, shape: (x, z, h) => { const r = Math.hypot(x - C.x, z - C.z) / (C.r * (1 + (fbm(x * .004, z * .004 + 3, 3) - .5) * .12)); let k = 0;
+        if (r < 1) k = -C.d * ss(1, .62, r) - 4 * ss(.62, 0, r); else if (r < 1.7) k = 6 * Math.pow(1 - (r - 1) / .7, 1.6) * ss(.97, 1.04, r);
+        // the base stands on a summit of the rim ridge ("peak of eternal light"): the ground falls away on every side, so the low Sun reaches it most of the time
+        const r0 = Math.hypot(x, z);
+        return h * .3 + k - .00009 * r0 * r0; } }; } },
   // MERCURY: darker and browner than the Moon (low-reflectance material), bright bluish "hollows" (MESSENGER), and a lobate thrust scarp
   mercury: { tile: 9, pits: 300, clasts: 260, bump: .9, rough: .97, rock: 'angular', rockN: 1.1, dust: .2, far: [110, 1500],
     C: { dust: '#5e5954', rock: ['#4a4642', '#57524d', '#3c3936', '#6a655f'], dustTop: '#6a655f' },

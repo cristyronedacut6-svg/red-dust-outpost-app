@@ -4,7 +4,7 @@ name: Test build (no publishing)
 
 on:
   push:
-    branches: ['release-*']
+    branches: ['release-*', 'moon-survival']
   workflow_dispatch:
 
 permissions:

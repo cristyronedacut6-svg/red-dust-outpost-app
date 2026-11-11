@@ -65,6 +65,7 @@
     const prim = document.createElement('div'); prim.className = 'u-prim';
     play.classList.add('u-play'); play.insertAdjacentHTML('afterbegin', `<small class="u-k">${has ? 'Continue mission' : 'Story mode'}</small>`); prim.appendChild(play);
     if (adv) { adv.classList.add('u-adv'); adv.insertAdjacentHTML('afterbegin', `<small class="u-k">Adventure mode</small>`); prim.appendChild(adv); }
+    { const sv = $q('#survB'); if (sv) { sv.classList.add('u-adv', 'u-sv'); sv.insertAdjacentHTML('afterbegin', `<small class="u-k">Survival mode · new</small>`); prim.appendChild(sv); } }
     const story = document.createElement('section'); story.className = 'u-story'; story.setAttribute('aria-label', 'Story mode setup');
     story.innerHTML = `<div class="u-sh">${ic('globe', 14)} Choose a world</div>`; if (wds) story.appendChild(wds);
     story.insertAdjacentHTML('beforeend', pcard(TW));
@@ -243,6 +244,7 @@ body:not(.hc) .u-prim .big.u-adv:hover{border-color:var(--u-or);background:#2131
 .u-prim .big small{font:600 12px var(--u-f);opacity:.75;margin-top:2px;display:block}
 .u-prim .big small.u-k,.u-obj .u-k{font:700 10.5px var(--u-f)!important;letter-spacing:.16em;text-transform:uppercase;opacity:.8;margin:0 0 3px!important}
 .u-prim .u-adv small.u-k{color:var(--u-or);opacity:1}
+.u-prim .u-sv{grid-column:1/-1}.u-prim .u-sv small.u-k{color:var(--u-cy)}body:not(.hc) .u-prim .big.u-sv{border-color:rgba(85,214,232,.55)}body:not(.hc) .u-prim .big.u-sv:hover{border-color:var(--u-cy)}
 .u-story{background:rgba(25,38,48,.78);border:1px solid var(--u-ln);border-radius:14px;padding:12px}
 .u-sh{font:700 11px var(--u-f);letter-spacing:.16em;text-transform:uppercase;color:var(--u-tx2);display:flex;gap:6px;align-items:center}
 body:not(.hc) .u-story .worlds2{margin:8px 0 10px;gap:8px}

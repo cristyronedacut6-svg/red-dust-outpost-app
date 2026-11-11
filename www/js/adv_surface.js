@@ -68,7 +68,7 @@ export function makeSurface(ctx) {
   let H = () => 0;
   function terrain(id, W, site) {
     const size = id === 'earth' ? 1600 : 1400, seg = ctx.pre ? ctx.pre().seg : 300, geo = new THREE.PlaneGeometry(size, size, seg, seg); geo.rotateX(-Math.PI / 2);
-    const seed = id.length * 13.7 + id.charCodeAt(0), craters = [], R = SURF[id] || null, DEMS = !!(site && site.hm), RM = R ? R.make(seed, { dem: DEMS }) : null; S.RM = RM; S.R = R;
+    const seed = id.length * 13.7 + id.charCodeAt(0), craters = [], R = SURF[id] || null, DEMS = !!(site && site.hm), RM = R ? R.make(seed, { dem: DEMS, site }) : null; S.RM = RM; S.R = R;
     const nc = Math.round(60 * (W.cr || 0)); for (let i = 0; i < nc; i++) { const a = hash(i, seed) * 6.283, d = 60 + hash(seed, i) * 620; craters.push([Math.cos(a) * d, Math.sin(a) * d, 8 + Math.pow(hash(i * 3, seed), 3) * 90, hash(i * 7, seed + 1) < .22]); }
     if (site && site.hm) { const N = site.N, hm = site.hm, sc = site.relief * size * 1.3, half = size / 2;
       H = (x, z) => { const u = THREE.MathUtils.clamp((x + half) / size * (N - 1), 0, N - 1.001), v = THREE.MathUtils.clamp((z + half) / size * (N - 1), 0, N - 1.001), i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j;
@@ -365,9 +365,9 @@ export function makeSurface(ctx) {
   // day/night cycle on worlds with air: a full day every 4 minutes; light, sky, fog, stars and ocean all follow the Sun
   function shine(day) { const W = WORLD[S.body.id], sp = W.inSky && SHINE[W.inSky]; if (!sp) return; if (!S.psl) { const l = new THREE.DirectionalLight(sp[0], 0); l.position.set(900, 1100, -2600); S.scn.add(l); S.scn.add(l.target); S.psl = l; }
     S.psl.target.position.copy(S.player.position); S.psl.position.copy(S.player.position).add(new THREE.Vector3(900, 1100, -2600).normalize().multiplyScalar(400)); S.psl.intensity = sp[1] * (1 - day * .85); }   // Earthshine / Jupitershine on the night side
-  function airlessCycle(dt) { const W = WORLD[S.body.id]; S.tod = (S.tod + dt / ((DAYH[S.body.id] || 24) * 10)) % 1; const a = S.tod * Math.PI * 2, e = Math.sin(a) * .9, sd = new THREE.Vector3(-Math.cos(a) * .82, e, -.42).normalize(), day = THREE.MathUtils.smoothstep(e, -.03, .08);
+  function airlessCycle(dt) { const W = WORLD[S.body.id]; S.tod = (S.tod + dt / ((DAYH[S.body.id] || 24) * 10)) % 1; const a = S.tod * Math.PI * 2, e = Math.sin(a) * .9, sd = S.polar ? S.polar.sd.clone() : new THREE.Vector3(-Math.cos(a) * .82, e, -.42).normalize(), day = S.polar ? 1 : THREE.MathUtils.smoothstep(e, -.03, .08);
     if (S.sunSpr) { S.sunSpr.position.copy(sd).multiplyScalar(2530); if (S.sunCore) S.sunCore.position.copy(S.sunSpr.position); } TU.tsd.value.copy(sd); TU.day.value = day;
-    const dl = S.dl, pl = S.player ? S.player.position : new THREE.Vector3(); dl.intensity = 2.6 * day; dl.position.copy(pl).addScaledVector(sd, 420); dl.target.position.copy(pl); S.hemi.intensity = .03 + .35 * day; S.scn.environmentIntensity = .5 * (.05 + .95 * day); shine(day); }
+    const dl = S.dl, pl = S.player ? S.player.position : new THREE.Vector3(); dl.intensity = (S.polar ? 7 : 2.6) * day; dl.position.copy(pl).addScaledVector(sd, 420); /* polar: the eye adapts to the grazing light */ dl.target.position.copy(pl); S.hemi.intensity = S.polar ? .035 : .03 + .35 * day; S.scn.environmentIntensity = S.polar ? .06 : .5 * (.05 + .95 * day); shine(day); }   // polar: shadows are nearly black
   function dayCycle(dt) { const U = S.skyU; if (!U) return airlessCycle(dt); const W = WORLD[S.body.id]; S.tod = (S.tod + dt / ((DAYH[S.body.id] || 24) * 10)) % 1; const a = S.tod * Math.PI * 2, e = Math.sin(a) * .9;
     U.e.value = e; U.sd.value.set(-Math.cos(a) * .82, e, -.42).normalize(); const day = THREE.MathUtils.smoothstep(e, -.06, .22), low = 1 - THREE.MathUtils.smoothstep(e, .02, .4);
     const P = S.skyP, fogC = P[3].clone().multiplyScalar(1.6).lerp(P[1], day).lerp(P[2], low * day * .55); if (S.scn.fog) S.scn.fog.color.copy(fogC); S.scn.background.copy(fogC);
