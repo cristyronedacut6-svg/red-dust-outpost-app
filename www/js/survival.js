@@ -31,7 +31,9 @@ export function makeSurvival(R, api) {
     t: 0, sunA: 2.4, builds: [], loot: null, lander: { o2: D.LANDER.o2, pw: D.LANDER.power, meals: D.FOOD.start.meals, water: D.FOOD.start.water, kits: D.LANDER.kits }, base: { pw: 0, o2: 0, iceQ: 0, water: 0, meals: 0, grow: 0 }, goal: 0,
     flags: { iceCut: 0 }, stats: { flares: 0, sheltered: 0, deaths: 0, o2made: 0, powered: 0, total: 0, inside: 0 },
     next: { flare: D.DANGER.flareFirstMin * 60 * (((D.DIFF || {})[diff] || {}).flare || 1), meteor: (D.DANGER.meteorFirstMin || 5) * 60 + rnd(0, 120) }, pos: null }; }
-  const keyOf = mode => mode === 'daily' ? KEY + '-daily' : KEY;
+  // pitch demo: a guided 3-minute run for presenting the game. Starts with materials, can't fail, scripted beats.
+  function freshDemo() { const f = fresh('demo', 'easy'); Object.assign(f.inv, { scrap: 22, elec: 9, regolith: 0 }); f.next.meteor = 1e9; f.next.flare = 1e9; f.dm = 0; f.dmT = 0; return f; }
+  const keyOf = mode => mode === 'daily' ? KEY + '-daily' : mode === 'demo' ? KEY + '-demo' : KEY;
   function load(mode = 'normal') { try { const s = JSON.parse(localStorage.getItem(keyOf(mode)) || 'null'); if (!s || s.v !== 1) return null; if (mode === 'daily' && (s.day !== today() || s.over)) return null;
     // older saves: fill in what newer versions added
     const f = fresh(mode); for (const k of ['carry', 'done', 'rp', 'upg']) if (s[k] == null) s[k] = f[k]; s.vit.food ??= 90; s.vit.water ??= 90; s.lander.meals ??= f.lander.meals; s.lander.kits ??= f.lander.kits; s.lander.water ??= f.lander.water; for (const k of ['water', 'meals', 'grow']) s.base[k] ??= 0; s.mode ??= mode; return s; } catch (e) { return null; } }
@@ -39,6 +41,7 @@ export function makeSurvival(R, api) {
   const U = id => !!(st && st.upg && st.upg[id]);
   const DF = k => ((D.DIFF && D.DIFF[(st && st.diff) || 'normal']) || {})[k] ?? 1;
   const TW = id => !!(st && st.twist === id);
+  const flareLen = () => st && st.mode === 'demo' ? 35 : D.DANGER.flareSec;
   const elev = () => TW('shadow') ? 2.5 : D.SUN.elevationDeg;
   const o2Min = () => D.SUIT.o2Min * DF('o2') * (U('tank') ? 1.3 : 1) * (TW('leak') ? .8 : 1), pwMin = () => D.SUIT.powerMin * DF('pw') * (U('cell') ? 1.3 : 1), fuelSec = () => D.JET.fuelSec * (U('thrust') ? 1.5 : 1), gk = () => U('tools') ? .7 : 1;
   // time points: full rate outside, a quarter while safe inside, nothing for time skipped in the bunk (no farming by resting)
@@ -202,9 +205,9 @@ export function makeSurvival(R, api) {
       : [['WASD', 'walk · Shift run'], ['Mouse', 'look (click to lock)'], ['E (hold)', 'gather, open, repair'], ['B', 'build menu'], ['Space (hold)', 'jump, then jetpack'], ['F', 'helmet lamp'], ['P', 'patch a suit leak'], ['Z', 'visor zoom'], ['Tab', 'base report']];
     show(`<h2>🌑 ${D.SITE.n}</h2><p><b>${D.STORY.callsign}</b>, ${D.STORY.intro[0]}</p>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;margin:8px 0;padding:10px;background:#0a1219;border-radius:8px"><b style="grid-column:1/-1;color:#55D6E8">Your first moves</b>
-      <span>1.</span><span>Follow the <b style="color:#55D6E8">blue marker</b> to a supply cache and hold ${touch ? 'USE' : 'E'}.</span><span>2.</span><span>Build a solar tower in the sunlight, then your habitat.</span><span>3.</span><span>Watch the bars on the right: oxygen, power, food, water.</span></div>
+      ${st.mode === 'demo' ? `<span>1.</span><span>Press ${touch ? 'BUILD' : '<b>B</b>'} and put a solar tower where the ghost turns green.</span><span>2.</span><span>Build the habitat, then walk in through the airlock.</span><span>3.</span><span>Follow the <b style="color:#55D6E8">blue marker</b>: the big moments come on cue.</span>` : `<span>1.</span><span>Follow the <b style="color:#55D6E8">blue marker</b> to a supply cache and hold ${touch ? 'USE' : 'E'}.</span><span>2.</span><span>Build a solar tower in the sunlight, then your habitat.</span><span>3.</span><span>Watch the bars on the right: oxygen, power, food, water.</span>`}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:3px 12px;font-size:12px;opacity:.85">${keys.map(([k, d]) => `<span><b style="color:#F4A259">${k}</b> ${d}</span>`).join('')}</div>
-    ${tw ? `<p><b>📅 Daily challenge · ${tw.n}:</b> ${tw.d} One life only.</p>` : st.diff && st.diff !== 'normal' ? `<p>${D.DIFF[st.diff].icon} <b>${D.DIFF[st.diff].n}</b>: ${D.DIFF[st.diff].d}</p>` : ''}
+    ${st.mode === 'demo' ? '<p><b>🎤 Pitch demo:</b> you start with materials, nothing can kill you, and the big moments come on cue: build, go inside, a solar flare, Earth on the horizon, the rescue ship.</p>' : ''}${tw ? `<p><b>📅 Daily challenge · ${tw.n}:</b> ${tw.d} One life only.</p>` : st.diff && st.diff !== 'normal' ? `<p>${D.DIFF[st.diff].icon} <b>${D.DIFF[st.diff].n}</b>: ${D.DIFF[st.diff].d}</p>` : ''}
     <div class="row"><button id="svGo">Start surviving</button></div>`, p => p.querySelector('#svGo').onclick = () => { close(); vo('start', { once: true }); if (st.mode === 'daily') setTimeout(() => vo('daily'), 500); }); }
   function habPanel() { const v = st.vit, b = st.base; inside = true;
     show(`<h2>🏠 Inside the habitat</h2><p>Warm, pressurised and shielded. You heal faster in here.</p>
@@ -338,6 +341,22 @@ export function makeSurvival(R, api) {
   function showPrompt(t, p) { const pr = $('.prompt'), ring = $('.ring'); pr.style.display = t ? 'block' : 'none'; if (t && pr._t !== t) { pr.innerHTML = t; pr._t = t; } ring.style.display = p > 0 ? 'block' : 'none'; ring.style.setProperty('--p', Math.round(p * 100) + '%'); }
   let factT = 0; function fact(t) { if (!t) return; factT = 7; api.toast('🔭 ' + t, 6500); }
 
+  /* ---------------- pitch demo script ---------------- */
+  function demoStep(dt) { const v = st.vit, N = st.next; st.dmT += dt; if (v.hp < 30) v.hp = 30; if (v.o2 < 35) v.o2 = 35; if (v.pw < 35) v.pw = 35;   // the demo can't fail
+    const hb = st.builds.find(b => b.id === 'hab');
+    if (st.dm === 0 && hb) { st.dm = 1; st.dmT = 0; }
+    if (st.dm === 1 && inside) { st.dm = 2; st.dmT = 0; }
+    if (st.dm === 2 && !inside) { st.dm = 3; st.dmT = 0; N.flare = st.t + 25; }   // stepping outside triggers the flare
+    if (st.dm === 1 && st.dmT > 45 && !inside) { st.dm = 3; st.dmT = 0; N.flare = st.t + 25; }   // presenter skipped the interior
+    if (st.dm === 3 && st.stats.flares > 0) { st.dm = 4; st.dmT = 0; vo('earth', { once: true }); }
+    if (st.dm === 4 && ((R.keys.z || touchZoom) && st.dmT > 2 || st.dmT > 30)) { st.dm = 5; st.dmT = 0; }
+    if (st.dm === 5 && st.dmT > (R.keys.z || touchZoom ? 4 : 1)) { st.dm = 6; st.flags.reported = 1; st.rescue = { eta: st.t + 36 }; api.toast('📡 Mission Control: <b>supply ship launched</b>. ETA 36 seconds.', 4000); vo('report', { urgent: true }); } }
+  function demoGuide() { if (st.mode !== 'demo') return null;
+    if (st.dm === 4 || st.dm === 5) { const P = S().player.position; return { x: P.x + ED.x * 400, z: P.z + ED.z * 400, icon: '🌍', lb: 'Earth', t: `Turn toward Earth on the horizon and hold <b>${matchMedia('(pointer:coarse)').matches ? 'ZOOM' : 'Z'}</b> to zoom your visor` }; }
+    if (st.dm === 1 && !inside) { const hb = st.builds.find(b => b.id === 'hab'); return { x: hb.x, z: hb.z, icon: '🏠', lb: 'habitat', t: 'Walk to the habitat and hold <b>E</b> to go inside' }; }
+    if (st.dm === 2 && inside) return { t: 'This is NASA’s Habitat Demonstration Unit layout. Look around, then use the <b>airlock</b> to go back out.' };
+    return null; }
+
   /* ---------------- the guide: always one clear next step ---------------- */
   // Picks what matters most right now (danger first, then the objective) and shows it as a marker in the world
   // plus one line of plain instructions under the objective.
@@ -351,7 +370,7 @@ export function makeSurvival(R, api) {
     const txt = L.map(([k, n]) => `${n - (st.inv[k] || 0)} ${D.RES[k].icon}`).join(' + ');
     return c ? { x: c.x, z: c.z, icon: '📦', t: `Get ${txt} for the ${what}: hold <b>E</b> at the supply cache`, lb: 'cache' } : { t: `Need ${txt} for the ${what}. Mission Control is sending a supply pod…` }; }
   function buildStep(id) { const d = D.BUILD.find(b => b.id === id); return { t: `Press <b>B</b> (BUILD), pick <b>${d.icon} ${d.n}</b>${id === 'solar' ? ' and put it where the ghost turns <b>green</b> (sunlight)' : id === 'antenna' ? ' and put it where the ghost turns <b>green</b> (Earth in view)' : ''}, then <b>E</b>`, build: 1 }; }
-  function guideTarget() { const v = st.vit, g = D.GOALS[st.goal], c = count, P = S().player.position;
+  function guideTarget() { const v = st.vit, g = D.GOALS[st.goal], c = count, P = S().player.position; const dg = !flare && demoGuide(); if (dg) return dg;
     if (inside) return { t: v.o2 < 90 || v.pw < 90 ? 'Refill your suit at the <b>EVA station</b>. The <b>airlock</b> takes you back outside.' : 'Eat at the galley, drink at the water dispenser, analyse samples at the geology glovebox. Airlock = outside.' };
     if (flare) { const sh = shelterSpot(); if (sh) return { x: sh.x, z: sh.z, icon: '☢', urg: 1, lb: sh.id === 'hab' ? 'shelter' : 'shield', t: `${flare.on ? 'Flare!' : 'Flare coming!'} Get ${sh.id === 'hab' ? 'inside the habitat' : 'right next to your regolith shield'}` };
       return { urg: 1, t: 'Flare! No shelter yet. Stay put and keep your health up. Build a habitat or a regolith shield before the next one.' }; }
@@ -448,7 +467,7 @@ export function makeSurvival(R, api) {
         const gy = H(P.x, P.z); if (P.y - gy < 4 && TH.y > 0) for (let i = 0; i < 3; i++) { const a = Math.random() * TAU, sp = 1.5 + Math.random() * 2.5, up = .6 + Math.random() * 1.2; s.dust.emit(new V3(P.x, gy + .05, P.z), new V3(Math.cos(a) * sp, up, Math.sin(a) * sp), s.dc, .12, 2 * up / 1.62, 1, .1, { grow: 1, drag: 0, grav: 1.62, a: .8 }); } } }   // airless: dust flies in clean arcs, no billowing
     // dust kicked up by your thrusters or the rover settles on nearby panels
     if (thrustK > 0 || (driving && Math.hypot(s.vel.x, s.vel.z) > 1)) built.forEach(B => { if (B.b.id === 'solar' && Math.hypot(B.b.x - P.x, B.b.z - P.z) < 15) B.b.dust = Math.min(100, (B.b.dust || 0) + D.DUST.nearThrust * dt); });
-    rescueStep(dt); guideStep(dt); if ((st._sup = (st._sup || 0) - dt) <= 0) { st._sup = 10; ensureSupplies(); }
+    if (st.mode === 'demo') demoStep(dt); rescueStep(dt); guideStep(dt); if ((st._sup = (st._sup || 0) - dt) <= 0) { st._sup = 10; ensureSupplies(); }
     if (!inside) { walked += Math.hypot(s.vel.x, s.vel.z) * dt; if (walked > 12) vo('move', { once: true }); if (thrustK > 0 && !s.onGround) vo('jet', { once: true });
       if (!sunlit && !crat && st.t > 20) vo('shadow', { once: true, skipIfBusy: true }); if (crat) vo('crater', { once: true }); if ((R.keys.z || touchZoom)) vo('earth', { once: true });
       if (built.some(B => B.b.id === 'solar' && B.b.dust > 30)) vo('dust', { once: true, skipIfBusy: true }); }
@@ -456,7 +475,7 @@ export function makeSurvival(R, api) {
     // dangers: solar flares and micrometeorites
     const N = st.next, warn = st.link ? D.DANGER.flareWarnWithAntennaSec : D.DANGER.flareWarnSec;
     if (!flare && st.t > N.flare - warn) { flare = { at: N.flare, on: false }; vo('flareWarn', { urgent: true }); }
-    if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -D.DANGER.flareSec) { if (!flare.on) { flare.on = true; flare.hit = false; flare.out = 0; shake(.5); api.sfx('alarm'); } if (!sheltered) { flare.out += dt; if (flare.out > (D.DANGER.flareGraceSec ?? 15)) flare.hit = true; } alarm(`☢ SOLAR FLARE · ${Math.ceil(D.DANGER.flareSec + left)} s · ${sheltered ? 'you are sheltered ✓' : flare.hit ? 'TAKE SHELTER!' : `TAKE SHELTER! (${Math.max(0, Math.ceil((D.DANGER.flareGraceSec ?? 15) - flare.out))} s)`}`); $('.tint').style.opacity = .8; }
+    if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -flareLen()) { if (!flare.on) { flare.on = true; flare.hit = false; flare.out = 0; shake(.5); api.sfx('alarm'); } if (!sheltered) { flare.out += dt; if (flare.out > (D.DANGER.flareGraceSec ?? 15)) flare.hit = true; } alarm(`☢ SOLAR FLARE · ${Math.ceil(flareLen() + left)} s · ${sheltered ? 'you are sheltered ✓' : flare.hit ? 'TAKE SHELTER!' : `TAKE SHELTER! (${Math.max(0, Math.ceil((D.DANGER.flareGraceSec ?? 15) - flare.out))} s)`}`); $('.tint').style.opacity = .8; }
       else { const fh = flare.hit; st.stats.flares++; if (!flare.hit) st.stats.sheltered++; flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin) * DF('flare')) * 60; alarm(''); $('.tint').style.opacity = 0; api.toast('☢ The flare is over.', 2000); vo(fh ? 'flareHit' : 'flareSafe'); } }
     if (D.GOALS[st.goal] && D.GOALS[st.goal].id === 'berm' && count('berm') && !flare && N.flare > st.t + (D.DANGER.shieldFlareSec || 150) + warn) { N.flare = st.t + (D.DANGER.shieldFlareSec || 150) + warn * .5; api.toast('📡 Mission Control: <b>a solar flare is building up</b> on the Sun. Your shield is about to get its first test.', 4500); }
     if (st.t > N.meteor && (flare || Math.abs(N.flare - st.t) < (D.DANGER.calmSec || 0))) N.meteor = st.t + (D.DANGER.calmSec || 60);
@@ -569,7 +588,8 @@ export function makeSurvival(R, api) {
       : `<p>Best ever: <b>${(b.best || 0).toLocaleString()}</b><br>Best today (daily): <b>${((b.daily || {})[today()] || 0).toLocaleString()}</b></p>`;
     show(`<h2>🏆 Moon Survival · ${daily ? 'today’s daily challenge' : 'all time'}</h2>${note ? `<p style="font-size:13px;opacity:.8">${note}</p>` : ''}${list}<div class="row"><button id="lbO">${daily ? 'All-time board' : 'Today’s daily board'}</button><button class="sec" id="lbX">Close</button></div>`,
       p => { p.querySelector('#lbO').onclick = () => board(!daily); p.querySelector('#lbX').onclick = () => close(); }); }
-  async function finish(rescued) { const sc = score(); keepBest(sc); save();
+  async function finish(rescued) { if (st.mode === 'demo') { show(`<h2>🚀 Pitch demo complete</h2><p>That was a 3-minute taste of Moon Survival: build at the lunar south pole, shelter from a solar flare, find Earth on the horizon, and get rescued. A full mission takes 25 to 35 minutes.</p><div class="row"><button id="fK" class="sec">Keep exploring</button><button id="fT">Back to the title</button></div>`, p => { p.querySelector('#fK').onclick = () => close(); p.querySelector('#fT').onclick = () => api.exit(); }); return; }
+    const sc = score(); keepBest(sc); save();
     show(`<h2>${rescued ? '🚀 Rescued! Mission complete' : '☠ Mission over'}</h2><p>${rescued ? 'The supply ship touched down beside your base. Fresh oxygen, food and a crew to take over. You built the first base at the lunar south pole.' : ''}</p>
       <p style="font-size:26px;margin:6px 0"><b>${sc.toLocaleString()}</b> points</p><p style="font-size:12px;opacity:.75">${Math.floor(tPts())} for time out on the surface + ${st.goal} objectives × ${D.SCORE.perGoal} + ${st.done.length} samples × ${D.SCORE.perSample}${DF('score') !== 1 ? ` · × ${DF('score')} (${D.DIFF[st.diff].n})` : ''}</p><p style="font-size:13px;opacity:.85">${Math.floor(st.t / 60)} min survived · ${st.goal} objectives · ${st.done.length} samples analysed${st.mode === 'daily' ? ' · daily: ' + twistOf(st.day).n : ''}</p>
       <p id="svRank" style="font-size:13px">Sending your score…</p><div class="row"><button id="fB">Leaderboard</button><button id="fR">Base report</button>${rescued ? '<button class="sec" id="fK">Keep playing</button>' : ''}<button class="sec" id="fT">Back to the title</button></div>`,
@@ -584,11 +604,11 @@ export function makeSurvival(R, api) {
   function menu() { const has = !!load('normal'), dsave = load('daily'), tw = twistOf(today()), b = bests();
     show(`<h2>🌑 Moon Survival · ${D.SITE.n}</h2><p style="opacity:.85">How long can you last at the lunar south pole? Build a base, find water, survive the cold, the flares and the dust.</p>
       <div class="row" style="flex-direction:column;align-items:stretch">${has ? '<button id="mC">▶ Continue your mission</button>' : ''}<button id="mN" class="${has ? 'sec' : ''}">✚ New mission</button>
-      <button id="mD">📅 Daily challenge · <b>${tw.n}</b>: ${tw.d}${dsave ? ' (continue)' : ''}</button><button class="sec" id="mL">🏆 Leaderboard</button><button class="sec" id="mK">🖱 Look speed: <b>${Object.keys(LOOKS).find(k => LOOKS[k] === lookK) || 'normal'}</b></button></div>
+      <button id="mD">📅 Daily challenge · <b>${tw.n}</b>: ${tw.d}${dsave ? ' (continue)' : ''}</button><button class="sec" id="mP">🎤 Pitch demo · a guided 3-minute run</button><button class="sec" id="mL">🏆 Leaderboard</button><button class="sec" id="mK">🖱 Look speed: <b>${Object.keys(LOOKS).find(k => LOOKS[k] === lookK) || 'normal'}</b></button></div>
       <p style="font-size:12px;opacity:.7">Best score ${(b.best || 0).toLocaleString()} · today’s daily best ${((b.daily || {})[today()] || 0).toLocaleString()}. Daily challenge: one life, the same twist for everyone today.</p>`,
       p => { const go = st0 => { close(); start(st0); };
         if (has) p.querySelector('#mC').onclick = () => go(load('normal')); p.querySelector('#mN').onclick = () => diffMenu(go);
-        p.querySelector('#mD').onclick = () => go(dsave || fresh('daily')); p.querySelector('#mL').onclick = () => { board(false); }; p.querySelector('#mK').onclick = () => { const ks = Object.keys(LOOKS), cur = ks.find(k => LOOKS[k] === lookK) || 'normal', nx = ks[(ks.indexOf(cur) + 1) % ks.length]; lookK = LOOKS[nx]; try { localStorage.setItem(KEY + '-look', nx); } catch (e) {} menu(); }; }); }
+        p.querySelector('#mD').onclick = () => go(dsave || fresh('daily')); p.querySelector('#mL').onclick = () => { board(false); }; p.querySelector('#mP').onclick = () => go(freshDemo()); p.querySelector('#mK').onclick = () => { const ks = Object.keys(LOOKS), cur = ks.find(k => LOOKS[k] === lookK) || 'normal', nx = ks[(ks.indexOf(cur) + 1) % ks.length]; lookK = LOOKS[nx]; try { localStorage.setItem(KEY + '-look', nx); } catch (e) {} menu(); }; }); }
 
   /* ---------------- start / end ---------------- */
   function begin() { on = true; menuDone = false; const s = S(); s.arrive = null; if (!s.helmet) api.helmet(); buildHUD(); bindInput(); earth = makeEarth(); s._fov = R.cam.fov;
