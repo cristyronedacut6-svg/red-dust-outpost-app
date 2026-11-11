@@ -25,22 +25,23 @@ export function makeSurvival(R, api) {
   /* ---------------- state and saving ---------------- */
   const today = () => new Date().toISOString().slice(0, 10);
   const twistOf = day => D.DAILY[[...day].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) % D.DAILY.length];
-  function fresh(mode = 'normal') { const daily = mode === 'daily', tw = daily ? twistOf(today()) : null; return { v: 1, mode, day: daily ? today() : null, twist: tw ? tw.id : null,
+  function fresh(mode = 'normal', diff = 'normal') { const daily = mode === 'daily', tw = daily ? twistOf(today()) : null; return { v: 1, mode, diff: mode === 'daily' ? 'normal' : diff, day: daily ? today() : null, twist: tw ? tw.id : null,
     inv: { scrap: 0, elec: 0, regolith: 0, ice: 0 }, vit: { hp: 100, o2: tw && tw.id === 'leak' ? 80 : 100, pw: 100, tc: 22, dose: 0, leak: tw && tw.id === 'leak' ? 1 : 0, food: 90, water: 90 }, jet: 100,
     carry: [], done: [], rp: 0, upg: {}, rescue: null,
     t: 0, sunA: 2.4, builds: [], loot: null, lander: { o2: D.LANDER.o2, pw: D.LANDER.power, meals: D.FOOD.start.meals, water: D.FOOD.start.water, kits: D.LANDER.kits }, base: { pw: 0, o2: 0, iceQ: 0, water: 0, meals: 0, grow: 0 }, goal: 0,
     flags: { iceCut: 0 }, stats: { flares: 0, sheltered: 0, deaths: 0, o2made: 0, powered: 0, total: 0, inside: 0 },
-    next: { flare: D.DANGER.flareFirstMin * 60, meteor: (D.DANGER.meteorFirstMin || 5) * 60 + rnd(0, 120) }, pos: null }; }
+    next: { flare: D.DANGER.flareFirstMin * 60 * (((D.DIFF || {})[diff] || {}).flare || 1), meteor: (D.DANGER.meteorFirstMin || 5) * 60 + rnd(0, 120) }, pos: null }; }
   const keyOf = mode => mode === 'daily' ? KEY + '-daily' : KEY;
   function load(mode = 'normal') { try { const s = JSON.parse(localStorage.getItem(keyOf(mode)) || 'null'); if (!s || s.v !== 1) return null; if (mode === 'daily' && (s.day !== today() || s.over)) return null;
     // older saves: fill in what newer versions added
     const f = fresh(mode); for (const k of ['carry', 'done', 'rp', 'upg']) if (s[k] == null) s[k] = f[k]; s.vit.food ??= 90; s.vit.water ??= 90; s.lander.meals ??= f.lander.meals; s.lander.kits ??= f.lander.kits; s.lander.water ??= f.lander.water; for (const k of ['water', 'meals', 'grow']) s.base[k] ??= 0; s.mode ??= mode; return s; } catch (e) { return null; } }
   function save() { if (!st) return; try { const P = S().player.position; st.pos = [P.x, P.z]; localStorage.setItem(keyOf(st.mode), JSON.stringify(st)); } catch (e) {} }
   const U = id => !!(st && st.upg && st.upg[id]);
+  const DF = k => ((D.DIFF && D.DIFF[(st && st.diff) || 'normal']) || {})[k] ?? 1;
   const TW = id => !!(st && st.twist === id);
   const elev = () => TW('shadow') ? 2.5 : D.SUN.elevationDeg;
-  const o2Min = () => D.SUIT.o2Min * (U('tank') ? 1.3 : 1) * (TW('leak') ? .8 : 1), pwMin = () => D.SUIT.powerMin * (U('cell') ? 1.3 : 1), fuelSec = () => D.JET.fuelSec * (U('thrust') ? 1.5 : 1), gk = () => U('tools') ? .7 : 1;
-  const score = () => Math.floor(st.t * D.SCORE.perSec + st.goal * D.SCORE.perGoal + st.done.length * D.SCORE.perSample);
+  const o2Min = () => D.SUIT.o2Min * DF('o2') * (U('tank') ? 1.3 : 1) * (TW('leak') ? .8 : 1), pwMin = () => D.SUIT.powerMin * DF('pw') * (U('cell') ? 1.3 : 1), fuelSec = () => D.JET.fuelSec * (U('thrust') ? 1.5 : 1), gk = () => U('tools') ? .7 : 1;
+  const score = () => Math.floor((st.t * D.SCORE.perSec + st.goal * D.SCORE.perGoal + st.done.length * D.SCORE.perSample) * DF('score'));
   const has = c => Object.entries(c).every(([k, n]) => (st.inv[k] || 0) >= n);
   const pay = c => { for (const k in c) st.inv[k] -= c[k]; };
   const costTxt = c => Object.entries(c).map(([k, n]) => `${D.RES[k].icon}${n}`).join(' ');
@@ -167,7 +168,7 @@ export function makeSurvival(R, api) {
     let cTxt = ''; if (nc && nd > 4) { const ca = ((Math.atan2(nc.x - P.x, nc.z - P.z) - Math.atan2(-Math.sin(S().camYaw), -Math.cos(S().camYaw))) * 180 / Math.PI + 540) % 360 - 180; cTxt = ` · 📦 cache ${Math.round(nd)} m ${Math.abs(ca) < 20 ? 'ahead' : ca > 0 ? '◀ left' : 'right ▶'}`; }
     const e = `${sunlit ? '<span class="sun">☀ IN SUNLIGHT</span>' : '<span class="sh">● IN SHADOW</span>'} · ground ${envT} °C · Sun ${dir}${cTxt}${built.length ? ` · base ⚡${Math.round(st.base.pw)} O₂${Math.round(st.base.o2)}` : ''}${fc ? ' · ' + fc : ''}`; if ($('.env')._t !== e) { $('.env').innerHTML = e; $('.env')._t = e; }
     const g = D.GOALS[st.goal], gt = g ? `<small>OBJECTIVE ${st.goal + 1} / ${D.GOALS.length}${g.area ? ' · ' + D.AREAS.find(a => a.id === g.area).n.toUpperCase() : ''}</small>${g.t}` : '<small>ALL OBJECTIVES DONE</small>Keep your base alive. Press <b>Tab</b> for your base report.';
-    const gt2 = gt + `<span class="sc2">Score ${score().toLocaleString()}${st.mode === 'daily' ? ' · DAILY: ' + twistOf(st.day).n : ''}</span>`; if ($('.goal')._t !== gt2) { $('.goal').innerHTML = gt2; $('.goal')._t = gt2; }
+    const gt2 = gt + `<span class="sc2">Score ${score().toLocaleString()}${st.mode === 'daily' ? ' · DAILY: ' + twistOf(st.day).n : st.diff && st.diff !== 'normal' ? ' · ' + D.DIFF[st.diff].n : ''}</span>`; if ($('.goal')._t !== gt2) { $('.goal').innerHTML = gt2; $('.goal')._t = gt2; }
     $('[data-b=patch]').style.display = v.leak ? '' : 'none'; }
   function alarm(t) { const a = $('.alarm'); a.style.display = t ? 'block' : 'none'; if (t && a._t !== t) { a.innerHTML = t; a._t = t; } }
   function hurt(k) { $('.hurt').style.opacity = k; }
@@ -309,15 +310,15 @@ export function makeSurvival(R, api) {
     const f = forward(); if (s.helmet) lamp.position.copy(R.cam.position); else lamp.position.set(P.x, P.y + 1.7, P.z); lamp.target.position.copy(lamp.position).addScaledVector(f, 10); lamp.intensity += ((st.lamp ? 90 : 0) - lamp.intensity) * Math.min(1, dt * 8);
     // suit
     const run = (R.keys.shift || R.bst) && Math.hypot(s.vel.x, s.vel.z) > 3, sheltered = inside || built.some(B => (B.b.id === 'berm' && Math.hypot(B.b.x - P.x, B.b.z - P.z) < B.def.shelter) || (B.b.id === 'hab' && Math.hypot(B.b.x - P.x, B.b.z - P.z) < 4));
-    if (!inside) { v.o2 -= dt * 100 / (o2Min() * 60) * (run ? D.SUIT.runO2X : 1) + (v.leak ? D.SUIT.leakPerSec * dt : 0); v.pw -= dt * 100 / (pwMin() * 60) * (crat ? D.SUIT.craterX : sunlit ? 1 : D.SUIT.heaterX) * (driving ? .5 : 1) + (st.lamp ? D.SUIT.lampDrain * dt * 100 / (pwMin() * 60) : 0); }
+    if (!inside) { v.o2 -= dt * 100 / (o2Min() * 60) * (run ? D.SUIT.runO2X : 1) + (v.leak ? D.SUIT.leakPerSec * DF('leak') * dt : 0); v.pw -= dt * 100 / (pwMin() * 60) * (crat ? D.SUIT.craterX : sunlit ? 1 : D.SUIT.heaterX) * (driving ? .5 : 1) + (st.lamp ? D.SUIT.lampDrain * dt * 100 / (pwMin() * 60) : 0); }
     else { v.tc += (22 - v.tc) * Math.min(1, dt); }
     v.o2 = clamp(v.o2, 0, 100); v.pw = clamp(v.pw, 0, 100);
     if (!inside) { if (v.pw > 0) v.tc += (22 - v.tc) * Math.min(1, dt * .5); else v.tc += (envT * .2 - v.tc) * dt * .025; }
     // health
-    v.food = clamp(v.food - dt * 100 / (D.FOOD.foodMin * 60), 0, 100); v.water = clamp(v.water - dt * 100 / (D.FOOD.waterMin * 60), 0, 100);
+    v.food = clamp(v.food - dt * 100 / (D.FOOD.foodMin * DF('food') * 60), 0, 100); v.water = clamp(v.water - dt * 100 / (D.FOOD.waterMin * DF('food') * 60), 0, 100);
     let dmg = 0, why = ''; if (v.food <= 0 || v.water <= 0) { dmg += D.FOOD.starve; why = v.water <= 0 ? 'You ran out of water.' : 'You ran out of food.'; }
     if (v.o2 <= 0) { dmg += D.HEALTH.suffocate; why = why || 'You ran out of oxygen.'; } if (v.tc < 5 || v.tc > 42) { dmg += D.HEALTH.cold; why = why || (v.tc < 5 ? 'Your suit froze: the battery ran flat in the cold.' : 'Your suit overheated.'); }
-    if (flare && flare.on && !sheltered) { dmg += D.HEALTH.flare; v.dose += dt * 4; why = why || 'Radiation from the solar flare.'; }
+    if (flare && flare.on && !sheltered) { dmg += D.HEALTH.flare * DF('flareDmg'); v.dose += dt * 4; why = why || 'Radiation from the solar flare.'; }
     v.dose += dt * D.DANGER.backgroundDose / 86400 * 60;   // shown in mSv; background dose sped up 60×
     // falls: Moon gravity is 1/6 of Earth's, so you fall slowly, but a long drop still hurts
     if (!s.onGround) lastVy = s.vel.y; if (s.onGround && !wasG && !driving) { const imp = -lastVy; s.camDip = Math.min(.45, Math.max(0, imp) * .07); if (imp > 1.5) try { AUD.step(Math.min(2, imp / 3)); } catch (e) {} if (imp > D.SUIT.fallSafe) { v.hp -= (imp - D.SUIT.fallSafe) * D.SUIT.fallDamage; api.toast(`🦴 Hard landing (${imp.toFixed(1)} m/s)`, 1500); hurt(.8); setTimeout(() => hurt(0), 300); if (v.hp <= 0) why = 'A fall broke your suit seal.'; } } wasG = s.onGround;
@@ -338,11 +339,11 @@ export function makeSurvival(R, api) {
     // dangers: solar flares and micrometeorites
     const N = st.next, warn = st.link ? D.DANGER.flareWarnWithAntennaSec : D.DANGER.flareWarnSec;
     if (!flare && st.t > N.flare - warn) { flare = { at: N.flare, on: false }; vo('flareWarn', { urgent: true }); }
-    if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -D.DANGER.flareSec) { if (!flare.on) { flare.on = true; flare.hit = false; } if (!sheltered) flare.hit = true; alarm(`☢ SOLAR FLARE · ${Math.ceil(D.DANGER.flareSec + left)} s · ${sheltered ? 'you are sheltered ✓' : 'TAKE SHELTER!'}`); $('.tint').style.opacity = .8; }
-      else { const fh = flare.hit; st.stats.flares++; if (!flare.hit) st.stats.sheltered++; flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin)) * 60; alarm(''); $('.tint').style.opacity = 0; api.toast('☢ The flare is over.', 2000); vo(fh ? 'flareHit' : 'flareSafe'); } }
+    if (flare) { const left = flare.at - st.t; if (left > 0) alarm(`☢ SOLAR FLARE in ${Math.ceil(left)} s — get inside the habitat or behind a regolith shield`); else if (left > -D.DANGER.flareSec) { if (!flare.on) { flare.on = true; flare.hit = false; flare.out = 0; } if (!sheltered) { flare.out += dt; if (flare.out > (D.DANGER.flareGraceSec ?? 15)) flare.hit = true; } alarm(`☢ SOLAR FLARE · ${Math.ceil(D.DANGER.flareSec + left)} s · ${sheltered ? 'you are sheltered ✓' : flare.hit ? 'TAKE SHELTER!' : `TAKE SHELTER! (${Math.max(0, Math.ceil((D.DANGER.flareGraceSec ?? 15) - flare.out))} s)`}`); $('.tint').style.opacity = .8; }
+      else { const fh = flare.hit; st.stats.flares++; if (!flare.hit) st.stats.sheltered++; flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin) * DF('flare')) * 60; alarm(''); $('.tint').style.opacity = 0; api.toast('☢ The flare is over.', 2000); vo(fh ? 'flareHit' : 'flareSafe'); } }
     if (D.GOALS[st.goal] && D.GOALS[st.goal].id === 'berm' && count('berm') && !flare && N.flare > st.t + (D.DANGER.shieldFlareSec || 150) + warn) { N.flare = st.t + (D.DANGER.shieldFlareSec || 150) + warn * .5; api.toast('📡 Mission Control: <b>a solar flare is building up</b> on the Sun. Your shield is about to get its first test.', 4500); }
     if (st.t > N.meteor && (flare || Math.abs(N.flare - st.t) < (D.DANGER.calmSec || 0))) N.meteor = st.t + (D.DANGER.calmSec || 60);
-    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (Math.random() < D.DANGER.meteorChance && !inside && !driving) { v.leak = 1; hurt(1); setTimeout(() => hurt(0), 250); vo('leak', { urgent: true }); api.toast('💥 A micrometeorite punctured your suit! Oxygen is leaking. Press <b>P</b> to patch it (1 🔩 scrap, or 2 🪨 regolith) or refill at the lander or habitat.', 4500); } }
+    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (Math.random() < Math.min(.8, D.DANGER.meteorChance * DF('meteor')) && !inside && !driving) { v.leak = 1; hurt(1); setTimeout(() => hurt(0), 250); vo('leak', { urgent: true }); api.toast('💥 A micrometeorite punctured your suit! Oxygen is leaking. Press <b>P</b> to patch it (1 🔩 scrap, or 2 🪨 regolith) or refill at the lander or habitat.', 4500); } }
     // base: power grid, oxygen from ice
     tSec -= dt; if (tSec <= 0) { tSec = 1; let prod = 0, useP = 0, cap = 0;
       built.forEach(B => { const id = B.b.id; if (id === 'solar') { B.lit = inSun(B.b.x, H(B.b.x, B.b.z) + 5.5, B.b.z); B.b.dust = Math.min(100, (B.b.dust || 0) + D.DUST.perMin / 60 * (U('lotus') ? .4 : 1) * (TW('dusty') ? 3 : 1)); if (B.lit) prod += B.def.power * (1 - D.DUST.loss * B.b.dust / 100); if (B.m.userData.pm) B.m.userData.pm.color.setHex(0x1b2a55).lerp(new THREE.Color(0x6f6b66), B.b.dust / 100 * .85); } if (id === 'battery') cap += B.def.store; if (B.def.use && id !== 'ice') useP += B.def.use; if (id === 'hab') cap += 40; });
@@ -459,13 +460,17 @@ export function makeSurvival(R, api) {
     const msg = await submit(sc); const el = hud && hud.querySelector('#svRank'); if (el) el.textContent = msg; }
   function gameOver(why) { st.over = 1; vo('dead', { urgent: true }); finish(false).then(() => { const el = hud && hud.querySelector('#svRank'); if (el) el.insertAdjacentHTML('beforebegin', `<p>${why} In the daily challenge there is no second chance.</p>`); }); }
   /* ---------------- the mission menu ---------------- */
+  function diffMenu(go) { const L = Object.entries(D.DIFF || { normal: { n: 'Normal', icon: '🌑', d: '' } });
+    show(`<h2>✚ New mission · how hard?</h2><div class="row" style="flex-direction:column;align-items:stretch">${L.map(([k, o]) => `<button data-d="${k}" class="${k === 'normal' ? '' : 'sec'}">${o.icon} <b>${o.n}</b> · ${o.d}</button>`).join('')}<button class="sec" id="dB">◀ Back</button></div>
+      <p style="font-size:12px;opacity:.7">This replaces your saved mission. Scores from every difficulty go on the same board; Hard earns 1.5× points, Easy 0.6×.</p>`,
+      p => { p.querySelectorAll('[data-d]').forEach(b => b.onclick = () => go(fresh('normal', b.dataset.d))); p.querySelector('#dB').onclick = () => menu(); }); }
   function menu() { const has = !!load('normal'), dsave = load('daily'), tw = twistOf(today()), b = bests();
     show(`<h2>🌑 Moon Survival · ${D.SITE.n}</h2><p style="opacity:.85">How long can you last at the lunar south pole? Build a base, find water, survive the cold, the flares and the dust.</p>
       <div class="row" style="flex-direction:column;align-items:stretch">${has ? '<button id="mC">▶ Continue your mission</button>' : ''}<button id="mN" class="${has ? 'sec' : ''}">✚ New mission</button>
       <button id="mD">📅 Daily challenge · <b>${tw.n}</b>: ${tw.d}${dsave ? ' (continue)' : ''}</button><button class="sec" id="mL">🏆 Leaderboard</button></div>
       <p style="font-size:12px;opacity:.7">Best score ${(b.best || 0).toLocaleString()} · today’s daily best ${((b.daily || {})[today()] || 0).toLocaleString()}. Daily challenge: one life, the same twist for everyone today.</p>`,
       p => { const go = st0 => { close(); start(st0); };
-        if (has) p.querySelector('#mC').onclick = () => go(load('normal')); p.querySelector('#mN').onclick = () => go(fresh('normal'));
+        if (has) p.querySelector('#mC').onclick = () => go(load('normal')); p.querySelector('#mN').onclick = () => diffMenu(go);
         p.querySelector('#mD').onclick = () => go(dsave || fresh('daily')); p.querySelector('#mL').onclick = () => { board(false); }; }); }
 
   /* ---------------- start / end ---------------- */

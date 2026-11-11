@@ -36,12 +36,12 @@ const SPEED = 5.2;
 
 export function run(seed, prof, opt = {}) {
   let rs = seed * 9301 + 49297; const rand = () => (rs = (rs * 9301 + 49297) % 233280) / 233280, rnd = (a, b) => a + rand() * (b - a);
-  const tw = opt.twist || null, TW = id => tw === id, P = PROFILES[prof];
+  const tw = opt.twist || null, TW = id => tw === id, P = PROFILES[prof], DF = k => ((D.DIFF || {})[opt.diff || 'normal'] || {})[k] ?? 1;
   const elev = TW('shadow') ? 2.5 : D.SUN.elevationDeg;
   const st = { t: 0, sunA: 2.4, inv: { scrap: 0, elec: 0, regolith: 0, ice: 0 }, vit: { hp: 100, o2: TW('leak') ? 80 : 100, pw: 100, tc: 22, food: 90, water: 90, leak: TW('leak') ? 1 : 0, dose: 0 }, jet: 100,
     lander: { o2: D.LANDER.o2, pw: D.LANDER.power, meals: D.FOOD.start.meals, water: D.FOOD.start.water, kits: D.LANDER.kits || 0 }, base: { pw: 0, o2: 0, iceQ: 0, water: 0, meals: 0, grow: 0 },
-    builds: [], goal: 0, flags: { iceCut: 0 }, stats: { sheltered: 0, flares: 0, deaths: 0 }, next: { flare: D.DANGER.flareFirstMin * 60, meteor: (D.DANGER.meteorFirstMin ?? 0) * 60 + (D.DANGER.meteorFirstMin != null ? rnd(0, 120) : rnd(...D.DANGER.meteorEveryMin) * 60) }, upg: {} };
-  const o2Min = () => D.SUIT.o2Min * (st.upg.tank ? 1.3 : 1) * (TW('leak') ? .8 : 1), pwMin = () => D.SUIT.powerMin * (st.upg.cell ? 1.3 : 1);
+    builds: [], goal: 0, flags: { iceCut: 0 }, stats: { sheltered: 0, flares: 0, deaths: 0 }, next: { flare: D.DANGER.flareFirstMin * 60 * DF('flare'), meteor: (D.DANGER.meteorFirstMin ?? 0) * 60 + (D.DANGER.meteorFirstMin != null ? rnd(0, 120) : rnd(...D.DANGER.meteorEveryMin) * 60) }, upg: {} };
+  const o2Min = () => D.SUIT.o2Min * DF('o2') * (st.upg.tank ? 1.3 : 1) * (TW('leak') ? .8 : 1), pwMin = () => D.SUIT.powerMin * DF('pw') * (st.upg.cell ? 1.3 : 1);
   const C = caches(TW('scarce')); const LANDER = [-12, -8], ROVER = [14, 10];
   // a new mission starts in sunlight (same search as start())
   for (let i = 0; i < 36; i++) { const d = sunDir(st.sunA, elev); if (inSun(0, H(0, 0) + 1.5, 0, d) && inSun(8, H(8, 6) + 5, 6, d)) break; st.sunA = (st.sunA + TAU / 36) % TAU; }
@@ -60,23 +60,23 @@ export function run(seed, prof, opt = {}) {
     const envT = crat ? D.TEMP.crater : sunlit ? D.TEMP.sun : D.TEMP.shadow;
     const sheltered = inside || st.builds.some(b => (b.id === 'berm' && dist([b.x, b.z], pos) < B('berm').shelter) || (b.id === 'hab' && dist([b.x, b.z], pos) < 4));
     const lamp = crat || !sunlit;
-    if (!inside) { v.o2 -= dt * 100 / (o2Min() * 60) + (v.leak ? D.SUIT.leakPerSec * dt : 0); v.pw -= dt * 100 / (pwMin() * 60) * (crat ? D.SUIT.craterX : sunlit ? 1 : D.SUIT.heaterX) + (lamp ? D.SUIT.lampDrain * dt * 100 / (pwMin() * 60) : 0); }
+    if (!inside) { v.o2 -= dt * 100 / (o2Min() * 60) + (v.leak ? D.SUIT.leakPerSec * DF('leak') * dt : 0); v.pw -= dt * 100 / (pwMin() * 60) * (crat ? D.SUIT.craterX : sunlit ? 1 : D.SUIT.heaterX) + (lamp ? D.SUIT.lampDrain * dt * 100 / (pwMin() * 60) : 0); }
     else v.tc += (22 - v.tc) * Math.min(1, dt);
     v.o2 = clamp(v.o2, 0, 100); v.pw = clamp(v.pw, 0, 100);
     if (!inside) { if (v.pw > 0) v.tc += (22 - v.tc) * Math.min(1, dt * .5); else v.tc += (envT * .2 - v.tc) * dt * .025; }
-    v.food = clamp(v.food - dt * 100 / (D.FOOD.foodMin * 60), 0, 100); v.water = clamp(v.water - dt * 100 / (D.FOOD.waterMin * 60), 0, 100);
+    v.food = clamp(v.food - dt * 100 / (D.FOOD.foodMin * DF('food') * 60), 0, 100); v.water = clamp(v.water - dt * 100 / (D.FOOD.waterMin * DF('food') * 60), 0, 100);
     let dmg = 0, why = ''; if (v.food <= 0 || v.water <= 0) { dmg += D.FOOD.starve; why = v.water <= 0 ? 'water' : 'food'; }
     if (v.o2 <= 0) { dmg += D.HEALTH.suffocate; why = why || 'oxygen'; } if (v.tc < 5) { dmg += D.HEALTH.cold; why = why || 'cold'; }
-    if (flare && flare.on && !sheltered) { dmg += D.HEALTH.flare; why = why || 'flare'; flare.hit = true; v.dose += dt * 4; }
+    if (flare && flare.on && !sheltered) { dmg += D.HEALTH.flare * DF('flareDmg'); why = why || 'flare'; flare.out = (flare.out || 0) + dt; if (flare.out > (D.DANGER.flareGraceSec ?? 0)) flare.hit = true; v.dose += dt * 4; }
     v.hp -= dmg * dt; if (!dmg && v.o2 > 15 && v.pw > 0) v.hp += (inside ? D.HEALTH.regenInside : D.HEALTH.regen) * dt; v.hp = clamp(v.hp, 0, 100);
     const lo = Math.min(v.o2, v.pw, v.food, v.water, v.hp); minVit = Math.min(minVit, lo); if (lo < 25) lowT += dt;
     // dangers
     const N = st.next, warn = link ? D.DANGER.flareWarnWithAntennaSec : D.DANGER.flareWarnSec;
     if (!flare && st.t > N.flare - warn) { flare = { at: N.flare, on: false, hit: false }; log('flareWarn'); }
-    if (flare) { const left = flare.at - st.t; if (left <= 0 && left > -D.DANGER.flareSec) flare.on = true; else if (left <= -D.DANGER.flareSec) { st.stats.flares++; if (!flare.hit) st.stats.sheltered++; log(flare.hit ? 'flareHit' : 'flareSafe'); flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin)) * 60; } }
+    if (flare) { const left = flare.at - st.t; if (left <= 0 && left > -D.DANGER.flareSec) flare.on = true; else if (left <= -D.DANGER.flareSec) { st.stats.flares++; if (!flare.hit) st.stats.sheltered++; log(flare.hit ? 'flareHit' : 'flareSafe'); flare = null; N.flare = st.t + (TW('flares') ? rnd(3, 5) : rnd(...D.DANGER.flareEveryMin) * DF('flare')) * 60; } }
     if (D.DANGER.shieldFlareSec && D.GOALS[st.goal] && D.GOALS[st.goal].id === 'berm' && count('berm') && !flare && N.flare > st.t + D.DANGER.shieldFlareSec + warn) N.flare = st.t + D.DANGER.shieldFlareSec + warn * .5;
     if (D.DANGER.calmSec && st.t > N.meteor && (flare || Math.abs(N.flare - st.t) < D.DANGER.calmSec)) N.meteor = st.t + D.DANGER.calmSec;
-    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (rand() < D.DANGER.meteorChance && !inside) { v.leak = 1; st.leakT = st.t; log('leak'); } }
+    if (st.t > N.meteor) { N.meteor = st.t + rnd(...D.DANGER.meteorEveryMin) * 60; if (rand() < Math.min(.8, D.DANGER.meteorChance * DF('meteor')) && !inside) { v.leak = 1; st.leakT = st.t; log('leak'); } }
     // base grid, once a second
     st._g = (st._g || 0) + dt; while (st._g >= 1) { st._g -= 1; let prod = 0, useP = 0, cap = 0;
       for (const b of st.builds) { const def = B(b.id); if (b.id === 'solar') { b.lit = inSun(b.x, H(b.x, b.z) + 5.5, b.z, sd); b.dust = Math.min(100, (b.dust || 0) + D.DUST.perMin / 60 * (st.upg.lotus ? .4 : 1) * (TW('dusty') ? 3 : 1)); if (b.lit) prod += def.power * (1 - D.DUST.loss * b.dust / 100); }
@@ -90,6 +90,7 @@ export function run(seed, prof, opt = {}) {
       goals(); }
     if (v.hp <= 0) die(why);
     if (rescueAt && st.t >= rescueAt && !done) { done = true; log('rescued'); }
+    if (!done && st.t > (opt.limit || 5400)) done = 'timeout';
   }
   function die(why) { st.stats.deaths++; deathsBy[why] = (deathsBy[why] || 0) + 1; log('death', why); const dl = D.DANGER.deathLoss ?? .5; for (const k in st.inv) st.inv[k] -= Math.floor(st.inv[k] * dl); const g = D.DANGER.graceAfterDeathSec || 0; if (g) { st.next.meteor = Math.max(st.next.meteor, st.t + g); if (!flare && st.next.flare < st.t + g) st.next.flare = st.t + g + 30; }
     const h = hab(); pos = h ? [h.x + 5, h.z + 5] : [-8, -4]; Object.assign(st.vit, D.DANGER.deathLoss != null ? { hp: 70, o2: 85, pw: 85, tc: 20, leak: 0 } : { hp: 60, o2: 70, pw: 70, tc: 20, leak: 0 }); if (opt.oneLife) done = 'dead'; }
@@ -111,7 +112,7 @@ export function run(seed, prof, opt = {}) {
   // the safety check a player makes (with their margin): what do I need to do right now, if anything?
   function needs() { const v = st.vit, R = refillPoint(), back = dist(pos, R.p) * P.walk / SPEED;
     const rg = D.SUIT.patchRegolith; if (v.leak && st.t - (st.leakT || 0) > P.patch && (st.inv.scrap > 0 || (rg && (st.inv.regolith >= rg || prof !== 'new')))) return 'patch';
-    const S = shelterPoint(); if (flare && !flare.on && S && flare.at - st.t < shelterTime() + 10 && (st._shDec ??= rand() < P.shelterSkill)) return 'shelter';
+    const S = shelterPoint(); if (flare && !flare.on && S && flare.at - st.t < shelterTime() + 10 && (flare.dec ??= rand() < P.shelterSkill)) return 'shelter';
     const o2need = back * 100 / (o2Min() * 60) + (v.leak ? D.SUIT.leakPerSec * back + 10 : 0) + P.margin, pwneed = back * 100 / (pwMin() * 60) * (inCrater(pos[0], pos[1]) ? D.SUIT.craterX : D.SUIT.heaterX) + P.margin;
     if (v.o2 < o2need || v.pw < pwneed || v.food < P.eatAt || v.water < P.eatAt || (v.leak && st.inv.scrap === 0)) { const near = dist(pos, R.p) < 3; if (near && st._refT && st.t - st._refT < 20) return null; return 'refill'; }
     return null; }
@@ -120,7 +121,7 @@ export function run(seed, prof, opt = {}) {
   function shelterPoint() { let best = null, bd = 1e9; for (const b of st.builds) if (b.id === 'hab' || b.id === 'berm') { const d = dist(pos, [b.x, b.z]); if (d < bd) { bd = d; best = [b.x + (b.id === 'berm' ? 2 : 0), b.z]; } } return best; }
   function care() { const n = needs(); if (!n) return false; const v = st.vit;
     if (n === 'patch') { const rg = D.SUIT.patchRegolith; if (st.inv.scrap > 0) st.inv.scrap--; else { while (st.inv.regolith < rg && !done) { tick(D.GATHER.digSec, 'out'); st.inv.regolith++; } st.inv.regolith -= rg; } v.leak = 0; log('patch'); return true; }
-    if (n === 'shelter') { const S = shelterPoint(); walkTo(S, 'shelter'); const h = hab(); const inHab = h && dist(pos, [h.x, h.z]) < 6; while (flare && !done) { tick(1, inHab ? 'inside' : 'out'); if (inHab) eatDrink(true); } st._shDec = undefined; return true; }
+    if (n === 'shelter') { const S = shelterPoint(); walkTo(S, 'shelter'); const h = hab(); const inHab = h && dist(pos, [h.x, h.z]) < 6; while (flare && !done) { tick(1, inHab ? 'inside' : 'out'); if (inHab) eatDrink(true); } return true; }
     const R = refillPoint(); walkTo(R.p, 'refill'); refill(R.k); st._refT = st.t; return true; }
   function eatDrink(inHab) { const v = st.vit, b = st.base; if (inHab) { if (v.food < 70 && b.meals > 0) { b.meals--; v.food = Math.min(100, v.food + D.FOOD.meal); } if (v.water < 70 && b.water >= 10) { b.water -= 10; v.water = Math.min(100, v.water + D.FOOD.drink); } } }
   function refill(k) { const v = st.vit;
@@ -180,18 +181,20 @@ export function run(seed, prof, opt = {}) {
     idleT += 10; wait(10, count('hab') && dist(pos, [hab().x, hab().z]) < 8 ? 'inside' : 'out');
   }
   const pw = st.powT ? st.powOk / st.powT : 0;
-  return { seed, prof, twist: tw, rescued: done === true, end: Math.round(st.t), goals: goalT, deaths: st.stats.deaths, deathsBy, minVit: Math.round(minVit), lowMin: +(lowT / 60).toFixed(1), idleMin: +(idleT / 60).toFixed(1), flares: st.stats.flares, sheltered: st.stats.sheltered, power: +pw.toFixed(2), left: { ...st.inv }, lander: { o2: Math.round(st.lander.o2), meals: st.lander.meals, water: st.lander.water }, ev };
+  return { seed, prof, twist: tw, rescued: done === true, end: Math.round(st.t), goals: goalT, deaths: st.stats.deaths, deathsBy, minVit: Math.round(minVit), lowMin: +(lowT / 60).toFixed(1), idleMin: +(idleT / 60).toFixed(1), flares: st.stats.flares, sheltered: st.stats.sheltered, power: +pw.toFixed(2), left: { ...st.inv }, loot: C.reduce((a, c) => [a[0] + c.L.scrap, a[1] + c.L.elec], [0, 0]), lander: { o2: Math.round(st.lander.o2), meals: st.lander.meals, water: st.lander.water }, ev };
 }
 
 /* ---- batch report ---- */
+if (process.env.FAILS) { const pr = process.env.FAILS; let k = 0; for (let i = 1; i <= 300 && k < 6; i++) { const r = run(i, pr, { diff: process.env.DIFF || 'normal' }); if (!r.rescued) { k++; console.log(i, 'builds', r.ev.filter(e => e[1] === 'build' || e[1] === 'rover').map(e => e[2] || 'rover').join(','), 'end', r.end, 'goals', r.goals.map(g => g[0]).join(','), 'left', JSON.stringify(r.left), 'loot left', JSON.stringify(r.loot), 'deaths', r.deaths, JSON.stringify(r.ev.slice(-8))); } } process.exit(0); }
+const DIFFS = process.env.DIFF ? process.env.DIFF.split(',') : ['normal'];
 const N = +(process.argv[2] || 200), PRS = (process.argv[3] || 'all') === 'all' ? ['new', 'avg', 'good'] : [process.argv[3]], TWS = process.env.TWISTS ? process.env.TWISTS.split(',') : [null];
 const pct = (a, p) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.min(s.length - 1, Math.floor(p * s.length))] : NaN; };
 const all = [];
-for (const tw of TWS) for (const pr of PRS) { const R = []; for (let i = 0; i < N; i++) R.push(run(i + 1, pr, { twist: tw, oneLife: !!tw }));
+for (const df of DIFFS) for (const tw of TWS) for (const pr of PRS) { const R = []; for (let i = 0; i < N; i++) R.push(run(i + 1, pr, { twist: tw, oneLife: !!tw, diff: df }));
   all.push(...R);
   const res = R.filter(r => r.rescued), gt = {}; for (const r of R) for (const [g, t] of r.goals) (gt[g] = gt[g] || []).push(t / 60);
   const deaths = {}; R.forEach(r => { for (const k in r.deathsBy) deaths[k] = (deaths[k] || 0) + r.deathsBy[k]; });
-  console.log(`\n== ${pr}${tw ? ' · twist ' + tw : ''} · ${N} runs ==`);
+  console.log(`\n== ${pr}${tw ? ' · twist ' + tw : ''}${df !== 'normal' ? ' · ' + df.toUpperCase() : ''} · ${N} runs ==`);
   console.log(`rescued ${(res.length / N * 100).toFixed(0)}%  time to rescue p25/p50/p75: ${[.25, .5, .75].map(p => (pct(res.map(r => r.end / 60), p) || 0).toFixed(1)).join(' / ')} min`);
   console.log(`deaths per run avg ${(R.reduce((a, r) => a + r.deaths, 0) / N).toFixed(2)} · runs with ≥1 death ${(R.filter(r => r.deaths).length / N * 100).toFixed(0)}% · causes ${JSON.stringify(deaths)}`);
   console.log(`minutes with a vital <25%: p50 ${pct(R.map(r => r.lowMin), .5)} · lowest vital p50 ${pct(R.map(r => r.minVit), .5)} · idle waiting p50 ${pct(R.map(r => r.idleMin), .5)} min · base powered ${(pct(R.map(r => r.power), .5) * 100).toFixed(0)}%`);

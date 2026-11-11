@@ -22,8 +22,8 @@ declare v_uid uuid := auth.uid(); v_day date; v_last timestamptz; v_cap int; v_b
 begin
   if v_uid is null then raise exception 'Not signed in'; end if;
   if p_seconds not between 0 and 86400 or p_objectives not between 0 and 7 or p_samples not between 0 and 12 then raise exception 'Bad stats'; end if;
-  -- same formula as the game: 1 point per second survived, 300 per objective, 150 per science sample, plus a small margin
-  v_cap := p_seconds + p_objectives * 300 + p_samples * 150 + 50;
+  -- same formula as the game: 1 point per second survived, 300 per objective, 150 per science sample (x1.5 on Hard), plus a small margin
+  v_cap := floor((p_seconds + p_objectives * 300 + p_samples * 150) * 1.5) + 50;   -- Hard difficulty earns 1.5x
   if p_score < 0 or p_score > v_cap then raise exception 'Score does not match the mission stats'; end if;
   select max(created_at) into v_last from survival_scores where user_id = v_uid;
   if v_last is not null and v_last > now() - interval '15 seconds' then raise exception 'Please wait a moment before submitting again'; end if;

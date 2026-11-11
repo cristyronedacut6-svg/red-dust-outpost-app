@@ -92,6 +92,7 @@ export const DANGER = {
   flareFirstMin: 9, flareEveryMin: [8, 13], flareWarnSec: 60, flareWarnWithAntennaSec: 120, flareSec: 70,
   shieldFlareSec: 150,         // once your regolith shield stands, Mission Control spots a flare building: it arrives within this many seconds (no waiting around)
   meteorFirstMin: 5, meteorEveryMin: [4, 8], meteorChance: .45,
+  flareGraceSec: 15,          // seconds you may spend outside shelter during a flare and still count as sheltered (for the shield objective)
   calmSec: 90,                 // no micrometeorite this close to a solar flare: one crisis at a time
   graceAfterDeathSec: 180,     // after a suit failure, nothing new goes wrong for this long
   deathLoss: .33,              // share of what you carry that you drop when your suit fails
@@ -157,4 +158,13 @@ export const DAILY = [
   { id: 'scarce', n: 'Scarce supplies', d: 'Supply caches hold a third less. Every bolt counts.' },
   { id: 'dusty', n: 'Dust day', d: 'Dust coats your solar panels three times faster.' },
 ];
-export const RESCUE = { etaSec: 150 };   // seconds after you send your report until the supply ship lands
+export const RESCUE = { etaSec: 150 };
+
+// ---- Difficulty (picked when you start a new mission; the daily challenge is always Normal) -------------
+// Each number multiplies the normal value: o2/pw/food = how long they last, flare = time between flares,
+// meteor = chance a micrometeorite hits, leak = how fast a hole drains, flareDmg = radiation damage, score = points.
+export const DIFF = {
+  easy:   { n: 'Easy',   icon: '🌱', d: 'More air and power, fewer dangers. Good for a first landing.', o2: 1.5, pw: 1.4, food: 1.5, flare: 1.4, meteor: .5, leak: .6, flareDmg: .6, score: .6 },
+  normal: { n: 'Normal', icon: '🌑', d: 'The intended challenge.', o2: 1, pw: 1, food: 1, flare: 1, meteor: 1, leak: 1, flareDmg: 1, score: 1 },
+  hard:   { n: 'Hard',   icon: '☠️', d: 'Thin margins, frequent flares and micrometeorites. 1.5× points.', o2: .75, pw: .8, food: .8, flare: .75, meteor: 1.4, leak: 1.3, flareDmg: 1.3, score: 1.5 },
+};   // seconds after you send your report until the supply ship lands
