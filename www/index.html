@@ -509,7 +509,7 @@ window.RDO_LAZY=(function(){var L=['js/models.js','js/worm.js','js/boss_golem.js
 (function(){var c=navigator.connection||{},slow=c.saveData||/(^|-)2g|3g/.test(c.effectiveType||'');try{if(/viewhd|view3d/.test(Object.keys(localStorage).join()))slow=false}catch(e){}if(!slow)window.addEventListener('load',function(){setTimeout(function(){(window.requestIdleCallback||function(f){setTimeout(f,1)})(function(){RDO_LAZY()},{timeout:3000})},2500)})})();</script>
 <script src="js/render3d.js"></script>
 <script src="js/cut3d.js"></script>
-<script src="js/i18n.js"></script><script src="js/i18n_facts.js"></script><script src="js/i18n_ui.js"></script><script src="js/i18n_en.js"></script><script src="js/i18n_vi.js"></script><script src="js/i18n_th.js"></script><script src="js/i18n_ru.js"></script><script src="js/i18n_it.js"></script><script src="js/i18n_tr.js"></script><script src="js/i18n_extra.js"></script><script src="js/gamepad.js"></script>
+<script src="js/i18n.js"></script><script src="js/i18n_facts.js"></script><script src="js/i18n_ui.js"></script><script src="js/i18n_en.js"></script><script src="js/i18n_vi.js"></script><script src="js/i18n_th.js"></script><script src="js/i18n_ru.js"></script><script src="js/i18n_it.js"></script><script src="js/i18n_tr.js"></script><script src="js/i18n_extra.js"></script><script src="js/i18n_new_sv.js"></script><script src="js/i18n_new_adv.js"></script><script src="js/gamepad.js"></script>
 <script>
 'use strict';
 const HOOK=(k,...a)=>{const h=window.RDO_HOOKS&&window.RDO_HOOKS[k];if(!h)return;try{return h(...a)}catch(e){console.error('hook '+k,e)}};

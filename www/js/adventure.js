@@ -15,6 +15,7 @@ import { makeFX, makeRings, makeWarp, CineShader, SafeShader, VisorShader, RaySh
 import { AUD } from './adv_audio.js';
 import { makeSurvival } from './survival.js';
 import { makeVoice, ADV_VO } from './survival_voice.js';
+const T = (k, ...a) => (window.I18N && I18N.t ? I18N.t(k, ...a) : k.replace(/\{(\d)\}/g, (_, i) => a[i] ?? ''));   // translation helper (rows in i18n_new.js)
 import { makeLaunch } from './adv_launch.js';
 import { makeMedia } from './adv_media.js';
 import { makeProminences, makeAurora, makeComet, makeRingField } from './adv_space.js';
@@ -600,9 +601,9 @@ function tourMarker() { const el = R.root.querySelector('#aGd'), n = nextNeed();
   el.classList.toggle('edge', off); el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-50%)`; setT(el.querySelector('.lb'), NEEDL(n) + ' · ' + Math.round(d) + ' u'); if (el._d !== 1) { el.style.display = 'block'; el._d = 1; } }
 // the two "wow" mission moments: Earthrise in photo mode, and threading Saturn's rings
 function tourMoments() { if (R.surf.S.on) return; const ship = R.ship.position;
-  if (CAM.photo && !ST.flags.has('photo:earthrise') && R.bpos.moon && ship.distanceTo(R.bpos.moon) < BI.moon.r * 12) { GDV.copy(R.bpos.earth).project(R.cam); if (GDV.z < 1 && Math.abs(GDV.x) < .9 && Math.abs(GDV.y) < .9) { ST.flags.add('photo:earthrise'); save(); sfx('fanfare'); bigBanner('EARTHRISE', 'Apollo 8 · December 24, 1968', 'You recreated one of the most famous photos ever taken: the whole Earth rising over the Moon.', 4800); checkMissions(); } }
+  if (CAM.photo && !ST.flags.has('photo:earthrise') && R.bpos.moon && ship.distanceTo(R.bpos.moon) < BI.moon.r * 12) { GDV.copy(R.bpos.earth).project(R.cam); if (GDV.z < 1 && Math.abs(GDV.x) < .9 && Math.abs(GDV.y) < .9) { ST.flags.add('photo:earthrise'); save(); sfx('fanfare'); bigBanner(T('EARTHRISE'), T('Apollo 8 · December 24, 1968'), T('You recreated one of the most famous photos ever taken: the whole Earth rising over the Moon.'), 4800); checkMissions(); } }
   const sm = R.bmesh.saturn; if (sm && !ST.flags.has('rings:saturn')) { RNV.set(0, 1, 0).applyQuaternion(sm.getWorldQuaternion(RQ)); RRV.copy(ship).sub(R.bpos.saturn); const h = RRV.dot(RNV), rad = Math.sqrt(Math.max(0, RRV.lengthSq() - h * h)), r0 = BI.saturn.r;
-    if (R.ringH != null && Math.sign(h) !== Math.sign(R.ringH) && rad > r0 * 1.25 && rad < r0 * 2.3) { ST.flags.add('rings:saturn'); save(); sfx('fanfare'); bigBanner('THROUGH THE RINGS', 'Like Cassini’s Grand Finale, 2017', 'Saturn’s rings are 280,000 km wide but mostly only about 10 m thick: chunks of water ice from dust to house size.', 4800); checkMissions(); } R.ringH = h; } }
+    if (R.ringH != null && Math.sign(h) !== Math.sign(R.ringH) && rad > r0 * 1.25 && rad < r0 * 2.3) { ST.flags.add('rings:saturn'); save(); sfx('fanfare'); bigBanner(T('THROUGH THE RINGS'), T('Like Cassini’s Grand Finale, 2017'), T('Saturn’s rings are 280,000 km wide but mostly only about 10 m thick: chunks of water ice from dust to house size.'), 4800); checkMissions(); } R.ringH = h; } }
 // arriving at a world: a title card (name, real distance from Earth, light time, one fact) and the camera pulls back to show its size
 const ARR = { last: null, seen: {}, t: 0 };
 function arrivals(dt) { if (R.surf.S.on || CAM.photo) return; const ship = R.ship.position; let hit = null;
@@ -610,11 +611,11 @@ function arrivals(dt) { if (R.surf.S.on || CAM.photo) return; const ship = R.shi
   const b = hit && hit[0]; if (!b) { if (ARR.last && R.bpos[ARR.last] && R.bpos[ARR.last].distanceTo(ship) > BI[ARR.last].r * 9 + 40) ARR.last = null; return; }
   if (ARR.last === b.id || (ARR.seen[b.id] && R.t - ARR.seen[b.id] < 90)) return; ARR.last = b.id; ARR.seen[b.id] = R.t;
   const el = R.root.querySelector('#aArr'), tag = distTag(b.id), first = !ST.flags.has('visit:' + b.id); if (first) { ST.flags.add('visit:' + b.id); save(); }
-  el.querySelector('.ek').textContent = (b.k || '').toUpperCase(); el.querySelector('.nm').textContent = b.n.replace(/^The /, '').toUpperCase(); el.querySelector('.ds').textContent = b.id === 'earth' ? 'Home · the only world we know of with life' : tag;
+  el.querySelector('.ek').textContent = T(b.k || '').toUpperCase(); el.querySelector('.nm').textContent = T(b.n).replace(/^The /, '').toUpperCase(); el.querySelector('.ds').textContent = b.id === 'earth' ? T('Home · the only world we know of with life') : tag;
   el.querySelector('.fc').textContent = (b.facts || [])[0] || ''; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); sfx(first ? 'fanfare' : 'chime'); if (first) say(b.n.replace(/^The /, 'the ') + '.');
   if (first && !R.ap) R.reveal = { t: 0, T: 4.2 }; }
-function touchdown(b, kind, st) { const W0 = WORLD[b.id], nm = b.n.replace(/^The /, ''); jolt(kind === 'dive' ? .5 : 1); sfx('fanfare');
-  bigBanner(kind === 'dive' ? 'INSIDE ' + nm.toUpperCase() : 'TOUCHDOWN', (st ? st.n.split(' (')[0].split(' ·')[0] + ' · ' : '') + nm + (W0 && W0.g ? ` · gravity ${Math.round(W0.g / 9.81 * 100)}% of Earth` : ''), W0 ? `${W0.t || ''}${W0.air ? ' · air: ' + W0.air : ''}` : '', 4600); }
+function touchdown(b, kind, st) { const W0 = WORLD[b.id], nm = T(b.n).replace(/^The /, ''); jolt(kind === 'dive' ? .5 : 1); sfx('fanfare');
+  bigBanner(kind === 'dive' ? T('INSIDE {0}', nm).toUpperCase() : T('TOUCHDOWN'), (st ? st.n.split(' (')[0].split(' ·')[0] + ' · ' : '') + nm + (W0 && W0.g ? ' · ' + T('gravity {0}% of Earth', Math.round(W0.g / 9.81 * 100)) : ''), W0 ? `${W0.t || ''}${W0.air ? ' · air: ' + W0.air : ''}` : '', 4600); }
 // a quick screen jolt for big moments (touchdown, boost)
 function jolt(a = 1) { R.shk = Math.max(R.shk || 0, a); try { if (R.surf.S.on) R.surf.S.camDip = Math.max(R.surf.S.camDip || 0, .25 * a); } catch (e) {} }
 function labels() {
@@ -777,19 +778,19 @@ function coStep(dt) { if (!CO.on) return; CO.tx -= dt; if (CO.tx <= 0) { CO.tx =
   const sx = p.z < 1 ? p.x : -p.x, sy = p.z < 1 ? p.y : -p.y, x = on ? (p.x + 1) / 2 * W : (sx > 0 ? W - 90 : 90), y = on ? (1 - p.y) / 2 * H : Math.max(70, Math.min(H - 70, (1 - Math.max(-1, Math.min(1, sy))) / 2 * H));
   L.style.display = 'block'; L.style.transform = `translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`; const t = `👥 ${P2.n} · ${d < 1000 ? d.toFixed(0) : (d / 1000).toFixed(1) + 'k'} u${on ? '' : ' ◀▶'}`; if (L._t !== t) { L.textContent = t; L._t = t; } }
 function checkMissions(quiet) { while (ST.mi < MISSIONS.length && MISSIONS[ST.mi].need.every(done)) { ST.mi++; if (quiet) continue; save(); reward(20, 150); sfx('fanfare');
-    if (ST.mi >= MISSIONS.length) { ST.flags.add('tour'); save(); trophy('a_tour'); setTimeout(() => bigBanner('GRAND TOUR COMPLETE', 'Every NASA ship in the hangar is now yours', 'Open 🛠 Hangar and fly the Space Shuttle, SLS, Orion…', 5200), 300); say('Grand Tour complete. Outstanding work, commander.'); }
-    else setTimeout(() => bigBanner('MISSION COMPLETE', '+20 🔧', 'Next: ' + MISSIONS[ST.mi].t), 300); }
+    if (ST.mi >= MISSIONS.length) { ST.flags.add('tour'); save(); trophy('a_tour'); setTimeout(() => bigBanner(T('GRAND TOUR COMPLETE'), T('Every NASA ship in the hangar is now yours'), T('Open 🛠 Hangar and fly the Space Shuttle, SLS, Orion…'), 5200), 300); say('Grand Tour complete. Outstanding work, commander.'); }
+    else setTimeout(() => bigBanner(T('MISSION COMPLETE'), '+20 🔧', T('Next: {0}', T(MISSIONS[ST.mi].t))), 300); }
   misUI(); }
 // big centred banner for the moments that matter
 function bigBanner(big, mid, small, ms = 3600) { const b = R.root.querySelector('#aBan'); b.querySelector('b').textContent = big; b.querySelector('i').textContent = mid || ''; b.querySelector('span').innerHTML = small || ''; b.classList.remove('on'); void b.offsetWidth; b.style.animationDuration = ms + 'ms'; b.classList.add('on'); }
 // what each mission step means in plain words, and where autopilot should go for it
-const NEEDL = id => { const [k, a, b] = id.split(':'); if (k === 'land') return 'Land on ' + (BI[a] ? BI[a].n : a); if (k === 'dive') return 'Dive into ' + (BI[a] ? BI[a].n : a); if (k === 'site') return (b === 'gale' ? 'Gale Crater' : b === 'apollo15' ? 'Apollo 15 site' : b) + ' landing';
-  if (k === 'photo') return 'Earthrise photo'; if (k === 'rings') return 'Fly through the rings'; return 'Scan ' + (OI[id] ? OI[id].n.replace(/\s*\(.*?\)/g, '') : id); };
+const NEEDL = id => { const [k, a, b] = id.split(':'); if (k === 'land') return T('Land on {0}', T(BI[a] ? BI[a].n : a)); if (k === 'dive') return T('Dive into {0}', T(BI[a] ? BI[a].n : a)); if (k === 'site') return T(b === 'gale' ? 'Gale Crater landing' : b === 'apollo15' ? 'Apollo 15 site landing' : b);
+  if (k === 'photo') return T('Earthrise photo'); if (k === 'rings') return T('Fly through the rings'); return T('Scan {0}', OI[id] ? OI[id].n.replace(/\s*\(.*?\)/g, '') : id); };
 const NEEDT = id => { const [k, a] = id.split(':'); if (k === 'land' || k === 'dive' || k === 'site') return a; if (k === 'photo') return 'moon'; if (k === 'rings') return 'saturn'; return id; };
 function nextNeed() { const M = MISSIONS[ST.mi]; return M ? M.need.find(n => !done(n)) : null; }
-function tourGo(e) { if (e) e.stopPropagation(); const n = nextNeed(); if (!n) return; if (R.surf && R.surf.S.on) { toast('Take off first (🚀 LAUNCH), then autopilot can fly you there'); return; } goto(NEEDT(n)); }
-function misUI() { const m = R.root.querySelector('#aMis'), D = dailyPick(), ds = DS(), dl = `<i class="dly">🛰 TODAY: ${D.ic} ${D.t} ${ds.done ? '✅' : `(${ds.got.length}/${D.need.length})`}${D.live ? ' 🔴' : ''}</i>`; if (ST.mi >= MISSIONS.length) { m.innerHTML = '<b>GRAND TOUR COMPLETE</b>Every ship in the hangar is yours. Keep scanning to fill your codex' + dl; return; }
-  const M = MISSIONS[ST.mi], nx = nextNeed(); m.innerHTML = `<b>MISSION ${ST.mi + 1}/${MISSIONS.length}</b>${M.t}<span class="nd">${M.need.map(n => `<em class="${done(n) ? 'ok' : n === nx ? 'nx' : ''}">${done(n) ? '✓' : '○'} ${NEEDL(n)}</em>`).join('')}</span><button class="go" id="aMisGo">🧭 Take me there</button>${dl}`;
+function tourGo(e) { if (e) e.stopPropagation(); const n = nextNeed(); if (!n) return; if (R.surf && R.surf.S.on) { toast(T('Take off first (🚀 LAUNCH), then autopilot can fly you there')); return; } goto(NEEDT(n)); }
+function misUI() { const m = R.root.querySelector('#aMis'), D = dailyPick(), ds = DS(), dl = `<i class="dly">🛰 TODAY: ${D.ic} ${D.t} ${ds.done ? '✅' : `(${ds.got.length}/${D.need.length})`}${D.live ? ' 🔴' : ''}</i>`; if (ST.mi >= MISSIONS.length) { m.innerHTML = `<b>${T('GRAND TOUR COMPLETE')}</b>${T('Every ship in the hangar is yours. Keep scanning to fill your codex')}` + dl; return; }
+  const M = MISSIONS[ST.mi], nx = nextNeed(); m.innerHTML = `<b>${T('MISSION {0}/{1}', ST.mi + 1, MISSIONS.length)}</b>${T(M.t)}<span class="nd">${M.need.map(n => `<em class="${done(n) ? 'ok' : n === nx ? 'nx' : ''}">${done(n) ? '✓' : '○'} ${NEEDL(n)}</em>`).join('')}</span><button class="go" id="aMisGo">🧭 ${T('Take me there')}</button>${dl}`;
   m.querySelector('#aMisGo').onclick = tourGo; }
 function goto(id) { if (OI[id] && OI[id].land) id = OI[id].land; const e = R.objs.find(x => x.o.id === id) || (BI[id] ? { o: BI[id], g: { position: R.bpos[id] } } : null); if (!e) return; const d = e.g.position.distanceTo(R.ship.position); R.ap = { e, max: Math.max(60, Math.min(900, d * .8)) }; R.apName = e.o.n; toast('🧭 Autopilot engaged → <b>' + e.o.n + '</b>'); }
 // v85: real distances. The game squeezes the solar system so trips take minutes; the map shows the real numbers for today,
@@ -813,12 +814,12 @@ function codex() { const p = document.createElement('div'); p.className = 'pnl';
   p.innerHTML = `<div class="crd"><div class="ey">📖 NASA CODEX</div><h2>${ST.scanned.size} / ${ALL.length} scanned</h2><div class="mt">Rewards: 10 scans +30 🔧 · 25 scans +60 🔧 · everything +150 🔧. Scanned entries open their fact card and spinning 3D model.</div><div class="grid">${Object.entries(G2).map(([g, L]) => `<h4>${g} · ${L.filter(o => ST.scanned.has(o.id)).length}/${L.length}</h4>` + L.map(o => `<button data-c="${o.id}" class="${ST.scanned.has(o.id) ? '' : 'no'}">${ST.scanned.has(o.id) ? o.n : '❔ ???'}</button>`).join('')).join('')}</div><div class="row"><button id="cX">Close</button></div></div>`;
   R.root.appendChild(p); p.querySelector('#cX').onclick = () => p.remove(); p.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { const o = ALL.find(x => x.id === b.dataset.c); if (ST.scanned.has(o.id)) { p.remove(); card(o, false); } else sfx('no'); }); }
 function intro() { const p = document.createElement('div'); p.className = 'pnl'; const touch = matchMedia('(pointer:coarse)').matches, M = MISSIONS[ST.mi] || MISSIONS[0];
-  const keys = touch ? [['Left stick', 'steer'], ['🚀 THRUST', 'fly'], ['BOOST', 'long trips'], ['SCAN', 'read any object'], ['🗺 Map', 'pick a destination'], ['🛬 LAND', 'walk on a world']]
-    : [['W', 'thrust'], ['A D ↑ ↓ / mouse', 'steer'], ['Shift', 'boost'], ['E', 'scan'], ['M', 'map + autopilot'], ['L', 'land']];
-  p.innerHTML = `<div class="crd"><div class="ey">🚀 ADVENTURE MODE · THE GRAND TOUR</div><h2>The solar system is yours</h2><div class="mt">Real NASA planet maps and over 200 real NASA spacecraft, rovers and suits. Twelve missions take you from Earth orbit to the frozen heart of Pluto.</div>
-    <div style="margin:10px 0;padding:10px 12px;border-radius:10px;background:rgba(125,249,255,.08);border:1px solid rgba(125,249,255,.35)"><b style="color:#7df9ff;font-size:12px;letter-spacing:.12em">MISSION 1</b><div style="margin-top:3px">${M.t}</div><div style="font-size:12px;opacity:.8;margin-top:4px">Follow the glowing <b style="color:#7df9ff">🧭 marker</b>, or tap <b>Take me there</b> on your mission card and the autopilot flies you.</div></div>
+  const keys = (touch ? [['Left stick', 'steer'], ['🚀 THRUST', 'fly'], ['BOOST', 'long trips'], ['SCAN', 'read any object'], ['🗺 Map', 'pick a destination'], ['🛬 LAND', 'walk on a world']]
+    : [['W', 'thrust'], ['A D ↑ ↓ / mouse', 'steer'], ['Shift', 'boost'], ['E', 'scan'], ['M', 'map + autopilot'], ['L', 'land']]).map(([k, d]) => [T(k), T(d)]);
+  p.innerHTML = `<div class="crd"><div class="ey">🚀 ${T('ADVENTURE MODE · THE GRAND TOUR')}</div><h2>${T('The solar system is yours')}</h2><div class="mt">${T('Real NASA planet maps and over 200 real NASA spacecraft, rovers and suits. Twelve missions take you from Earth orbit to the frozen heart of Pluto.')}</div>
+    <div style="margin:10px 0;padding:10px 12px;border-radius:10px;background:rgba(125,249,255,.08);border:1px solid rgba(125,249,255,.35)"><b style="color:#7df9ff;font-size:12px;letter-spacing:.12em">${T('MISSION {0}/{1}', ST.mi + 1, MISSIONS.length)}</b><div style="margin-top:3px">${T(M.t)}</div><div style="font-size:12px;opacity:.8;margin-top:4px">${T('Follow the glowing 🧭 marker, or tap Take me there on your mission card and the autopilot flies you.')}</div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:3px 12px;font-size:12px;opacity:.85">${keys.map(([k, d]) => `<span><b style="color:#F4A259">${k}</b> ${d}</span>`).join('')}</div>
-    <div class="mt" style="font-size:12px">Finish the Grand Tour to unlock every NASA ship in the hangar, including the Space Shuttle.</div><div class="row"><button class="pr" id="iGo">Let's fly</button></div></div>`;
+    <div class="mt" style="font-size:12px">${T('Finish the Grand Tour to unlock every NASA ship in the hangar, including the Space Shuttle.')}</div><div class="row"><button class="pr" id="iGo">${T('Let’s fly')}</button></div></div>`;
   R.root.appendChild(p); p.querySelector('#iGo').onclick = () => { p.remove(); P('adv_seen', 1); }; }
 
 /* ---------------- Hangar: every flyable NASA spacecraft and aircraft ---------------- */
