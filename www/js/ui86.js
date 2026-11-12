@@ -92,7 +92,7 @@
     ['aud', 'Audio', [['@vol', 'Master changes everything. Effects covers weapons, buildings and ambience. Music is the soundtrack.']]],
     ['ctl', 'Controls', [['dvB', 'Button layout for phone, tablet or computer. Automatic detects your device.'], ['afB', 'Your astronaut fires by itself when an alien is in range, so you can play with one thumb.'], ['vbB', 'Short phone vibrations for hits, explosions and alarms.'], ['@ctl', 'See every keyboard, touch and gamepad control.']]],
     ['a11y', 'Accessibility', [['btB', 'Bigger text in menus and the HUD.'], ['bbB', 'Bigger touch buttons that are easier to hit.'], ['cbcB', 'Colours that stay easy to tell apart with colour blindness.'], ['cbB', 'Mark danger zones with stripes as well as colour.'], ['nflB', 'Fewer bright flashes from explosions and lightning.'], ['hcB', 'Solid panels and bright outlines for easier reading.'], ['skB', 'Shake the screen on big hits and explosions.']]],
-    ['lang', 'Language', [['lnB', 'Play in one of 12 languages. Science facts are translated too.']]],
+    ['lang', 'Language', [['lnB', 'Play in one of 17 languages. Science facts are translated too.']]],
     ['play', 'Gameplay', [['rfB', 'Short, true science facts that appear while you play.'], ['naB', 'Use today’s real data from NASA when you are online.'], ['ctB', 'Story scenes between waves.']]]];
   function settingsUI(back) {
     const sh = $q('#ov .sheet'), bk = $q('#bkS'); if (!sh || !bk || sh.dataset.u86) return; sh.dataset.u86 = 1; sh.classList.add('u-set');

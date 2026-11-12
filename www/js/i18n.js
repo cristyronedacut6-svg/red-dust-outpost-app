@@ -3,7 +3,8 @@
    Order of each row: English, Filipino, Bisaya (Cebuano), Español, Français, Português, Deutsch, Bahasa Indonesia, 日本語, 中文, 한국어, हिन्दी */
 (function () {
   'use strict';
-  const LANGS = [['en', 'English'], ['fil', 'Filipino'], ['ceb', 'Bisaya'], ['es', 'Español'], ['fr', 'Français'], ['pt', 'Português'], ['de', 'Deutsch'], ['id', 'Bahasa Indonesia'], ['ja', '日本語'], ['zh', '中文'], ['ko', '한국어'], ['hi', 'हिन्दी']];
+  const LANGS = [['en', 'English'], ['fil', 'Filipino'], ['ceb', 'Bisaya'], ['es', 'Español'], ['fr', 'Français'], ['pt', 'Português'], ['de', 'Deutsch'], ['id', 'Bahasa Indonesia'], ['ja', '日本語'], ['zh', '中文'], ['ko', '한국어'], ['hi', 'हिन्दी'],
+    ['vi', 'Tiếng Việt'], ['th', 'ไทย'], ['ru', 'Русский'], ['it', 'Italiano'], ['tr', 'Türkçe']];   // the last five (Nov 2026) read their older lines from I18N.more() dictionaries
   const T = [
     ['Back', 'Bumalik', 'Balik', 'Volver', 'Retour', 'Voltar', 'Zurück', 'Kembali', '戻る', '返回', '뒤로', 'वापस'],
     ['Got it', 'Sige', 'Sige', 'Entendido', 'Compris', 'Entendi', 'Verstanden', 'Mengerti', 'わかった', '明白了', '알겠어요', 'समझ गया'],
@@ -165,14 +166,18 @@
   const IDX = {}; LANGS.forEach((l, i) => IDX[l[0]] = i);
   const MAP = new Map(); T.forEach(r => MAP.set(norm(r[0]), r));
   let LANG = 'en';
+  // older rows have 12 columns; the five newer languages look those up here by English text: EXTRA[lang] = Map(normalised English → text), EXTRAP[lang] = Map(regex source → output)
+  const EXTRA = {}, EXTRAP = {};
+  const cell = (row, li) => row[li] || (EXTRA[LANG] && EXTRA[LANG].get(norm(row[0]))) || null;
+  const pcell = (re, out, li) => out[li - 1] || (EXTRAP[LANG] && EXTRAP[LANG].get(re.source)) || null;
   function tr(v) {
     if (LANG === 'en' || !v) return null;
     const m = v.match(/^([\s\p{P}\p{S}\p{Emoji_Presentation}️‍]*)([\s\S]*?)(\s*)$/u); if (!m) return null;
     let lead = m[1], core = m[2]; if (!core) return null; const li = IDX[LANG];
     const k = norm(core), row = MAP.get(k);
-    if (row) return lead + row[li] + m[3];
+    if (row) { const c = cell(row, li); if (c) return lead + c + m[3]; }
     if (window.I18N_FACTS) { const f = I18N_FACTS.get(core, LANG); if (f) return lead + f + m[3]; }
-    for (const [re, out] of PT) { const mm = k.match(re); if (mm) return lead + out[li - 1].replace(/\$(\d)/g, (_, d) => { const r2 = MAP.get(norm(mm[+d] || '')); return r2 ? r2[li] : mm[+d]; }) + m[3]; }
+    for (const [re, out] of PT) { const mm = k.match(re); if (!mm) continue; const o = pcell(re, out, li); if (!o) return null; return lead + o.replace(/\$(\d)/g, (_, d) => { const r2 = MAP.get(norm(mm[+d] || '')); return (r2 && cell(r2, li)) || mm[+d]; }) + m[3]; }
     return null;
   }
   const ORIG = new WeakMap(); let busy = false;
@@ -191,7 +196,11 @@
     obs.observe(document.body, { childList: true, subtree: true, characterData: true }); if (l !== 'en') set(l); else LANG = 'en';
   }
   // later files (i18n_ui.js) add rows: [English, fil, ceb, es, fr, pt, de, id, ja, zh, ko, hi] and patterns [regex, [11 outputs]]
-  function add(rows, pats) { (rows || []).forEach(r => { if (r && r.length === LANGS.length) MAP.set(norm(r[0]), r); }); (pats || []).forEach(p => PT.push(p)); if (LANG !== 'en' && document.body) { busy = true; try { walk(document.body); } finally { busy = false; } } }
-  function missing(lang) { const li = IDX[lang]; const out = []; MAP.forEach((r, k) => { if (!r[li] || !String(r[li]).trim()) out.push(k); }); return out; }
-  window.I18N = { LANGS, set, tr, cur: () => LANG, start, add, missing, size: () => MAP.size };
+  function add(rows, pats) { (rows || []).forEach(r => { if (r && r.length >= 12) MAP.set(norm(r[0]), r); }); (pats || []).forEach(p => PT.push(p)); if (LANG !== 'en' && document.body) { busy = true; try { walk(document.body); } finally { busy = false; } } }
+  function missing(lang) { const li = IDX[lang], L0 = LANG; LANG = lang; const out = []; MAP.forEach((r, k) => { const c = cell(r, li); if (!c || !String(c).trim()) out.push(k); }); LANG = L0; return out; }
+  // dictionaries for the newer languages: more('vi', { 'Back': 'Quay lại', … }, { '^Wave (\\d+)\\/(\\d+)$': 'Đợt $1/$2', … })
+  function more(lang, dict, pats) { const m = EXTRA[lang] || (EXTRA[lang] = new Map()); for (const k in dict || {}) m.set(norm(k), dict[k]); const p = EXTRAP[lang] || (EXTRAP[lang] = new Map()); for (const k in pats || {}) p.set(k, pats[k]); if (LANG === lang && document.body) { busy = true; try { walk(document.body); } finally { busy = false; } } }
+  // templates for text with numbers or names in it: t('Health {0}', 87). Rows are added with add() using the template as the English text.
+  function t(k, ...a) { let s = k; if (LANG !== 'en') { const row = MAP.get(norm(k)); const c = row ? cell(row, IDX[LANG]) : (EXTRA[LANG] && EXTRA[LANG].get(norm(k))); if (c) s = c; } return s.replace(/\{(\d)\}/g, (_, i) => a[i] ?? ''); }
+  window.I18N = { LANGS, set, tr, t, more, cur: () => LANG, start, add, missing, size: () => MAP.size };
 })();
