@@ -1007,6 +1007,270 @@ function driveToggle() { const S = R.surf.S; if (!S.on || S.mode !== 'land' || S
 function drvUI() { const S = R.surf.S, b = R.root.querySelector('#aDrv'), can = S.on && S.mode === 'land' && (S.body.id === 'moon' || S.body.id === 'mars') && !S.fly; b.style.display = can ? 'block' : 'none'; if (can) b.innerHTML = S.drive ? '🧑‍🚀 GET OUT' : S.body.id === 'moon' ? '🚙 DRIVE THE MOON BUGGY' : '🤖 DRIVE THE ROVER'; R.root.querySelector('#aThr').innerHTML = S.drive ? '🛑<br>BRAKE' : S.fly ? R.root.querySelector('#aThr').innerHTML : '⤒<br>JUMP'; }
 function helmToggle() { const S = R.surf.S; if (!S.on || S.mode !== 'land' || S.drive || S.fly) return; const on = R.surf.helmet(); R.visor.enabled = !!on; R.root.classList.toggle('helm', !!on); toast(on ? '🪖 Helmet view: what the astronaut sees through the visor (V to switch back)' : '🎥 Third-person view', 2200); }
 function suitHUD(dt) { const S = R.surf.S, el = R.root.querySelector('#aSuit'), foot = !!(S.on && S.mode === 'land' && !S.drive && !S.fly); R.root.classList.toggle('onfoot', foot); if (foot) setCompass(R.root, -S.camYaw * 180 / Math.PI); if (!S.on || S.mode !== 'land' || (R.sv && R.sv.on)) { el.style.display = 'none'; return; } el.style.display = 'block'; const id = S.body.id, W = WORLD[id] || {}, P = S.player.position;
+  SUIT.t += dt; if (S.tod < SUIT.lastTod - .5) SUIT.day++; SUIT.lastTod = S.tod; const nearCap = Math.hypot(P.x + 12, P.z + 8) < 16 || !!S.drive;
+  SUIT.o2 = THREE.MathUtils.clamp(SUIT.o2 + (nearCap ? 6 : -.18) * dt, 0, 100); S.o2 = SUIT.o2;   /* the backpack read-out shows it too */ if (SUIT.o2 < 15 && !SUIT.warn) { SUIT.warn = 1; toast('⚠ Oxygen low! Head back to your lander (or a rover) to refill.', 3500); say('Warning. Oxygen low.'); } if (SUIT.o2 > 30) SUIT.warn = 0;
+  const run = R.keys.shift || R.bst, tgt = 78 + (run ? 34 : 0) + (Math.hypot(S.vel.x, S.vel.z) > .5 ? 12 : 0); SUIT.beat += (tgt - SUIT.beat) * Math.min(1, dt * .5);
+  const ts = String(W.t || '').replace(/−/g, '-'), rg = ts.match(/(-?\d[\d,]*)\s*(?:to|–)\s*(-?\d[\d,]*)/), one = ts.match(/-?\d[\d,]*/), lo = parseFloat(((rg ? rg[1] : one ? one[0] : '0')).replace(',', '')), hi = rg ? parseFloat(rg[2].replace(',', '')) : lo, day = S.skyU ? THREE.MathUtils.smoothstep(S.skyU.e.value, -.06, .3) : Math.max(0, Math.sin(S.tod * Math.PI * 2)), temp = Math.round(lo + (Math.max(hi, lo) - lo) * day);
+  const h = (S.tod * 24 + 6) % 24, hh = Math.floor(h), mm = Math.floor((h - hh) * 60), dl = DAYH[id] || 24, dlTxt = dl < 48 ? `${Math.floor(dl)} h ${Math.round((dl % 1) * 60)} m` : `${(dl / 24).toFixed(1)} Earth days`;
+  const rad = RAD[id] ?? 25, radTxt = rad >= 1000 ? (rad / 1000).toFixed(rad >= 1e5 ? 0 : 1) + ' mSv/h' : rad.toFixed(rad < 1 ? 1 : 0) + ' µSv/h', rc = rad > 1e4 ? 'd' : rad > 50 ? 'w' : '';
+  const t = `<b>🕒 ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</b> local · ${id === 'mars' ? 'Sol' : 'Day'} ${SUIT.day} · day = ${dlTxt}<br><b>O₂</b> <span class="${SUIT.o2 < 15 ? 'd' : SUIT.o2 < 35 ? 'w' : ''}">${SUIT.o2.toFixed(0)}%</span> · <b>SUIT</b> 29.6 kPa · <b>♥</b> ${Math.round(SUIT.beat)}<br><b>OUTSIDE</b> ${temp} °C · <b>RAD</b> <span class="${rc}">${radTxt}${rad > 1e4 ? ' · LETHAL' : ''}</span>`;
+  let jt = ''; if ((W.g || 9.8) < 5 && S.fuel != null) { const f = S.fuel, n = Math.round(f * 10); jt = `<br><b>JET</b> <span class="jb${S.thrusting ? ' on' : ''}${f < .2 ? ' d' : f < .4 ? ' w' : ''}">${'▰'.repeat(n)}${'▱'.repeat(10 - n)}</span> ${Math.round(f * 100)}%${S.thrusting ? ' · BURN' : ''}`; }
+  const tj = t + jt; if (el._t !== tj) { el.innerHTML = tj; el._t = tj; } R.visor.uniforms.cold.value = temp < -120 ? 1 : temp < -40 ? .5 : 0; R.visor.uniforms.aspect.value = innerWidth / innerHeight; R.visor.uniforms.time.value = SUIT.t; }
+function surfUI(b, W, mode) { const $ = q => R.root.querySelector(q), on = !!b; $('#aHelm').style.display = on && mode === 'land' ? 'block' : 'none'; if (!on) { R.visor.enabled = false; R.root.classList.remove('helm', 'onfoot'); SUIT.o2 = 100; SUIT.day = 1; } setTimeout(() => { try { drvUI(); } catch (e) {} }, 0); $('#aHud').style.display = on ? 'none' : ''; $('#aMap').style.display = on ? 'none' : ''; $('#aHan').style.display = on ? 'none' : ''; const cr = on && mode === 'land' ? craftFor(b.id) : null; $('#aFly').style.display = cr ? 'block' : 'none'; if (cr) $('#aFly').innerHTML = (cr.heli ? '🚁 ' : '✈ ') + 'FLY ' + cr.n.toUpperCase(); $('#aThr').innerHTML = on ? (mode === 'dive' ? '⬆<br>CLIMB' : (W.g < 5 ? '⤒<br>JUMP·JET' : '⤒<br>JUMP')) : '🚀<br>THRUST'; $('#aBst').innerHTML = on ? (mode === 'dive' ? 'DIVE' : 'RUN') : 'BOOST';
+  $('#aLand').style.display = on ? 'block' : 'none'; $('#aLand').textContent = '🚀 LAUNCH'; $('#aLand')._t = null; R.mode = on ? mode : null; R.lab.forEach(l => l.style.display = 'none');
+  R.surfInfo = on ? (mode === 'dive' ? `${b.n} · inside the clouds` : `${b.n} · gravity ${W.g} m/s² (${Math.round(W.g / 9.81 * 100)}% of Earth) · ${W.t} · air: ${W.air}`) : ''; }
+let jumpWas = 0;
+function surfStep(dt) { try { suitHUD(dt); } catch (e) {} const k = R.keys, S = R.surf.S, jump = !!(R.thr || k[' ']), inp = { x: R.joy.x + ((k.d || k.arrowright) ? 1 : 0) - ((k.a || k.arrowleft) ? 1 : 0), y: R.joy.y + ((k.s || k.arrowdown) ? 1 : 0) - ((k.w || k.arrowup) ? 1 : 0), run: !!(R.bst || k.shift), jump, jumpPress: jump && !jumpWas, look: (k.q ? 1 : 0) - (k.r ? 1 : 0), lookY: 0 }; jumpWas = jump;
+  if (R.sv && R.sv.on) R.sv.pre(dt, inp);
+  const r = R.surf.step(dt, inp) || {}; const SV = R.sv && R.sv.on ? R.sv : null; if (SV) SV.step(dt); { const F = S.fly; AUD.set({ eng: F ? (F.heli ? .55 : Math.min(1, (r.spd || 0) / (F.vmax * 3.6))) : SV ? SV.thrustK() * .45 : (inp.jump && !S.onGround ? .35 : 0), boost: F && inp.run ? 1 : 0, wind: F && !F.heli && WORLD[S.body.id] && WORLD[S.body.id].air !== 'None' ? Math.min(1, (r.spd || 0) / 300) : (S.mode === 'dive' ? .5 : 0), dt, air: !S.body ? 'ship' : WORLD[S.body.id] && /^(None|Almost none)/.test(WORLD[S.body.id].air) ? 'vac' : S.body.id, suit: S.mode === 'land' && !S.drive && !F ? 1 : 0, gust: S.storm ? S.storm.k || 0 : 0, effort: Math.max(SV ? SV.breath() : 0, Math.min(1, Math.hypot(inp.x || 0, inp.y || 0) * (inp.run ? 1 : .5))) }); }
+  if (R.scanning && R.scanning.surf) { R.scanning.t += dt; const el = R.root.querySelector('#aScan'); el.style.display = 'block'; setT(el, 'SCANNING ' + Math.min(100, Math.round(R.scanning.t / 1.1 * 100)) + '%'); if (R.scanning.t > 1.1) { el.style.display = 'none'; const o = R.scanning.e.o; R.scanning = null; card(o, true); } }
+  R.root.querySelector('#aScn').classList.toggle('on', !!(S.near && !ST.scanned.has(S.near.o.id))); if (S.mode !== 'dive') ldUI(S.ldK || 0, S.ldN || 0); else ldUI(0, 0);
+  setT(R.root.querySelector('#aSpd'), S.mode === 'dive' ? `Depth ${Math.round(r.depth || 0)} km / ${r.max} km · ${Math.round(1 + (r.depth || 0) * .9)} bar · ${R.surfInfo}` : (S.fly ? `${S.fly.heli ? '🚁' : '✈'} ${S.fly.n} · ${r.spd} km/h · altitude ${r.alt} m · ` : '') + `${R.surfInfo} · ${S.cols.filter(c => !c.got).length} finds left`);
+  // labels for NASA sites and nearby finds
+  const W_ = innerWidth, H_ = innerHeight, v = new THREE.Vector3(); let i = 0; const P_ = S.player ? S.player.position : v;
+  const L = S.mode === 'dive' ? [] : [...S.items.filter(x => !x.geyser).map(x => [x.g.position, (ST.scanned.has(x.o.id) ? x.o.n : '📡 ' + x.o.n), x.s * 1.15 + 1.5, !ST.scanned.has(x.o.id)]), ...S.cols.filter(c => !c.got && c.m.position.distanceTo(P_) < 90).map(c => [c.m.position, c.sample ? '🧪 Sample' : '⭐', 1.2, 1])];
+  L.forEach(x => x[4] = x[0].distanceTo(P_)); L.sort((a, b) => a[4] - b[4]); L.length = Math.min(L.length, 8);
+  for (const [p, t, up, u] of L) { const d = p.distanceTo(P_); if (d > 400) continue; v.copy(p); v.y += up; v.project(R.cam); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) continue; let el = R.lab[i]; if (!el) { el = R.lab[i] = document.createElement('div'); R.labs.appendChild(el); } i++; if (el._m !== 'g') { el._m = 'g'; el.style.transform = ''; } el._c = el._h = el._d = null; el.className = 'lab' + (u ? ' u' : ''); el.innerHTML = t + `<small>${Math.round(d)} m</small>`; el.style.left = ((v.x + 1) / 2 * W_) + 'px'; el.style.top = ((1 - v.y) / 2 * H_) + 'px'; el.style.display = 'block'; }
+  for (; i < R.lab.length; i++) R.lab[i].style.display = 'none'; }
+/* ---------------- open / close ---------------- */
+/* ---------------- realism pass 13: a living solar system ---------------- */
+// 1) Orbits. Planets follow Kepler's third law (period ∝ distance^1.5; an Earth year is 25 minutes here), moons visibly circle their planets.
+//    Positions come from the real clock, so co-op friends see the same sky. Your ship rides along with whatever world it is near, like a real orbit.
+const ORB_EPOCH = 1.79e9, MOONP = { moon: 240, phobos: 40, deimos: 90, io: 45, europa: 90, ganymede: 180, callisto: 420, mimas: 50, enceladus: 70, tethys: 95, dione: 130, rhea: 190, titan: 330, iapetus: 900, miranda: 70, ariel: 100, umbriel: 140, titania: 220, oberon: 300, triton: 150, charon: 120 };
+const ORB = { base: null, prev: {}, n: new THREE.Vector3() };
+const orbT = () => SET.orb === 0 ? 0 : Date.now() / 1000 - ORB_EPOCH;
+function orbitPos(bp, T) { if (!ORB.base) { ORB.base = {}; for (const b of BODIES) ORB.base[b.id] = b.at ? new THREE.Vector3(...b.off) : null; }
+  for (const b of BODIES) if (!b.at && b.id !== 'sun') { const w = Math.PI * 2 / 1500 * Math.pow(520 / b.d, 1.5), a = b.a + w * T; bp[b.id].set(Math.cos(a) * b.d, 0, Math.sin(a) * b.d); }
+  for (const b of BODIES) if (b.at) { const o = ORB.base[b.id], rad = Math.hypot(o.x, o.z), a0 = Math.atan2(o.z, o.x), P = MOONP[b.id] || 60 * Math.pow(rad / 12, 1.5), a = a0 + Math.PI * 2 * T / P;
+    bp[b.id].set(bp[b.at].x + Math.cos(a) * rad, bp[b.at].y + o.y, bp[b.at].z + Math.sin(a) * rad); } }
+function orbitStep() { const bp = R.bpos;
+  for (const b of BODIES) ORB.prev[b.id] = (ORB.prev[b.id] || new THREE.Vector3()).copy(bp[b.id]);
+  orbitPos(bp, orbT()); for (const b of BODIES) R.bmesh[b.id].position.copy(bp[b.id]);
+  // the ship shares the motion of the world whose gravity it is in
+  let dom = null, sc = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = ORB.prev[b.id].distanceTo(R.ship.position) - b.r, k = d; if (d < b.r * 6 + 40 && k < sc) { sc = k; dom = b; } }
+  ORB.dom = dom; if (dom && !R.ending) { const dv = ORB.n.copy(bp[dom.id]).sub(ORB.prev[dom.id]); if (dv.lengthSq() < 400) { R.ship.position.add(dv); R.cam.position.add(dv); } }
+  // eclipse occluders follow the moons
+  for (const b of BODIES) { const m = R.bmesh[b.id]; if (!m.material.uniforms || !m.material.uniforms.occ) continue; const u = m.material.uniforms; if (b.at && BI[b.at] && b.at !== 'sun') u.occ.value.set(bp[b.at].x, bp[b.at].y, bp[b.at].z, BI[b.at].r);
+    const kid = ORB.kids && ORB.kids[b.id]; if (kid) u.occ2.value.set(bp[kid.id].x, bp[kid.id].y, bp[kid.id].z, kid.r); }
+  if (!ORB.kids) { ORB.kids = {}; for (const b of BODIES) { const ks = BODIES.filter(x => x.at === b.id).sort((a, c) => c.r / bp[c.id].distanceTo(bp[b.id]) - a.r / bp[a.id].distanceTo(bp[b.id])); if (ks[0]) ORB.kids[b.id] = ks[0]; } } }
+
+// 3) Light: the Sun as a directional light that follows the ship (so the ship casts real shadows on nearby craft, ring ice and itself),
+//    dimmed when a planet blocks it; plus planetshine, the coloured light reflected off the nearest world.
+const ALB = { mercury: [0x9a9590, .14], venus: [0xf2dcae, .76], earth: [0x7aa8e8, .3], moon: [0xa8a6a2, .12], mars: [0xd47a4a, .25], jupiter: [0xd8bc90, .5], saturn: [0xe6d6a8, .5], uranus: [0xa6e2ea, .5], neptune: [0x6a8ae0, .44], io: [0xe0c860, .6], europa: [0xd6ccbc, .67], ganymede: [0xa8a098, .43], callisto: [0x7a7268, .2], titan: [0xd8a050, .22], enceladus: [0xf4f8ff, .99], pluto: [0xd8c0a0, .5], ceres: [0x8a8a8e, .09], vesta: [0xa8a49a, .42] };
+const LIT = { sun: null, ps: null, v: new THREE.Vector3(), w: new THREE.Vector3() };
+function lightsInit() { const sd = new THREE.DirectionalLight(0xfff2dd, 3.2); sd.castShadow = true; const sc = sd.shadow.camera; sc.left = sc.bottom = -9; sc.right = sc.top = 9; sc.near = .5; sc.far = 90; sd.shadow.mapSize.set(1024, 1024); sd.shadow.bias = -.0004; sd.shadow.normalBias = .03;
+  R.scn.add(sd); R.scn.add(sd.target); LIT.sun = sd; const ps = new THREE.DirectionalLight(0xffffff, 0); R.scn.add(ps); R.scn.add(ps.target); LIT.ps = ps; R.scn.traverse(o => { if (o.isPointLight && o.intensity === 3.2 && o.decay === 0) o.intensity = 0; }); }
+function lightsStep() { if (!LIT.sun) lightsInit(); const ship = R.ship.position, sz = (R.shipStat || SHIPS[0]).sz, sd = LIT.sun, toSun = LIT.v.copy(R.bpos.sun).sub(ship), ds = toSun.length(); toSun.divideScalar(ds);
+  let vis = 1; for (const b of BODIES) { if (b.id === 'sun') continue; const oc = LIT.w.copy(R.bpos[b.id]).sub(ship), t = oc.dot(toSun); if (t > 0 && t < ds) { const d2 = oc.lengthSq() - t * t, r = b.r; if (d2 < r * r * 1.1) { vis = Math.min(vis, THREE.MathUtils.smoothstep(Math.sqrt(d2), r * .92, r * 1.05)); } } }
+  sd.position.copy(ship).addScaledVector(toSun, 40); sd.target.position.copy(ship); sd.intensity = 3.2 * vis; const k = Math.max(4, sz * 4); const c = sd.shadow.camera; if (c.right !== k) { c.left = c.bottom = -k; c.right = c.top = k; c.updateProjectionMatrix(); }
+  OCCS.value.set(ship.x, ship.y, ship.z, sz * .5);
+  let best = null, bs = 1e9; for (const b of BODIES) { if (b.id === 'sun' || !ALB[b.id]) continue; const d = R.bpos[b.id].distanceTo(ship); const f = (b.r / Math.max(d, b.r)) ** 2; if (-f < bs) { bs = -f; best = [b, d, f]; } }
+  const ps = LIT.ps; if (best && -bs > .002) { const [b, d, f] = best, pp = R.bpos[b.id], n = LIT.w.copy(ship).sub(pp).normalize(), ph = .5 + .5 * n.dot(LIT.v.copy(R.bpos.sun).sub(pp).normalize());
+    ps.color.setHex(ALB[b.id][0]); ps.intensity = Math.min(2.4, 3.2 * ALB[b.id][1] * f * ph * 1.6); ps.position.copy(pp); ps.target.position.copy(ship); } else ps.intensity = 0; }
+
+// 4) Newtonian flight and RCS puffs: small cold-gas jets fire at the nose whenever the ship turns or brakes
+function rcs(dt, yawIn, pitIn, brake) { const sz = (R.shipStat || SHIPS[0]).sz, a = Math.abs(yawIn) + Math.abs(pitIn) + (brake ? 1 : 0); if (a < .12 || Math.random() > dt * 26 * Math.min(1, a)) return;
+  const side = yawIn > .1 ? -1 : yawIn < -.1 ? 1 : (Math.random() < .5 ? -1 : 1), up = pitIn > .1 ? -1 : pitIn < -.1 ? 1 : 0;
+  const p = R.ship.localToWorld(LIT.w.set(side * sz * .55, up * sz * .4, -sz * .45)), v = LIT.v.set(side * 7, up * 7, brake ? -9 : 0).applyQuaternion(R.ship.quaternion).add(R.vel);
+  R.fx.emit(p, v, 0xeaf4ff, sz * .22, .28, 2, 1.2, { grow: 2.6, drag: .4, a: .7 }); }
+
+// 2) Io's volcanoes from orbit: sulfur plumes in clean ballistic umbrellas (no air on Io), hundreds of km high
+function ioPlumes(m, r) { const N = 900, seed = new Float32Array(N * 3); for (let i = 0; i < N * 3; i++) seed[i] = Math.random();
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3)); g.setAttribute('seed', new THREE.BufferAttribute(seed, 3));
+  const vents = [[.33, -1.2], [-.4, 2.1], [.05, .4], [.6, -2.6]], U = { time: { value: 0 }, r: { value: r } };
+  const mat = new THREE.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `attribute vec3 seed; uniform float time, r; varying float vA;
+      void main(){ int k = int(seed.z * 3.999); vec2 v = k == 0 ? vec2(.33, -1.2) : k == 1 ? vec2(-.4, 2.1) : k == 2 ? vec2(.05, .4) : vec2(.6, -2.6);
+        vec3 n = vec3(cos(v.x) * cos(v.y), sin(v.x), cos(v.x) * sin(v.y)), t1 = normalize(cross(n, vec3(0., 1., .01))), t2 = cross(n, t1);
+        float T = 1., ph = fract(time / 9. + seed.x), a = seed.y * 6.2832, sp = .35 + .55 * fract(seed.x * 7.3);
+        vec3 v0 = n * 1. + (t1 * cos(a) + t2 * sin(a)) * sp * .55; float tt = ph * 2.2; vec3 p = n * r * 1.002 + (v0 * tt - n * .5 * .9 * tt * tt) * r * .17;
+        vA = (1. - ph) * smoothstep(0., .08, ph) * step(0., dot(p, n) - r); vec4 mv = modelViewMatrix * vec4(p, 1.); gl_PointSize = clamp(r * 7. / -mv.z * 60., 1., 6.); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: 'varying float vA; void main(){ vec2 c = gl_PointCoord - .5; float a = smoothstep(.5, .1, length(c)) * vA; gl_FragColor = vec4(vec3(.72, .82, 1.) * 1.4, a * .55); }' });
+  const pts = new THREE.Points(g, mat); pts.frustumCulled = false; m.add(pts);
+  for (const [la, lo] of vents) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex('rgba(255,170,60,1)', 'rgba(255,60,0,.4)'), blending: THREE.AdditiveBlending, depthWrite: false })); s.position.set(Math.cos(la) * Math.cos(lo), Math.sin(la), Math.cos(la) * Math.sin(lo)).multiplyScalar(r * 1.01); s.scale.setScalar(r * .09); m.add(s); }   // glowing lava at each vent
+  SPACEFX.push({ update(dt, t) { U.time.value = t; } }); }
+
+// 5) Real constellations: 88 IAU constellations, their stick figures and the brightest named stars (data: d3-celestial, BSD licence),
+//    drawn on the same sphere as NASA's Tycho star map, so the lines sit exactly on the real stars.
+/* the Milky Way and nebula glow are many layers of 3D noise per pixel; render them once into a cube map and just sample it after */
+function bakeSky(ren, sm, smat, hdr) { try { const sz = GFX === 'low' ? 512 : GFX === 'max' ? 2048 : 1024, rt = new THREE.WebGLCubeRenderTarget(sz, { type: hdr ? THREE.HalfFloatType : THREE.UnsignedByteType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+    const cs = new THREE.Scene(), tmp = new THREE.Mesh(new THREE.SphereGeometry(50, 96, 48), smat); cs.add(tmp); const cc = new THREE.CubeCamera(.1, 200, rt); cc.update(ren, cs); tmp.geometry.dispose();
+    sm.material = new THREE.ShaderMaterial({ uniforms: { cube: { value: rt.texture }, map: smat.uniforms.map }, side: THREE.BackSide, depthWrite: false,
+      vertexShader: 'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+      fragmentShader: 'uniform samplerCube cube; varying vec3 vD; void main(){ gl_FragColor = vec4(textureCube(cube, normalize(vD)).rgb, 1.); }' });
+  } catch (e) { console.warn('sky bake', e); } }
+/* only touch the DOM when the text really changed (each write also wakes the icon observer) */
+/* compile a new model's shaders in the background (parallel compile where the GPU driver supports it) so it doesn't hitch the frame it first appears in */
+function pre(o, sc) { try { if (o && R && R.ren.compileAsync) R.ren.compileAsync(o, R.cam, sc || o).catch(() => {}); } catch (e) {} }
+function setT(el, t) { if (el && el._t !== t) { el._t = t; el.textContent = t; } }
+let STARSPHERE = null; const SKY = { g: null, on: false, busy: false };
+const skyDir = (ra, de, r) => { const u = (.5 + ra / 360) % 1, v = .5 - de / 180, ph = u * Math.PI * 2, th = v * Math.PI; return new THREE.Vector3(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)).multiplyScalar(r); };
+function skyLabel(txt, col, h) { const c = document.createElement('canvas'), g = c.getContext('2d'); g.font = `700 ${h}px system-ui, sans-serif`; const w = Math.ceil(g.measureText(txt).width) + 12; c.width = w; c.height = h + 10; g.font = `700 ${h}px system-ui, sans-serif`; g.fillStyle = col; g.shadowColor = '#000'; g.shadowBlur = 4; g.fillText(txt, 6, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, depthTest: false, fog: false })); s.scale.set(w / (h + 10) * 150, 150, 1); s.renderOrder = 2; return s; }
+async function skyToggle() { if (!STARSPHERE) return; SKY.on = !SKY.on; if (SKY.g) { SKY.g.visible = SKY.on; } else if (SKY.on && !SKY.busy) { SKY.busy = true; try { const D = await (await fetch('models/sky/constellations.json')).json(); const g = new THREE.Group(), R0 = 9200, pts = [];
+      for (const fig of D.lines) for (const line of fig) for (let i = 0; i < line.length - 1; i++) pts.push(skyDir(line[i][0], line[i][1], R0), skyDir(line[i + 1][0], line[i + 1][1], R0));
+      g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x7fb8ff, transparent: true, opacity: .45, depthWrite: false, fog: false })));
+      for (const [n, ra, de] of D.cons) { const s = skyLabel(n.toUpperCase(), 'rgba(150,200,255,.85)', 34); s.position.copy(skyDir(ra, de, R0)); g.add(s); }
+      for (const [n, ra, de] of D.stars) { const s = skyLabel(n, 'rgba(255,236,190,.95)', 28); s.scale.multiplyScalar(.75); s.position.copy(skyDir(ra, de, R0)).add(new THREE.Vector3(0, -95, 0)); g.add(s); }
+      STARSPHERE.add(g); SKY.g = g; g.visible = SKY.on; } catch (e) { toast('⚠ Could not load the star chart'); SKY.on = false; } SKY.busy = false; }
+  toast(SKY.on ? '✨ Star chart on: real constellations and star names (K to hide)' : '✨ Star chart off', 2200); }
+/* realism pass 11: prominences, auroras, the comet, Saturn's ring chunks, and the Sun's heat as you get close */
+const SPACEFX = [];
+function spaceFX(dt) { if (!R.comet) { R.comet = makeComet(R.scn, R.bpos.sun); R.cometSeen = 0; }
+  for (const f of SPACEFX) f.update(dt, R.t, f.ring ? R.ship.position : R.bpos.sun);
+  R.comet.update(dt, R.cam); const cd = R.comet.pos.distanceTo(R.ship.position); if (cd < 260 && !R.cometSeen) { R.cometSeen = 1; toast('☄️ A comet! Its blue ion tail points straight away from the Sun; the dusty tail curves behind it.', 4500); say('Comet in sight.'); }
+  // close to the Sun: heat glow at the screen edges, a shaking hull and a warning, before the shield limit
+  const ds = R.ship.position.distanceTo(R.bpos.sun) - 60, heat = THREE.MathUtils.clamp(1 - (ds - 25) / 160, 0, 1), ov = R.root.querySelector('#aHeat') || (() => { const d = document.createElement('div'); d.id = 'aHeat'; R.root.appendChild(d); return d; })();
+  if (!R.entry && !R.ending) { ov.classList.remove('w'); ov.style.opacity = (heat * heat * .8).toFixed(3); if (heat > .35) R.cam.position.add(tmpV.set((Math.random() - .5), (Math.random() - .5), (Math.random() - .5)).multiplyScalar(heat * .12));
+    if (heat > .5 && !R.heatW) { R.heatW = 1; toast('🌡️ Hull temperature rising: 1,370 °C. Parker Solar Probe survives this with a carbon heat shield.', 3500); } if (heat < .2) R.heatW = 0; } }
+/* ---------------- launch from Earth, replays and postcards ---------------- */
+let MEDIA = null;
+function curScene() { return R.launch ? R.launch.scn : R.surf && R.surf.S.on ? R.surf.S.scn : R.scn; }
+function placeInfo() { if (R.launch) return { title: 'Kennedy Space Center', sub: 'Launch Complex 39B · Florida', stamp: 'KSC' };
+  const S = R.surf && R.surf.S; if (S && S.on && S.body) { const W = WORLD[S.body.id] || {}; return { title: S.body.n.replace(/^The /, ''), sub: S.mode === 'dive' ? 'Inside the clouds' : (S.site ? S.site.n : (W.site || 'Surface')), stamp: S.body.n.replace(/^The /, '') }; }
+  let best = null, bd = 1e9; for (const b of BODIES) { if (b.id === 'sun') continue; const d = R.bpos[b.id].distanceTo(R.ship.position) - b.r; if (d < bd) { bd = d; best = b; } }
+  if (best && bd < best.r * 5) { const km = realAlt(best, bd + best.r); return { title: best.n.replace(/^The /, ''), sub: 'In orbit' + (km ? ' · ' + fmtKm(km) + ' up' : ''), stamp: best.n.replace(/^The /, '') }; }
+  const au = R.ship.position.distanceTo(R.bpos.sun) / 520; return { title: 'The Solar System', sub: au.toFixed(1) + ' AU from the Sun', stamp: 'Deep space' }; }
+function media() { if (!MEDIA) MEDIA = makeMedia({ canvas: R.ren.domElement, render: () => draw(curScene()), place: placeInfo, toast, sfx, root: R.root, enabled: () => SET.rec !== 0, setEnabled: v => { SET.rec = v ? 1 : 0; P('adv_set', SET); } }); return MEDIA; }
+function launchSeq(done) { if (R.launch) return; R.root.classList.add('cine'); const em = R.bmesh.earth, cl = em.userData.clouds;
+  R.launch = makeLaunch({ cam: R.cam, root: R.root, loader: R.ship.userData.loader, fixMat, say, sfx, env: 1, starTex: () => R.starTex || (STARSPHERE && STARSPHERE.material.uniforms && STARSPHERE.material.uniforms.map.value), earthMap: em.material.uniforms ? em.material.uniforms.map.value : em.material.map,
+    cloudMap: cl && cl.material.uniforms && cl.material.uniforms.useR.value ? cl.material.uniforms.map.value : null, audio: o => { try { AUD.set(o); } catch (e) {} },
+    onDone: () => { R.launch = null; R.root.classList.remove('cine'); R.cam.fov = 60; R.cam.updateProjectionMatrix(); try { media().stop(400); AUD.set({ eng: 0, boost: 0, wind: 0, dt: .1 }); } catch (e) {} trophy('a_launch'); done && done(); } });
+  try { media().start('Launch from Earth', { title: 'Kennedy Space Center', sub: 'Launch Complex 39B · Florida', stamp: 'KSC' }); } catch (e) {} }
+/* ---------------- realism pass 15: how real spacecraft fly, orbit and come home ---------------- */
+const UPRIGHT = { 'shuttle-orbiter': 0, lm: 0 };   // everything else stands on its engines / heat shield when landed
+const CAPSULE = new Set(['orion', 'orion-capsule', 'gemini', 'apollo-soyuz']);
+// entry attitude: capsules fly heat shield first, rockets tail first (engines toward the ground), the Shuttle belly first at 40° angle of attack
+function entryAttitude(C, ship) { const id = (R.shipStat || SHIPS[0]).id;
+  if (id === 'shuttle-orbiter') { const up = C.dir, t = tmpV.set(0, 1, 0).cross(up); if (t.lengthSq() < 1e-4) t.set(1, 0, 0); t.normalize(); const nose = t.clone().multiplyScalar(Math.cos(.7)).addScaledVector(up, Math.sin(.7)).normalize(), z = nose.clone().negate(), y = up.clone().addScaledVector(z, -up.dot(z)).normalize(), x = new THREE.Vector3().crossVectors(y, z);
+    ship.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z)); }
+  else { ship.lookAt(C.c); ship.rotateZ(Math.sin(C.t * 1.7) * .05); } }   // +Z (heat shield / engine bell) faces the planet
+function entryFX(C, heat, k, dt, sz, end) { const ship = R.ship;
+  if (!C.glow) { C.glow = new THREE.PointLight(0xff6a20, 0, sz * 12, 2); R.scn.add(C.glow); }
+  if (end) { R.scn.remove(C.glow); if (C.chute) { ship.remove(C.chute); C.chute = null; } if (C.bo) toast('📻 Signal reacquired. Mission Control hears you.', 1800); return; }
+  // the plasma sheath glows on the hull from the side facing the planet
+  C.glow.position.copy(ship.position).addScaledVector(C.dir, -sz * 1.4); C.glow.intensity = heat * 60;
+  // radio blackout: the ionised gas around the ship blocks radio for a while
+  if (C.air && heat > .55 && !C.bo) { C.bo = 1; toast('📻 Radio blackout: the plasma around the ship blocks every signal…', 2200); }
+  // parachutes for capsules on worlds with air (drogues first, then the mains)
+  const id = (R.shipStat || SHIPS[0]).id; if (C.air && C.kind !== 'dive' && CAPSULE.has(id) && k > .7) { if (!C.chute) { C.chute = chutes(sz); ship.add(C.chute); toast('🪂 Parachutes deployed', 1500); sfx('whoosh'); } const g = Math.min(1, (k - .7) / .12); C.chute.scale.setScalar(.2 + g * .8); C.chute.children.forEach((c, i) => { c.rotation.z = Math.sin(C.t * 2 + i) * .06; }); } }
+function chutes(sz) { const g = new THREE.Group(), cv = document.createElement('canvas'); cv.width = 128; cv.height = 32; const x = cv.getContext('2d'); for (let i = 0; i < 8; i++) { x.fillStyle = i % 2 ? '#f4f4f2' : '#e0542a'; x.fillRect(i * 16, 0, 16, 32); }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; const m = new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: .9 }), lm = new THREE.LineBasicMaterial({ color: 0xd8d8d0, transparent: true, opacity: .7 });
+  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, c = new THREE.Group(), can = new THREE.Mesh(new THREE.SphereGeometry(sz * 1.5, 24, 8, 0, Math.PI * 2, 0, 1.1), m); can.position.y = 0; c.add(can);
+    const pts = []; for (let j = 0; j < 8; j++) { const b = j / 8 * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(b) * sz * 1.33, -sz * .45, Math.sin(b) * sz * 1.33), new THREE.Vector3(0, -sz * 5.2, 0)); } c.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lm));
+    c.position.set(Math.cos(a) * sz * 1.3, sz * 5.6, Math.sin(a) * sz * 1.3); c.rotation.set(Math.sin(a) * .25, 0, -Math.cos(a) * .25); g.add(c); }
+  g.rotation.x = -Math.PI / 2; return g; }   // chutes trail out of the top (−Z, the nose), away from the planet
+// engine plume: in vacuum the exhaust spreads into a wide, faint, glowing bell; brighter and longer with boost
+const PL2 = { m: null, u: null };
+function plume(dt, thrust, boost) { const ship = R.ship, sz = (R.shipStat || SHIPS[0]).sz;
+  if (!PL2.m) { PL2.u = { time: { value: 0 }, k: { value: 0 }, hot: { value: new THREE.Color(0xbfe0ff) } }; const geo = new THREE.CylinderGeometry(.18, 1, 1, 24, 8, true); geo.translate(0, -.5, 0); geo.rotateX(-Math.PI / 2);
+    PL2.m = new THREE.Mesh(geo, new THREE.ShaderMaterial({ uniforms: PL2.u, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: `uniform float time, k; uniform vec3 hot; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+        void main(){ float along = 1. - vUv.y, edge = pow(abs(dot(normalize(vN), normalize(vV))), 1.4), fl = .8 + .2 * sin(time * 40. + along * 30.);
+          float a = k * (1. - along) * (1. - along) * edge * fl * .55; vec3 c = mix(hot, vec3(1.), (1. - along) * .6) * (1.2 + k);
+          gl_FragColor = vec4(c, a); }` })); PL2.m.frustumCulled = false; }
+  if (PL2.m.parent !== ship) ship.add(PL2.m); const t = thrust || boost ? (boost ? 1 : .55) : 0; PL2.u.k.value += (t - PL2.u.k.value) * Math.min(1, dt * 6); PL2.u.time.value = R.t; PL2.u.hot.value.setHex(boost ? 0xffd2a0 : 0xbfe0ff);
+  const L = sz * (1.6 + 5 * PL2.u.k.value), W = sz * (.55 + .5 * PL2.u.k.value); PL2.m.scale.set(W, W, L); PL2.m.position.set(0, 0, sz * .95); PL2.m.visible = PL2.u.k.value > .02 && CAM.mode !== 'cockpit'; }
+// gravity (Newtonian mode): near a world you are pulled toward it, so you can really orbit. A predicted path shows where you'll go.
+const gS = b => 2.3 * Math.sqrt(b.r), soi = b => b.r * 8 + 40;
+function gravity(dt) { const b = ORB.dom; if (!b || b.id === 'sun') return; const c = R.bpos[b.id], d = R.ship.position.distanceTo(c); if (d > soi(b)) return; R.vel.addScaledVector(tmpV.copy(c).sub(R.ship.position).normalize(), gS(b) * (b.r / d) ** 2 * dt); }
+const OL = { line: null, t: 0, txt: '' };
+function orbitLine(dt) { const b = ORB.dom, on = SET.newton && b && b.id !== 'sun' && !R.ap && R.bpos[b.id].distanceTo(R.ship.position) < soi(b);
+  if (!OL.line) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(400 * 3), 3)); OL.line = new THREE.Line(g, new THREE.LineDashedMaterial({ color: 0x7df9ff, dashSize: 1.2, gapSize: .8, transparent: true, opacity: .75, depthWrite: false })); OL.line.frustumCulled = false; R.scn.add(OL.line); }
+  OL.line.visible = !!on; if (!on) { OL.txt = ''; return; } OL.t -= dt; if (OL.t > 0) return; OL.t = .25;
+  const c = R.bpos[b.id], p = R.ship.position.clone().sub(c), v = R.vel.clone(), arr = OL.line.geometry.attributes.position.array, h = .12; let mn = 1e9, mx = 0, n = 0, hit = false;
+  for (let i = 0; i < 400; i++) { const d = p.length(); mn = Math.min(mn, d); mx = Math.max(mx, d); arr[i * 3] = c.x + p.x; arr[i * 3 + 1] = c.y + p.y; arr[i * 3 + 2] = c.z + p.z; n = i + 1; if (d < b.r) { hit = true; break; } if (d > soi(b) * 1.3) break;
+    for (let s2 = 0; s2 < 3; s2++) { const dd = p.length(); v.addScaledVector(p, -gS(b) * (b.r / dd) ** 2 / dd * h); p.addScaledVector(v, h); } }
+  OL.line.geometry.setDrawRange(0, n); OL.line.geometry.attributes.position.needsUpdate = true; OL.line.computeLineDistances(); OL.line.material.color.setHex(hit ? 0xff6a5a : 0x7df9ff);
+  const km = d => fmtKm(realAlt(b, d) || 0); OL.txt = hit ? ' · ⚠ IMPACT TRAJECTORY' : ` · Pe ${km(mn)} · Ap ${mx > soi(b) ? 'escape' : km(mx)}`; }
+/* eye adaptation: like a real camera or a real eye, exposure drops when the Sun fills the view and opens up in a planet's shadow,
+   where the stars and the Milky Way come out. Cheap: one ray test against each body per frame. */
+const EXP = { v: 1.05, f: new THREE.Vector3(), s: new THREE.Vector3(), oc: new THREE.Vector3() };
+function adapt(dt, sf) { let tg = sf && R.surfTg ? R.surfTg : 1.05; if (!sf && R.bpos && R.bpos.sun) { const cam = R.cam, f = EXP.f.set(0, 0, -1).applyQuaternion(cam.quaternion), s = EXP.s.copy(R.bpos.sun).sub(cam.position), ds = s.length(); s.divideScalar(ds); let vis = 1;
+    for (const b of BODIES) { if (b.id === 'sun') continue; const oc = EXP.oc.copy(R.bpos[b.id]).sub(cam.position), t = oc.dot(s); if (t > 0 && t < ds && oc.lengthSq() - t * t < b.r * b.r * .96) { vis = 0; break; } }
+    const glare = THREE.MathUtils.smoothstep(f.dot(s), .86, .995) * vis * Math.min(1, 900 / ds); tg = 1.05 * (1 - .4 * glare) * (vis ? 1 : 1.3); }
+  EXP.v += (tg - EXP.v) * (1 - Math.exp(-dt * (tg < EXP.v ? 2.4 : .8))); R.ren.toneMappingExposure = EXP.v; }
+/* ---------------- realism pass 17: light shafts, heat shimmer, eyes that adjust ---------------- */
+const EFX = { v: new THREE.Vector3(), f: new THREE.Vector3(), d: new THREE.Vector3() };
+function envFX(dt, sf) { const cu = R.cine.uniforms, ry = R.rays; let heat = 0, rk = 0; R.surfTg = 0;
+  if (sf) { const S = R.surf.S, id = S.body && S.body.id, U = S.skyU, dl = S.dl;
+    if (id && dl && S.mode !== 'dive') { const sd = U ? EFX.d.copy(U.sd.value) : EFX.d.copy(dl.position).sub(dl.target.position).normalize(), e = sd.y, day = U ? THREE.MathUtils.smoothstep(e, -.04, .12) : Math.min(1, dl.intensity / 2.6);
+      const f = EFX.f.set(0, 0, -1).applyQuaternion(R.cam.quaternion), look = THREE.MathUtils.smoothstep(f.dot(sd), .78, .99) * day;
+      // eyes and cameras adjust: squint toward the Sun, open up in the dark (but night stays night)
+      R.surfTg = 1.05 * (1 - .32 * look) * (1 + (U ? .38 : .15) * (1 - day)) * (U ? 1 : 1.9 - .9 * THREE.MathUtils.smoothstep(e, .15, .75));   /* no air, low Sun: the ground is lit at a grazing angle and reads dark, so the exposure opens up as a camera's would */
+      heat = id === 'venus' ? .9 : id === 'earth' ? .16 * THREE.MathUtils.smoothstep(e, .3, .85) : id === 'titan' ? .05 : 0;
+      const air = U ? ({ earth: .95, mars: .8 }[id] || 0) : 0;
+      if (air > 0 && day > 0 && GFX !== 'low') { const sp = EFX.v.copy(sd).multiplyScalar(3000).add(R.cam.position).project(R.cam);
+        if (sp.z < 1) { const on = 1 - THREE.MathUtils.smoothstep(Math.max(Math.abs(sp.x), Math.abs(sp.y)), 1.05, 1.9), low = 1 - .6 * THREE.MathUtils.smoothstep(e, .1, .6);
+          rk = air * day * on * low * (1 + ((S.storm && S.storm.k) || 0) * 1.5); ry.uniforms.sun.value.set(sp.x * .5 + .5, sp.y * .5 + .5);
+          if (id === 'mars') ry.uniforms.col.value.setRGB(.62, .78, 1).lerp(new THREE.Color(1, .72, .45), THREE.MathUtils.smoothstep(e, .15, .6));   /* Mars: the sky around a low Sun glows blue */
+          else ry.uniforms.col.value.setRGB(1, .82, .6).lerp(new THREE.Color(1, .97, .9), THREE.MathUtils.smoothstep(e, .1, .6)); } } } }
+  if (R.launch && R.launch.heat) { const h = R.launch.heat; cu.heatL.value.set(h.x, h.y, h.k); } else cu.heatL.value.z = 0;
+  cu.heat.value += (heat - cu.heat.value) * Math.min(1, dt * 2); ry.uniforms.k.value += (rk - ry.uniforms.k.value) * Math.min(1, dt * 3); ry.enabled = ry.uniforms.k.value > .01; }
+function draw(sc) { R.rp.scene = sc; /* shadows: refresh every 2nd frame (every 3rd on Low); the sun barely moves between frames */ R.fr = (R.fr || 0) + 1; R.ren.shadowMap.needsUpdate = R.fr % (R.shEvery || (GFX === 'max' ? 1 : GFX === 'low' ? 3 : 2)) === 0; R.cine.uniforms.time.value = performance.now() / 1000 % 100; R.comp.render(); }
+function setGfx(g) { GFX = g; P('adv_gfx', g); Q = g === 'max' ? 'ultra' : 'high'; DR.s = 1; DR.cool = 6; DR.changes = 0; R.ren.setPixelRatio(dprCap()); [R.comp.renderTarget1, R.comp.renderTarget2].forEach(t => { t.samples = R_HDR ? PRE().msaa : 0; t.dispose(); }); R.bloom.strength = PRE().bloom; resize(); R.root.querySelector('#aQ').innerHTML = '⚙<span class="lb"> ' + PRE().n + '</span>'; R.scn.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+function settings() { const p = document.createElement('div'); p.className = 'pnl'; const opt = (k, v, l) => `<button data-${k}="${v}" class="${String((k === 'g' ? GFX : SET[k])) === String(v) ? 'sel' : ''}">${l}</button>`;
+  p.innerHTML = `<div class="crd"><div class="ey">⚙ GRAPHICS</div><h2>Settings</h2><div class="mt">Like Genshin: lower settings run smoother and cooler on phones. Max is for strong phones and PCs.</div>
+  <h4 class="sh">QUALITY PRESET</h4><div class="seg">${Object.entries(PRESETS).map(([k, v]) => opt('g', k, v.n)).join('')}</div>
+  <h4 class="sh">FRAME RATE</h4><div class="seg">${[30, 45, 60].map(v => opt('cap', v, v + ' FPS')).join('')}</div>
+  <h4 class="sh">RENDER RESOLUTION · <span id="rsV">${SET.scale}%</span></h4><input type="range" id="rs" min="50" max="100" step="5" value="${SET.scale}" style="width:100%">
+  <h4 class="sh">LAUNCH FROM EARTH</h4><div class="seg">${opt('launch', 1, 'Every journey')}${opt('launch', 0, 'Off')}</div>
+  <h4 class="sh">AUTO-RECORD HIGHLIGHTS</h4><div class="seg">${opt('rec', 1, 'On')}${opt('rec', 0, 'Off')}</div>
+  <h4 class="sh">FLIGHT PHYSICS</h4><div class="seg">${opt('newton', 0, 'Assisted')}${opt('newton', 1, 'Newtonian (real)')}</div>
+  <h4 class="sh">MOVING PLANETS</h4><div class="seg">${opt('orb', 1, 'Orbiting')}${opt('orb', 0, 'Frozen')}</div>
+  <h4 class="sh">SHOW FPS COUNTER</h4><div class="seg">${opt('fps', 0, 'Off')}${opt('fps', 1, 'On')}</div>
+  <h4 class="sh">MISSION CONTROL VOICE</h4><div class="seg">${opt('voice', 0, 'Off')}${opt('voice', 1, 'On')}</div>
+  <div class="mt" style="margin-top:10px">${PRE().n}: up to ${(PRE().tris / 1e6).toFixed(1)} M full-detail triangles and ${PRE().tex} MB of model textures at once. Everything farther away uses light versions.</div>
+  <div class="row"><button class="pr" id="stX">Done</button></div></div>`;
+  R.root.appendChild(p); const save2 = () => P('adv_set', SET);
+  p.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { setGfx(b.dataset.g); p.remove(); settings(); });
+  p.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { SET.cap = +b.dataset.cap; save2(); p.remove(); settings(); });
+  p.querySelectorAll('[data-fps]').forEach(b => b.onclick = () => { SET.fps = +b.dataset.fps; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-launch]').forEach(b => b.onclick = () => { SET.launch = +b.dataset.launch; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-rec]').forEach(b => b.onclick = () => { SET.rec = +b.dataset.rec; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-newton]').forEach(b => b.onclick = () => { SET.newton = +b.dataset.newton; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-orb]').forEach(b => b.onclick = () => { SET.orb = +b.dataset.orb; save2(); p.remove(); settings(); }); p.querySelectorAll('[data-voice]').forEach(b => b.onclick = () => { SET.voice = +b.dataset.voice; save2(); p.remove(); settings(); if (SET.voice) say('Voice callouts on.', 1); });
+  p.querySelector('#rs').oninput = e => { SET.scale = +e.target.value; p.querySelector('#rsV').textContent = SET.scale + '%'; }; p.querySelector('#rs').onchange = () => { save2(); DR.s = 1; R.ren.setPixelRatio(dprCap()); resize(); };
+  p.querySelector('#stX').onclick = () => p.remove(); }
+function loop(t) { if (!ST.on) return; if (SET.cap < 60 && R.last && t - R.last < 1000 / SET.cap - 3) { requestAnimationFrame(loop); return; } const dt = Math.min(.05, Math.max(0, (t - (R.last || t)) / 1000)); fpsUI(dt); R.ren.info.reset(); padAdv(dt); try { coStep(dt); } catch (e) {} R.last = t; if (R.lost) { requestAnimationFrame(loop); return; } dynRes(dt); const pnl = R.root.querySelector('.pnl'), sf = R.surf && R.surf.S.on;
+  try {   // one bad frame must never freeze the game: report it and keep the loop alive
+  if (sf) { if (!pnl) { if (R.surf.S.launch) { R.surf.step(dt, {}); } else surfStep(dt); if (R.surf.S.scn) draw(R.surf.S.scn); } }
+  else if (R.launch) { R.launch.step(dt); if (R.launch) draw(R.launch.scn); }
+  else if (R.ending) { stepEnding(dt); draw(R.scn); }
+  else if (R.intro) { stepIntro(dt); draw(R.scn); }
+  else if (R.entry) { stepEntry(dt); draw(R.scn); }
+  else { if (!pnl) { step(dt); try { tourMarker(); tourMoments(); arrivals(dt); } catch (e) {} const b = nearBody(), lb = R.root.querySelector('#aLand'), k = b ? (DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null) : null; lb.style.display = k && !R.ap ? 'block' : 'none'; if (k) setT(lb, k === 'dive' ? '🌀 DIVE INTO ' + b.n.toUpperCase() : '🛬 LAND ON ' + b.n.toUpperCase()); draw(R.scn); } }
+  } catch (e) { if (!loop.errN || loop.errN < 5) { loop.errN = (loop.errN || 0) + 1; console.error('Adventure frame error:', e); } }
+  try { envFX(dt, sf); adapt(dt, sf); if (TOURA) tourStep(dt, sf); } catch (e) {} requestAnimationFrame(loop); }
+/* ---------------- resource download (like a game launcher): store every NASA model on the device before playing ---------------- */
+const MC = 'rdo-models-2', isApp = !!(window.Capacitor && (!window.Capacitor.isNativePlatform || window.Capacitor.isNativePlatform()));
+const DLV = 78;
+function needDL() { if (isApp || !('caches' in window) || open.skipDL) return false; const d = G('adv_dl', null); return !d || d.v !== DLV; }
+function resPanel(done, fromGame) {
+  const o = document.createElement('div'); o.id = 'advDL'; o.innerHTML = `<style>#advDL{position:fixed;inset:0;z-index:99999;background:radial-gradient(ellipse at 50% 30%,#14204a,#02040c 70%);color:#eaf2ff;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
+  #advDL .c{width:min(520px,94vw);background:rgba(10,16,36,.85);border:1px solid rgba(125,249,255,.35);border-radius:18px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}#advDL h2{margin:2px 0 6px;font-size:22px}#advDL .ey{font:700 10px system-ui;letter-spacing:.16em;color:#7df9ff}
+  #advDL .mt{font-size:12px;color:#b9c8de;line-height:1.45}#advDL .opt{display:grid;gap:8px;margin:12px 0}#advDL button{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:12px;padding:11px 14px;font:700 14px system-ui;text-align:left;cursor:pointer}
+  #advDL button.pr{background:linear-gradient(180deg,#3aa0e8,#1f6fb8);border-color:#7df9ff}#advDL button small{display:block;font-weight:500;opacity:.8;font-size:11px;margin-top:2px}#advDL .bar{height:12px;border-radius:8px;background:rgba(255,255,255,.1);overflow:hidden;margin:12px 0 6px}#advDL .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7df9ff,#ffcf4a);transition:width .25s}
+  #advDL .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}</style><div class="c"><div class="ey">🚀 ADVENTURE MODE · RESOURCES</div><h2>Download NASA resources</h2><div class="mt" id="dlT">Loading the file list…</div><div id="dlB"></div></div>`;
+  document.body.appendChild(o); const $ = q => o.querySelector(q), mb = b => (b / 1048576).toFixed(b > 1e8 ? 0 : 1) + ' MB';
+  fetch('models/manifest.json', { cache: 'no-store' }).then(r => r.json()).then(async M => {
+    const cache = await caches.open(MC), uniq = L => { const seen = new Set(); return L.filter(x => !seen.has(x[0]) && seen.add(x[0])); };
+    const light = uniq([...M.base, ...(M.hd || []), ...M.lod, ...M.core]), full = uniq([...M.base, ...(M.hd || []), ...M.lod, ...M.full]), sum = L => L.reduce((a, x) => a + x[1], 0);
+    let have = 0; for (const [p] of full) if (await cache.match(p)) have++;
+    $('#dlT').innerHTML = `${G('adv_dl', null) ? '<b style="color:#ffcf4a">🆕 New: the HD Realism Pack</b> (NASA\'s real Earth clouds, ocean and relief maps, real sky reflections, water, lava and the NASA Perseverance rover). Download it before your journey.<br>' : ''}Store every NASA 3D model on this device once, so Adventure Mode loads instantly and plays smoothly, even offline.${have ? `<br><b>${have} of ${full.length} files are already on this device.</b>` : ''}<br><span style="opacity:.75">Use Wi-Fi for the full pack. You can always download more later from ⬇ in Adventure Mode.</span>`;
+    $('#dlB').innerHTML = `<div class="opt"><button class="pr" id="dF">⬇ Full pack · best quality<small>Every model in full detail · ${mb(sum(full))} · ${full.length} files</small></button><button id="dL">⬇ Light pack · fast start<small>Light versions of every model, plus the ships and aircraft · ${mb(sum(light))}. Full detail streams in when you fly close.</small></button><button id="dS">▶ Skip, stream while playing<small>Uses the least storage. Models load as you fly near them.</small></button></div>`;
+    const finish = (pack) => { if (pack) P('adv_dl', { v: DLV, pack }); o.remove(); done && done(); };
+    $('#dS').onclick = () => { open.skipDL = 1; finish(null); };
+    const run = async (L, pack) => { let doneB = 0, doneN = 0, fail = 0, stop = false; const tot = sum(L), t0 = performance.now();
+      $('#dlB').innerHTML = `<div class="bar"><i></i></div><div class="mt" id="dlP">Starting…</div><div class="row" style="margin-top:12px"><button id="dX">Play now (keeps downloading in this session)</button></div>`;
+      $('#dX').onclick = () => { stop = 'play'; finish(null); };
+      const upd = () => { const el = performance.now() - t0, sp = doneB / Math.max(.5, el / 1000), left = (tot - doneB) / Math.max(1, sp); $('.bar i').style.width = (doneB / tot * 100).toFixed(1) + '%'; $('#dlP').textContent = `${(doneB / tot * 100).toFixed(0)}% · ${mb(doneB)} of ${mb(tot)} · ${doneN}/${L.length} files · ${mb(sp)}/s · about ${left > 90 ? Math.ceil(left / 60) + ' min' : Math.ceil(left) + ' s'} left${fail ? ' · ' + fail + ' to retry' : ''}`; };
+      let i = 0; const worker = async () => { while (i < L.length && stop !== 'abort') { const [p, sz] = L[i++];
+          try { if (!(await cache.match(p))) { let r = await fetch(p); if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) { const pj = p.replace(/\.glb$/, '.json'); if (pj !== p) { r = await fetch(pj); if (r.ok) await cache.put(pj, r); else fail++; } else fail++; } else await cache.put(p, r); } } catch (e) { fail++; }
+          doneB += sz; doneN++; if (o.isConnected) upd(); } };
+      await Promise.all(Array.from({ length: 6 }, worker)); if (stop === 'play') { P('adv_dl', { v: DLV, pack }); return; }
+      $('.bar i').style.width = '100%'; $('#dlP').innerHTML = `<b>✅ Download complete.</b> ${mb(tot)} stored on this device${fail ? ` (${fail} files could not be downloaded and will stream instead)` : ''}.`;
+      $('.row').innerHTML = '<button class="pr" id="dGo">🚀 Launch Adventure</button>'; $('#dGo').onclick = () => finish(pack); };
+    $('#dF').onclick = () => run(full, 'full'); $('#dL').onclick = () => run(light, 'light');
+  }).catch(() => { $('#dlT').textContent = 'Resources are built into this version, so no download is needed.'; $('#dlB').innerHTML = '<div class="row" style="margin-top:12px"><button class="pr" id="dGo">🚀 Launch</button></div>'; $('#dGo').onclick = () => { open.skipDL = 1; o.remove(); done && done(); }; });
+}
 function open() { if (ST.on) return; try { AUD.start(); } catch (e) {} if (needDL()) { resPanel(() => open()); return; } if (!open.ok) { PROBE.then(() => { open.ok = 1; open(); }); return; } window.ADV_ON = true; if (!R) build(); R.root.style.display = 'block'; ST.on = true; resize(); checkMissions(true); R.last = 0; requestAnimationFrame(loop); const after = () => { if (SURV) return survLand(); if (TOURA) return tourMars(); if (!open.shown) { open.shown = 1; openingShot(); } else if (!G('adv_seen', 0)) intro(); }; if ((SET.launch !== 0 || TOURA) && !SURV) launchSeq(after); else after(); }
 function close() { try { if (R && R.vox) R.vox.stop(); } catch (e) {} try { if (R && R.sv) R.sv.end(); } catch (e) {} SURV = null; try { AUD.stop(); } catch (e) {} try { coLeave(true); } catch (e) {} ST.on = false; window.ADV_ON = false; if (R) { R.root.style.display = 'none'; R.keys = {}; R.thr = R.bst = 0; } try { if (typeof title === 'function') title(); } catch (e) {} }
 /* ---------------- judge's tour: the SLS launch, then a landing on Mars and a short walk, then a thank-you card ---------------- */
