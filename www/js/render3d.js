@@ -343,10 +343,11 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
   }
   function building(b) {
     const t = T(), m = b.lv || 1, isC = b.t === 'core', x = b.x + b.w / 2, y = b.y + b.w / 2;
-    let sc = 1; if (b.pop != null && b.pop < .4) { if (b.pop < 0) return; sc = typeof easeBack === 'function' ? easeBack(b.pop / .4) : b.pop / .4; }
+    // construction: the footprint is laid down at once, then the structure climbs out of the ground over about a second, glowing like fresh welds as it settles
+    let sc = 1, rise = 1, glow = 0; if (b.pop != null && b.pop < 1.2) { if (b.pop < 0) return; const p = b.pop, f = Math.min(1, p / .25); sc = 1 - Math.pow(1 - f, 3); const r = Math.min(1, Math.max(.06, (p - .08) / .85)); rise = r * r * (3 - 2 * r); glow = Math.max(0, 1 - p / 1.2) * .9; }
     const fl = b.hit > 0 ? .8 : 0, on = !b.off && !b.nc && !b.dis, s = sc, nt = DKn > .3, wl = on ? (nt ? 1.5 : .55) : 0;
     if (HDM && (REAL || b.t === 'farm') && hdBuilding(b, x, y, s, fl)) return;
-    const B = (dx, dz, h, w, ht, d, c, e, ry, rx) => box(x + dx * s, y + dz * s, h * s, w * s, ht * s, d * s, c, (e || 0) + fl, ry, rx);
+    const B = (dx, dz, h, w, ht, d, c, e, ry, rx) => box(x + dx * s, y + dz * s, h * s * rise, w * s, ht * s * rise, d * s, c, (e || 0) + fl + glow, ry, rx);
     const C = (dx, dz, h, w, ht, c, e, ry, rx, d) => cyl(x + dx * s, y + dz * s, h * s, w * s, ht * s, c, (e || 0) + fl, ry, rx, d && d * s);
     const Cm = (dx, dz, h, w, ht, c, e, ry, rx) => put(CYLm, x + dx * s, h * s, y + dz * s, w * s, ht * s, w * s, ry || 0, rx || 0, c, (e || 0) + fl);
     const Sp = (dx, dz, h, w, ht, d, c, e, ry) => put(SPH, x + dx * s, h * s, y + dz * s, w * s, ht * s, d * s, ry || 0, 0, c, (e || 0) + fl);
