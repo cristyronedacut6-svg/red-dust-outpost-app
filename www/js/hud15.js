@@ -143,7 +143,7 @@ ${L} #u-entB{bottom:calc(var(--sb,0px) + 80px)!important;transform:translateX(-5
     const mm = $('#mm'); if (mm && mm.width < 280) { mm.width = 280; mm.height = 180; }
   }
   setupHud(); addEventListener('load', setupHud);
-  setInterval(() => { const pa = $('#party'), tp = $('#top'); if (!pa || !tp || !matchMedia('(min-aspect-ratio: 1/1)').matches) return; let y = 0;
+  setInterval(() => { const pa = $('#party'), tp = $('#top'); if (!pa || !tp || !matchMedia('(min-aspect-ratio: 1/1)').matches) return; if (document.body.classList.contains('u-mob')) { pa.style.removeProperty('top'); pa.classList.remove('u-row'); return; } let y = 0;
     tp.querySelectorAll(':scope > *, #res > *').forEach(c => { if (c.id === 'feed' || c.id === 'res') return; const r = c.getBoundingClientRect(); if (r.height && r.bottom > y) y = r.bottom; });
     const sr = $('#stage').getBoundingClientRect(), h = pa.getBoundingClientRect().height || 150, below = Math.max(y - sr.top + 14, sr.height * .4);
     const row = pa.classList.contains('u-row'), hh = row ? (pa.firstElementChild ? pa.firstElementChild.getBoundingClientRect().height * 3 + 12 : h) : h;
