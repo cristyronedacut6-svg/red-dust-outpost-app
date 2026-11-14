@@ -46,7 +46,7 @@ export function makeRover(kind, loader, fixMat) {
       W.push({ p, s, x, z, steer: x !== 0, y: 0, ang: 0 }); }
     for (const z of [1.1, -1.1]) { const rk = box(2.1, .07, .07, al, 0, .7, z * .92, body); rk.userData.rocker = z; }   // rocker arms
   }
-  let rider = null; if (L.seat) { rider = makeAstronaut(); rider.root.position.set(-.1, .48, .33); rider.root.rotation.y = Math.PI / 2; body.add(rider.root); }
+  let rider = null; if (L.seat) { rider = makeAstronaut({ loader }); rider.root.position.set(-.1, .48, .33); rider.root.rotation.y = Math.PI / 2; body.add(rider.root); }
   const st = { x: 0, z: 0, yaw: 0, v: 0, steer: 0, y: 0, vy: 0, pitch: 0, roll: 0, air: false, dist: 0 };
   if (kind !== 'lrv' && loader) loader.load('models/nasa/perseverance.glb', gl => { try { nasaPerse(gl.scene); } catch (e) { console.warn('rover model', e); } }, undefined, () => {});
   function nasaPerse(m) { if (fixMat) fixMat(m); const hold = new THREE.Group(); hold.add(m); m.updateMatrixWorld(true);
