@@ -47,12 +47,12 @@ export function scanRocks(scene, loader, o) { const api = { ims: [], carpet: nul
     for (let i = 0, tries = 0; i < o.n * 3 && tries < o.n * 12; tries++) { const t = tries; let x, z; if (hash(t, 11.1) < .45) { const f = fields[Math.floor(hash(t, 12.7) * fields.length)], a = hash(t, 13.3) * 6.283, d = Math.pow(hash(t, 14.9), .8) * f[2]; x = f[0] + Math.cos(a) * d; z = f[1] + Math.sin(a) * d; }
       else { const a = hash(t, 15.5) * 6.283, d = 18 + Math.pow(hash(t, 16.1), .9) * area; x = Math.cos(a) * d; z = Math.sin(a) * d; }
       if (Math.abs(x) > area || Math.abs(z) > area || (avoid && avoid(x, z))) continue;
-      const u = hash(t, 17.3), sc = u < .06 ? 2.2 + hash(t, 18.1) * 3.6 : .35 + Math.pow(hash(t, 19.7), 2.2) * 1.8, k = Math.floor(hash(t, 20.3) * L.length), im = (sc > 1.6 ? big : mid)[k];
+      const u = hash(t, 17.3), sc = u < .06 && Math.hypot(x, z) > 45 ? 2 + hash(t, 18.1) * 2 : .35 + Math.pow(hash(t, 19.7), 2.2) * 1.8, k = Math.floor(hash(t, 20.3) * L.length), im = (sc > 1.6 ? big : mid)[k];
       if (im.count >= im.instanceMatrix.count) continue; im.setMatrixAt(im.count, pose(H, x, z, sc, L[k], t, .18 + hash(t, 21.1) * .2)); im.setColorAt(im.count, col(t)); im.count++; i += sc > 1.6 ? 3 : 1; }
     for (const im of [...big, ...mid]) { if (!im.count) { im.dispose(); continue; } im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere(); scene.add(im); api.ims.push(im); }
     // the carpet: small scanned stones with fixed world positions, wrapping around the astronaut as they walk (the lowest-detail version of each scan)
     const R = 26, per = Math.ceil(o.nc / L.length), car = L.map((r, k) => { const im = new THREE.InstancedMesh(r.lod[r.lod.length - 1], mats[k], per); im.castShadow = im.receiveShadow = true; im.frustumCulled = false; scene.add(im); api.ims.push(im); return im; });
-    const off = []; for (let i = 0; i < per * L.length; i++) off.push([hash(i, 31.1) * 2 - 1, hash(i, 32.7) * 2 - 1, .05 + Math.pow(hash(i, 33.3), 2.6) * .42]);
+    const off = []; for (let i = 0; i < per * L.length; i++) off.push([hash(i, 31.1) * 2 - 1, hash(i, 32.7) * 2 - 1, .04 + Math.pow(hash(i, 33.3), 2.6) * .26]);
     const wrap = (w, ctr) => ctr + ((((w - ctr) % (2 * R)) + 3 * R) % (2 * R)) - R; let cx = 1e9, cz = 1e9;
     const place = (px, pz) => { cx = px; cz = pz; for (let i = 0; i < off.length; i++) { const k = i % L.length, j = Math.floor(i / L.length), im = car[k], x = wrap(off[i][0] * R, px), z = wrap(off[i][1] * R, pz);
         let sc = off[i][2] * THREE.MathUtils.clamp((R - Math.hypot(x - px, z - pz)) / (R * .3), 0, 1); if (avoid && avoid(x, z)) sc = 0; if (sc < .01) { m4.makeScale(0, 0, 0); im.setMatrixAt(j, m4); continue; }

@@ -46,8 +46,11 @@ Read this first. It tells a new Claude Code session (or a person) where the proj
 | Base | On airless worlds (not the Apollo sites): NASA Habitat Demonstration Unit plus base-station models, a 22 m comms tower with a blinking beacon, and work lights | `adv_surface.js` (`makeBase`) |
 | Scan view | Continue opens a full-screen discovery view: drag or pinch to inspect the model, sectioned record built only from existing data | `adventure.js` (`card`, `viewer`), `adv_tech.js` CSS |
 | HUD | Space-tech skin, compass on foot | `adv_tech.js` |
+| Ambient occlusion | GTAO contact shadows on the surface (High and Max on computers, half resolution on High; off on phones) | `adventure.js` (`gtao`, `draw`), `vendor/three/postprocessing/GTAOPass.js` (patched to skip glows and particles) |
+| Scanned rocks | Nine Poly Haven CC0 rock scans as boulder fields and a carpet of stones around the astronaut, tinted to each world | `adv_scan.js`, `www/models/rocks/` |
+| Regolith light | Airless terrain follows the Lommel-Seeliger scattering law (flat, bright plains like in Apollo photos) | `adv_surface.js` (terrain shader) |
 | Story Mode | 3D view: buildings rise out of the ground with a weld glow; camera follow is frame-rate independent | `render3d.js` (`building`), `index.html` (`camUp`) |
-| Offline | Service worker cache `rdo-v103`, with the new modules added | `www/sw.js` |
+| Offline | Service worker cache `rdo-v104`, with the new modules added | `www/sw.js` |
 
 Test hook for developers: `ADV._land('moon', 'tycho')` in the browser console puts the astronaut straight onto a world, skipping the flight.
 
@@ -58,8 +61,6 @@ Test hook for developers: `ADV._land('moon', 'tycho')` in the browser console pu
 - **Phones:** check the frame rate on Android. The terrain shadows, mountains, rocks and base all add rendering work.
 - **Astronaut:** check the joints while moving (knees, elbows, wrists) and the new pressurized rover's ride height and camera distance.
 - **Not done:**
-  - ambient occlusion;
-  - photo-scanned 3D rocks;
   - real NASA orbiter imagery (LROC, HiRISE) as ground colour;
   - Story Mode model and material upgrades.
 
@@ -117,3 +118,10 @@ Decide which platforms matter before starting.
 - Work in batches and keep test runs to a minimum: the user does the full playtesting, to save usage.
 - Do not merge into `main` or deploy without asking. Work on branches.
 - Explain things in plain words. Give clear click-by-click steps when the user has to do something.
+
+## Why NASA orbiter photos are not used as ground colour (yet)
+
+- Orbiter photos (LROC, HiRISE) have the real Sun's shadows baked in. Those shadows would point the wrong way against the game's moving Sun.
+- meta.json records relief and aspect for each DEM, but not its exact latitude and longitude extent, so the imagery couldn't be lined up truthfully.
+- What would work instead: shadow-free albedo maps (for example LROC WAC Hapke-normalised albedo), once each DEM's footprint is known.
+
