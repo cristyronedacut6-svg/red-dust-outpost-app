@@ -5,6 +5,7 @@ import { makeRover } from './adv_rover.js';
 import { makeFX, makeRings, scatterRocks, makeGrass, FOGSUN, FOGSUNC, fogHook } from './adv_fx.js';
 import { SURF, featTex, GLSL_HEAD, GLSL_ALB, GLSL_BUMP, farRing, rockField, pebbleField } from './adv_terrain.js';
 import { farHeight, makeFar, makeBake, makeEnv, makeSun, scatterRocks2, makePebbles, LIT, litHook } from './adv_terra.js';
+import { scanRocks } from './adv_scan.js';
 
 function hash(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); }
 function vn(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
@@ -139,6 +140,9 @@ export function makeSurface(ctx) {
         if (frost > 0.) { float up = dot(normal, normalize((viewMatrix * vec4(0., 1., 0., 0.)).xyz)), fn = texture2D(map, vMapUv * .21 + .13).r, fn2 = texture2D(map, vMapUv * 1.7).r; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.8, .8, .84), frost * .32 * smoothstep(.78, .96, up) * smoothstep(.5, .66, fn) * (.6 + .4 * fn2)); }
         // Io: molten lava glowing through cracks in the crust, flickering
         if (vLava > .01) { vec3 lt = texture2D(lavaMap, vTWP.xz * .045 + vec2(lavaT * .004, 0.)).rgb; totalEmissiveRadiance += (vec3(1., .32, .05) * .6 + lt * lt * 2.2) * vLava * (1.2 + .5 * sin(lavaT * 2.3 + vTWP.x * .3) * sin(lavaT * 1.7 + vTWP.z * .25)); }`)
+        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+        // airless regolith scatters light like the real lunar soil (Lommel-Seeliger law): its brightness hardly falls off toward grazing views, so the plain looks flat-lit and bright the way it does in Apollo photographs
+        if (opp > 0.) { vec3 Lv = normalize((viewMatrix * vec4(tsd, 0.)).xyz); float mu0 = max(dot(normal, Lv), 0.), mu = max(dot(normal, normalize(vViewPosition)), 0.); reflectedLight.directDiffuse *= mix(1., clamp(2. / (mu0 + mu + 1e-3), .75, 1.45), opp * .8); }`)
         .replace('#include <opaque_fragment>', `{ vec3 L = normalize(tsd), V = normalize(cameraPosition - vTWP); float sunUp = smoothstep(-.02, .15, L.y);
           // cloud shadows: follow the sunlight up to the cloud deck and read the same drifting cloud texture
           if (cOn > .5 && L.y > .05) { vec2 cp = vTWP.xz + L.xz / L.y * (cY - vTWP.y); vec2 cu = vec2((cp.x + 4500.) / 9000., (-cp.y + 4500.) / 9000.) * cRep + cOff; outgoingLight *= 1. - texture2D(cmap, cu).a * .5 * sunUp * day; }
@@ -284,6 +288,7 @@ export function makeSurface(ctx) {
       if (gk) groundTex(gk, G => { if (S.scn !== scn) return; const d = G.d.clone(), n = G.n.clone(); d.repeat.set(1.5, 1.5); n.repeat.set(1.5, 1.5); d.needsUpdate = n.needsUpdate = true; rm.map = d; rm.normalMap = n; rm.normalScale.setScalar(1.3); rm.needsUpdate = true; });
       scatterRocks2(scn, H, { count: Math.max(80, Math.round(1500 * PR.rocks)), area: 640, avoid: nearPad, tint, mat: rm });
       S.pebbles = makePebbles(scn, S.bake ? S.bake.h : H, { n: Math.max(160, Math.round(900 * PR.rocks)), R: 32, tint, mat: rm, avoid: nearPad }); }
+    if (body.id !== "earth") { if (S.scanR) S.scanR.dispose(); S.scanR = scanRocks(scn, ctx.loader, { H, Hn: S.bake ? S.bake.h : H, tint: col(W.gr[1]).lerp(col(W.gr[0]), .3), sat: body.id === "mars" ? .5 : .25, n: Math.round(170 * PR.rocks), nc: Math.round(260 * PR.rocks), area: 600, avoid: nearPad, alive: () => S.scn === scn }); } /* photo-scanned rocks on every rocky world */
     for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283; S.dust.emit(new THREE.Vector3(-12 + Math.cos(a) * 3, H(-12, -8) + .4, -8 + Math.sin(a) * 3), new THREE.Vector3(Math.cos(a) * 9, 1.2, Math.sin(a) * 9), S.dc, 1.6, 2.2, 1, 2, { grow: 3, drag: .7, a: .3, grav: W.g * .05 }); }
     S.rings.add(new THREE.Vector3(-12, H(-12, -8) + .3, -8), 0xffe6b0, 30, 1.2);
     S.gEff = Math.max(W.gameG || W.g, .05); ctx.ui(body, W, 'land'); S.on = true; S.arrive = ctx.noArrive ? null : { t0: 0, T: 5.2, yaw: S.camYaw + 2.2 };
@@ -380,7 +385,7 @@ export function makeSurface(ctx) {
     return things(dt, P);
   }
   function things(dt, P) {
-    LIT.litCtr.value.copy(P.position); if (S.pebbles) S.pebbles.update(P.position.x, P.position.z); if (S.base) S.base.update(S.t, TU.day.value);
+    LIT.litCtr.value.copy(P.position); if (S.pebbles) S.pebbles.update(P.position.x, P.position.z); if (S.scanR) S.scanR.update(P.position.x, P.position.z); if (S.base) S.base.update(S.t, TU.day.value);
     const F = S.fly, cr = F ? F.s * .6 + 3 : 0;
     let near = null, nd = 1e9, want = null, wd = 1e9;
     for (const it of S.items) { if (it.up) { it.up(dt); continue; } if (it.geyser) { const a = it.g.geometry.attributes.position; for (let i = 0; i < a.count; i++) { const t = (S.t * .6 + i / a.count + it.g.userData.seed) % 1; a.setXYZ(i, Math.sin(i * 7.1) * t * 4, t * 60, Math.cos(i * 3.3) * t * 4); } a.needsUpdate = true; continue; }
@@ -540,6 +545,6 @@ export function makeSurface(ctx) {
     ctx.cam.position.lerp(new THREE.Vector3(P.position.x + Math.sin(S.yaw) * 14, 7, P.position.z + Math.cos(S.yaw) * 14), Math.min(1, dt * 6)); ctx.cam.lookAt(P.position.x, -4, P.position.z);
     return { depth: S.depth, max: D.max };
   }
-  function exit() { FOGSUN.value.w = 0; S.thrusting = false; S.shake = 0; if (S.envRT) { S.envRT.dispose(); S.envRT = null; } if (S.bake) S.bake.dispose(); if (S.sunFX) S.sunFX.dispose(); if (S.player && S.player.userData.rig && S.player.userData.rig.dispose) S.player.userData.rig.dispose(); S.sunFX = null; S.bake = null; S.far = null; S.hx = null; S.pebbles = null; if (ctx.cam.fov !== 60) { ctx.cam.fov = 60; ctx.cam.updateProjectionMatrix(); } if (S.fx) { S.fx.dispose(); S.dust.dispose(); S.fx = S.dust = null; S.grass = null; S.peb = null; } if (S.fly) { S.fly = null; S.craft = null; } if (S.player && S.player.userData.sh) S.player.userData.sh.scale.setScalar(1); S.on = false; if (S.scn) { S.scn.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } S.scn = null; S.items = []; S.cols = []; }
+  function exit() { FOGSUN.value.w = 0; if (S.scanR) { S.scanR.dispose(); S.scanR = null; } S.thrusting = false; S.shake = 0; if (S.envRT) { S.envRT.dispose(); S.envRT = null; } if (S.bake) S.bake.dispose(); if (S.sunFX) S.sunFX.dispose(); if (S.player && S.player.userData.rig && S.player.userData.rig.dispose) S.player.userData.rig.dispose(); S.sunFX = null; S.bake = null; S.far = null; S.hx = null; S.pebbles = null; if (ctx.cam.fov !== 60) { ctx.cam.fov = 60; ctx.cam.updateProjectionMatrix(); } if (S.fx) { S.fx.dispose(); S.dust.dispose(); S.fx = S.dust = null; S.grass = null; S.peb = null; } if (S.fly) { S.fly = null; S.craft = null; } if (S.player && S.player.userData.sh) S.player.userData.sh.scale.setScalar(1); S.on = false; if (S.scn) { S.scn.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } S.scn = null; S.items = []; S.cols = []; }
   return { S, enter, step, exit, fly, launch, drive, helmet: () => { S.helmet = S.helmet ? 0 : 1; return S.helmet; }, H: (x, z) => H(x, z) };
 }
