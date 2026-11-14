@@ -829,6 +829,118 @@ On phones, the game screen has been tidied so you can see the action and know wh
     - **Radio blackout:** it cuts in at peak heating ("📻 Radio blackout…"), then the signal is reacquired.
     - **Parachutes:** on worlds with air, capsules deploy three striped main parachutes for the last part of the descent, and the camera swings out to show them.
 
+## v88 — A connected, safer, translated game (unreleased, on the dev branch)
+The first stage of the full-game roadmap: make the systems work together, protect player data, and finish the v85–v87 work properly.
+- **Save safety:**
+  - Saves now have a version number. Older saves are kept exactly as they were, and a backup is taken first.
+  - Automatic backups are taken at launch, on the title screen, after each world and every 2 minutes of play.
+  - A damaged value is recovered from the backup instead of being lost.
+  - Settings → Gameplay has **Back up now, Restore last backup, Export save file, Import save file**.
+- **Translations:** 204 new translated lines and 27 patterns cover the v85–v88 interface in all 12 languages: main menu, planet cards, settings tabs and explanations, the status panel, build details, Mission Control, scanning and the base interior. The science texts follow the existing rule: Filipino and Spanish.
+- **Cause and effect:** the outpost status panel now explains *why* each number is moving and what to do. For example: "Power is falling because it is night, so the solar panels make nothing. At this rate the batteries last about 40 s. Build a battery or an RTG, or switch off a module you do not need tonight."
+- **A living crew:**
+  - Mission Control's Crew tab shows what each person is doing right now, from the live game state: repairing a damaged module, treating the crew, tending crops, running the drill.
+  - Inside the outpost, crew members work in the room that matches their job.
+  - The interior reflects the base. Rooms go dark with red emergency lights when power runs out. Greenhouse plants shrink and yellow when food is falling. A patient lies in the medbay when the crew is hurt.
+- **Two modes, one mission:**
+  - A new **Journal** tab in Mission Control turns Adventure mode discoveries into Story research. Scan a world (or its rovers and spacecraft) in Adventure mode, and its Story outpost gets a one-time +3 research insight.
+  - Neither mode is required for the other.
+- **Living outpost visuals (HD/Real):** pressurised walkway tubes with windows (lit at night) and orange utility pipes now connect the core to the habitat, oxygen, farm and medbay modules.
+- **Mission report:** the world result screen shows science sites scanned, modules built, crew and decisions made.
+- **New achievements:** First sample, Full survey, Planetary scientist (all 36), Two worlds one mission, Home sweet dome.
+- **Quality:**
+  - `npm test` (tests/run.mjs) runs 328 automated checks: every script parses, the offline cache lists every script, every translation row has 12 languages, the science data matches SCIENCE.md, and save migration and recovery work.
+  - The Android build workflow now runs these checks first.
+  - The third-party asset list is in [ASSETS.md](ASSETS.md).
+
+## v87 — Mission Control, science scanning, walking inside, and grounded astronaut moves (unreleased, on the dev branch)
+- **Mission Control hub** (title menu, pause menu, status panel, or key **N**). Five tabs:
+  - **Objectives:** live goals, discovery sites, expeditions and today's quests.
+  - **Discoveries:** the science codex.
+  - **Crew:** profiles with jobs and what each job does.
+  - **Mission log:** stars per world and your records.
+  - **Rewards:** rank, XP, achievements, research and stars.
+- **Interactive scanning:**
+  - Every world has 6 survey markers (pulsing cyan rings). Walk up and press **SCAN** or **H**. Your astronaut holds the scanner out while a progress ring fills.
+  - Each scan is a real discovery with a short explanation, worth +2 research and +15 XP. All 36 discoveries are saved and listed in Mission Control. Examples:
+    - Moon: anorthosite, orange glass, LCROSS ice.
+    - Mars: hematite "blueberries", jarosite, perchlorate, gypsum veins.
+    - Mercury: hollows, carbon-rich dark material.
+    - Europa: sea salt, sulfuric acid hydrate.
+    - Titan: tholins, ice cobbles, river channels.
+    - Ceres: sodium carbonate, ammonia clays, hydrohalite.
+- **Walk inside the outpost:**
+  - Stand by the base core and press **Go inside** or **I**. You see a cut-away of your real modules: command module, science lab, and, once built, crew quarters, greenhouse, life support, medbay and power room.
+  - Each room's window shows that world's sky, including Earth from the Moon and Jupiter from Europa.
+  - Your crew walks around and works inside. Each room shows live numbers, for example air and its rate per second in life support, or batteries in the power room.
+  - The game pauses while you are inside, and the 3D view stops drawing to save battery.
+- **Astronaut animation (HD/Real):**
+  - On low-gravity worlds (Moon, Europa, Titan, Ceres) the astronaut uses an Apollo-style lope.
+  - A crouch absorbs the landing after a jump.
+  - The astronaut kneels and works for a moment after placing a building, and holds the scanner out while scanning.
+
+## v86 — Mission-control interface (unreleased, on the dev branch)
+A full UI pass with one design system. No game logic was changed: the new layouts move the game's own buttons (same ids, handlers and translations) into calmer places. Everything lives in `www/js/ui86.js`, and the high-contrast mode keeps its own look.
+- **Design system:**
+  - **Colours:** navy `#101820` / `#192630`, cyan `#55D6E8` for anything you can press, orange `#F4A259` for planet information, green, amber and red only for status.
+  - **Type and icons:** Inter for text, Chakra Petch for the logo, one set of outline icons.
+  - **Buttons:** quiet secondary buttons, no glassy blur.
+- **Main menu:**
+  - **Primary action:** one big button. It says Continue mission when a save exists, or Story mode otherwise. Adventure mode sits next to it as the second choice.
+  - **World picker:** each world has a planet card with gravity, temperature, day length, atmosphere, its missions and your progress. Every value matches SCIENCE.md.
+  - **Secondary links:** Field guide, Settings, How to play, Credits (with every third-party model credit) and More.
+  - **Version line:** a small version label in the corner.
+- **Story HUD:**
+  - **Status panel:** tap the life-support bar to open it. It shows power, air and food per second, radiation and crew dose, your buildings by category, crew beds, temperature and the world's environment, with links to Goals, Research, Squad and the Field guide.
+  - **Objective line:** the current objective always shows under the bars. Tap it for the full goals list.
+- **Build bar:**
+  - **Categories:** Energy, Life support, Defense, Infrastructure, Medical, plus All. The tutorial always shows All. Number keys still work, and the right tab opens by itself.
+  - **Detail card:** picking a building shows its category, real cost, level-1 output, what it uses, whether you can build it now and what upgrades give.
+- **Settings:** six tabs (Graphics, Audio, Controls, Accessibility, Language, Gameplay). Every setting has a one-line explanation.
+- **Adventure mode:** the same palette and type, with smaller, calmer panels and buttons.
+- **Fixes:** the world title card, streak toast and squad portraits no longer show on top of menus. Reduced-motion mode turns the new animations off.
+
+## v85 — Every world looks like itself (unreleased, on the dev branch)
+- **World identity:** each world now has its own ground, landmarks, colour and title card, so a screenshot tells you where you are.
+  - **Europa:** reddish-brown lineae and tilted ice rafts (chaos terrain).
+  - **Ceres:** dark ground with bright salt patches, and Ahuna Mons on the horizon.
+  - **Titan:** dark methane lakes and Huygens-style rounded ice cobbles.
+  - **Mars:** layered mesas and dark basalt sand.
+  - **Mercury:** brownish ground with bluish hollows and cliffs (scarps).
+  - **The Moon:** dark maria and bright crater rays.
+- **Bug fix:** the Story scenery (horizon mountains, edge boulders, HD rocks, the deep-space antenna) was never drawn because of a name clash in `render3d.js`. It is back.
+- **Base lights:** light masts around the core, and blinking beacons on every working module. A beacon turns orange and blinks fast when its module is badly damaged.
+- **Resource forecasts:**
+  - A bar that is draining now shows the seconds left, for example ▼12s.
+  - At night, Mission Control warns you if the batteries will run out before sunrise.
+  - Warning chips get a "!" badge, so warnings don't rely on colour alone.
+- **Mission Control decisions:** nine new science decisions tied to each world, plus an oxygen-generator fault that can happen anywhere. Every choice shows its exact cost before you pick.
+  - **Moon:** long night.
+  - **Mars:** launch window.
+  - **Mercury:** heat wave, polar ice.
+  - **Europa:** Jupiter's radiation, water plume.
+  - **Titan:** methane rain, drone survey.
+  - **Ceres:** brine.
+- **Adventure map:** shows the real distance from Earth today for every world and how long a radio signal takes. It is computed from NASA JPL planet orbits, and the map says clearly that the game squeezes sizes and distances.
+- **Sound:** on airless worlds you hear only your own suit (breathing and the fan), because sound can't travel through a vacuum. Mars has a thin, faint wind; Titan has a thick, low one.
+- **Science corrections:** Moon maximum 121 °C, Mercury sunlight about 7× on average and up to 11×, Europa about 5.4 Sv a day. The sources are in [SCIENCE.md](SCIENCE.md). The code audit is in [AUDIT.md](AUDIT.md).
+
+## v84 — Wow polish for judging
+
+- **Realistic explosions** (Story mode, HD and Real views): each blast is built in stages.
+  - It starts with a white flash and a turbulent fireball that rises on its own heat.
+  - Billowing smoke follows, lit orange from below, then turns grey and drifts up.
+  - Dark debris chunks fly out on ballistic arcs and leave smoke trails, then bounce and settle; embers and sparks fall with them.
+  - On the ground, a dust skirt races outward and a scorch mark stays behind, and the blast briefly lights the ground and nearby buildings.
+  - Physics follows each world: on airless worlds the fireball is only a flash (no oxygen to burn), and the regolith flies out in a dome on clean ballistic arcs and falls back slowly in low gravity, with no smoke. Mars smoke is rust-red dust and Titan's is thick orange.
+  - Destroyed buildings now explode this way too.
+- **Judge's tour (3 min):** a new title button that plays the highlights.
+  - Story mode in the Real view: the Moon, then Mars (dust storm, marsquake, explosion), then the Europa boss under Jupiter.
+  - Then Adventure: the SLS launch, entry and landing at Jezero crater on Mars, a short walk, and a thank-you card.
+  - The older demo is now "Full story demo".
+- **Filipino and Spanish** now cover the science content as well as the menus: NASA data for each world, all 24 world facts, briefings, storm and radiation notes, the "Living on a real world" guide, quake facts and the new buttons.
+- **Accessibility:** new **High contrast** setting (black panels, white text, yellow outlines) and **One-handed** mode (your astronaut fires by itself whenever an alien is in range, so one thumb on the joystick is enough). These join the existing big text, bigger buttons, colour-blind colours and reduced flashing.
+
 ## v83 — Judge-ready polish
 
 - **First load is about 7× smaller:** the 3D model data (about 7 MB of NASA and boss models) now loads in the background after the title appears, or right away when a 3D view is switched on. The game is playable after about 1 MB.

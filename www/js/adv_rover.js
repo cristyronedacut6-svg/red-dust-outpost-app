@@ -33,6 +33,26 @@ export function makeRover(kind, loader, fixMat) {
       const wh = new THREE.Mesh(new THREE.CylinderGeometry(L.r, L.r, .23, 24, 1, true), tyre); wh.rotation.x = Math.PI / 2; wh.castShadow = true; s.add(wh); const hub = cyl(.12, .12, .25, al, 0, 0, 0, s, 12); hub.rotation.x = Math.PI / 2;
       const fen = new THREE.Mesh(new THREE.CylinderGeometry(L.r + .06, L.r + .06, .3, 20, 1, true, Math.PI * .1, Math.PI * .8), al); fen.rotation.set(Math.PI / 2, 0, Math.PI / 2); fen.position.set(0, 0, 0); p.add(fen);
       W.push({ p, s, x, z, steer: x > 0, y: 0, ang: 0 }); }
+  } else if (kind === 'pxr') {   // pressurized exploration rover: a crew cabin on six big balloon tyres, for long traverses away from the lander (original design, in the spirit of NASA's Artemis-era pressurized rover studies)
+    L = { wb: 3.4, tr: 2.5, r: .58, clr: .62, vmax: 4.6, acc: 1.3, steer: .45, n: 'Pressurized exploration rover', seat: false };
+    const white = mat(0xe9e7e2, .5, .05), panel = mat(0xd6d3cc, .62, .05), orange = mat(0xd8521e, .45, .1), dark = mat(0x22252a, .5, .35), al = mat(0xa9acb2, .38, .75), glass = new THREE.MeshPhysicalMaterial({ color: 0x0c1218, roughness: .05, metalness: .2, clearcoat: 1, envMapIntensity: 1.6 });
+    const tread = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const t = c.getContext('2d'); t.fillStyle = '#1d1e20'; t.fillRect(0, 0, 64, 128); t.fillStyle = '#3c3d40';
+      for (let y = 0; y < 128; y += 16) { t.beginPath(); t.moveTo(0, y); t.lineTo(30, y + 7); t.lineTo(0, y + 12); t.fill(); t.beginPath(); t.moveTo(64, y + 8); t.lineTo(34, y + 15); t.lineTo(64, y + 20); t.fill(); }   // chevron lugs, offset left and right
+      const tx = new THREE.CanvasTexture(c); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(1, 3); return tx; })();
+    const tyre = new THREE.MeshStandardMaterial({ color: 0xffffff, map: tread, bumpMap: tread, bumpScale: 6, roughness: .9 }), rim = mat(0xbfc2c6, .35, .7);
+    // cabin: a long rounded box with a sloped, glazed nose; lower bodywork darker where the dust collects
+    box(4.6, 1.5, 2.2, white, -.1, 1.75, 0, body); box(4.7, .35, 2.3, dark, -.1, .95, 0, body); box(4.4, .12, 2.24, orange, -.1, 1.15, 0, body);
+    const nose = box(1.0, 1.1, 2.1, white, 2.35, 1.55, 0, body); nose.rotation.z = .5; const win = box(.06, .7, 1.7, glass, 2.55, 1.85, 0, body); win.rotation.z = .5;
+    for (const z of [1.11, -1.11]) { box(.9, .5, .03, glass, 1.6, 2.0, z, body); box(1.1, 1.25, .05, panel, -.6, 1.7, z, body); box(1.12, .1, .06, orange, -.6, 2.38, z, body); }   // side windows and the hatch panels
+    box(.08, 1.3, 1.3, dark, -2.42, 1.75, 0, body); cyl(.55, .55, .1, al, -2.5, 1.75, 0, body, 28).rotation.z = Math.PI / 2;                             // rear suitport docking ring
+    box(3.2, .1, 1.9, al, -.4, 2.56, 0, body); for (let i = 0; i < 4; i++) box(.55, .32, .55, mat(0x8a7a62, .85), -1.5 + i * .75, 2.78, .5 * (i % 2 ? 1 : -1), body);   // roof rack with stowed cargo
+    cyl(.03, .03, 1.1, al, -1.9, 3.1, .7, body); const dish = new THREE.Mesh(new THREE.SphereGeometry(.32, 18, 8, 0, Math.PI * 2, 0, .6), white); dish.position.set(-1.9, 3.6, .7); dish.rotation.z = -.6; body.add(dish);   // comms dish
+    for (const z of [.85, -.85]) { box(.12, .2, .35, orange, 2.62, 1.05, z, body); const l = box(.05, .12, .28, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2d8, emissiveIntensity: 2.2 }), 2.7, 1.32, z * .9, body); l.rotation.z = .5; }   // bumpers and headlights
+    for (const [x, z] of [[1.7, 1.3], [1.7, -1.3], [0, 1.3], [0, -1.3], [-1.7, 1.3], [-1.7, -1.3]]) { const p = new THREE.Group(); p.position.set(x, 0, z); g.add(p); const s = new THREE.Group(); p.add(s);
+      const wh = cyl(L.r, L.r, .5, tyre, 0, 0, 0, s, 32); wh.rotation.x = Math.PI / 2; const hb = cyl(.3, .3, .52, rim, 0, 0, 0, s, 18); hb.rotation.x = Math.PI / 2;
+      for (let i = 0; i < 6; i++) { const sp = box(.5, .06, .53, rim, 0, 0, 0, s); sp.rotation.z = i / 6 * Math.PI; sp.scale.set(.55, 1, 1); }             // hub spokes
+      const arm = box(.7, .12, .12, dark, -Math.sign(x || 1) * .2, .35, -z * .2, p); arm.rotation.z = .4 * Math.sign(x || 1);                               // suspension arm up to the body
+      W.push({ p, s, x, z, steer: x !== 0, y: 0, ang: 0 }); }
   } else {   // Perseverance-style: 3 m long, six aluminium wheels on rocker-bogie suspension, mast camera, RTG power source at the back
     L = { wb: 2.0, tr: 2.2, r: .26, clr: .62, vmax: 3.2, acc: 1.0, steer: .42, n: 'Perseverance-style rover', seat: false };
     const white = mat(0xe8e6e0, .55, .1), al = mat(0xa8aab0, .4, .7), dark = mat(0x2c2e33, .55, .3), gold = mat(0xc9a248, .35, .8), wheel = mat(0x9a9ca2, .45, .7);
@@ -46,7 +66,7 @@ export function makeRover(kind, loader, fixMat) {
       W.push({ p, s, x, z, steer: x !== 0, y: 0, ang: 0 }); }
     for (const z of [1.1, -1.1]) { const rk = box(2.1, .07, .07, al, 0, .7, z * .92, body); rk.userData.rocker = z; }   // rocker arms
   }
-  let rider = null; if (L.seat) { rider = makeAstronaut(); rider.root.position.set(-.1, .48, .33); rider.root.rotation.y = Math.PI / 2; body.add(rider.root); }
+  let rider = null; if (L.seat) { rider = makeAstronaut({ loader }); rider.root.position.set(-.1, .48, .33); rider.root.rotation.y = Math.PI / 2; body.add(rider.root); }
   const st = { x: 0, z: 0, yaw: 0, v: 0, steer: 0, y: 0, vy: 0, pitch: 0, roll: 0, air: false, dist: 0 };
   if (kind !== 'lrv' && loader) loader.load('models/nasa/perseverance.glb', gl => { try { nasaPerse(gl.scene); } catch (e) { console.warn('rover model', e); } }, undefined, () => {});
   function nasaPerse(m) { if (fixMat) fixMat(m); const hold = new THREE.Group(); hold.add(m); m.updateMatrixWorld(true);
@@ -83,7 +103,7 @@ export function makeRover(kind, loader, fixMat) {
       if (st.air) { st.pitchV *= .98; st.rollV *= .98; } st.pitch += st.pitchV * dt; st.roll += st.rollV * dt; st.pitch += (pitchT - st.pitch) * kp * .15; st.roll += (rollT - st.roll) * kp * .15;
       g.position.set(st.x, st.y - L.r - L.clr, st.z); g.rotation.set(0, 0, 0); g.rotateY(st.yaw); g.rotateZ(st.pitch); g.rotateX(-st.roll);
       body.position.y = Math.sin(st.dist * 7) * .008 * Math.min(1, Math.abs(st.v));
-      for (const w of W) { w.ang -= st.v * dt / L.r; w.s.rotation.z = w.ang; if (w.steer) w.p.rotation.y = w.x > 0 ? st.steer : (L.seat ? -st.steer * .6 : -st.steer);   // LRV had 4-wheel steering
+      for (const w of W) { w.ang -= st.v * dt / L.r; w.s.rotation.z = w.ang; if (w.steer) w.p.rotation.y = w.x === 0 ? 0 : w.x > 0 ? st.steer : (L.seat ? -st.steer * .6 : -st.steer);   /* middle wheels of a six-wheeler stay straight */   // LRV had 4-wheel steering
         const local = THREE.MathUtils.clamp(w.gh + L.r - (st.y - L.r - L.clr), L.r - .2, L.r + .26); w.y = w.y == null ? local : w.y + (local - w.y) * Math.min(1, dt * 18); w.p.position.y = w.y + (w.y0 || 0) - L.r; }
       if (rider) rider.update(dt, { spd: 0, ground: true, g: grav, seat: true });
       return st; } };

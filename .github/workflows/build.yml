@@ -36,6 +36,9 @@ jobs:
       - name: Install Capacitor
         run: npm install --no-audit --no-fund
 
+      - name: Run game checks
+        run: node tests/run.mjs
+
       - name: Create the Android project
         run: npx cap add android
 

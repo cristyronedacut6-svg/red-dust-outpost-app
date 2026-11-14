@@ -139,17 +139,17 @@ void main(){vP=aP;vN=aN;vC=aC;vE=aE;gl_Position=uM*vec4(aP,1.);}`;
   const FS = `#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nvarying vec3 vP,vN;varying vec4 vC;varying float vE;
 uniform sampler2D uBg,uFog,uDec;uniform float uG;uniform vec2 uW;uniform vec4 uDR;uniform vec3 uSun,uSunC,uAmb,uHaze,uCam,uDark;uniform float uHD;
 uniform vec4 uLP[8];uniform vec3 uLC[8];uniform sampler2D uNz;uniform float uHDm;uniform vec3 uGa,uGb,uGc,uGd;uniform vec2 uRes;
-uniform sampler2D uSh;uniform mat4 uLM;uniform float uShOn,uShT;
+uniform sampler2D uSh;uniform mat4 uLM;uniform float uShOn,uShT;uniform float uWid;uniform vec2 uWB;
 float unp(vec4 v){return dot(v,vec4(1.,1./255.,1./65025.,1./16581375.));}
 float shf(vec3 p){vec4 l=uLM*vec4(p,1.);vec3 q=l.xyz*.5+.5;if(q.x<.002||q.y<.002||q.x>.998||q.y>.998||q.z>1.)return 1.;float z=q.z-.0012,s=0.;
  s+=step(z,unp(texture2D(uSh,q.xy)));s+=step(z,unp(texture2D(uSh,q.xy+vec2(uShT,uShT*.4))));s+=step(z,unp(texture2D(uSh,q.xy-vec2(uShT,uShT*.4))));s+=step(z,unp(texture2D(uSh,q.xy+vec2(-uShT*.4,uShT))));s+=step(z,unp(texture2D(uSh,q.xy+vec2(uShT*.4,-uShT))));
  float e=smoothstep(.0,.08,min(min(q.x,q.y),min(1.-q.x,1.-q.y)));return mix(1.,s*.2,e);}
-void main(){vec4 c=vC;vec3 nn=normalize(vN);bool inW=vP.x>=0.&&vP.z>=0.&&vP.x<=uW.x&&vP.z<=uW.y;
- if(uG>.5){if(uHDm>.5){vec2 q=vP.xz;vec4 a=texture2D(uNz,q*.0021),b=texture2D(uNz,q*.0097),d=texture2D(uNz,q*.043),e=texture2D(uNz,q*.19);vec3 g=mix(uGa,uGb,smoothstep(.3,.7,a.r));g=mix(g,uGc,smoothstep(.45,.8,b.g)*.6);g*=.8+.38*d.b*(.72+.28*e.a);vec3 n0=normalize(vN);nn=normalize(n0+vec3(d.r-.5,0.,d.g-.5)*.5+vec3(e.b-.5,0.,e.r-.5)*.3);g=mix(g,uGd,smoothstep(.1,.34,1.-n0.y)*.75);g*=.94+.12*clamp(vP.y/30.,-1.,1.);g=mix(vec3(dot(g,vec3(.3,.59,.11))),g,.8);c=vec4(g,1.);vec2 du=(vP.xz-uDR.xy)/uDR.zw;if(du.x>0.&&du.y>0.&&du.x<1.&&du.y<1.){vec4 dc=texture2D(uDec,du);c.rgb=mix(c.rgb,dc.rgb,dc.a);}}else{vec2 gu=vP.xz/uW;gu=1.-abs(mod(gu,2.)-1.);c=texture2D(uBg,gu);vec2 du=(vP.xz-uDR.xy)/uDR.zw;if(du.x>0.&&du.y>0.&&du.x<1.&&du.y<1.){vec4 d=texture2D(uDec,du);c.rgb=mix(c.rgb,d.rgb,d.a);}nn=vec3(0.,1.,0.);}}
+void main(){vec4 c=vC;vec3 nn=normalize(vN);float wl=0.;bool inW=vP.x>=0.&&vP.z>=0.&&vP.x<=uW.x&&vP.z<=uW.y;
+ if(uG>.5){if(uHDm>.5){vec2 q=vP.xz;vec4 a=texture2D(uNz,q*.0021),b=texture2D(uNz,q*.0097),d=texture2D(uNz,q*.043),e=texture2D(uNz,q*.19);vec3 g=mix(uGa,uGb,smoothstep(.3,.7,a.r));g=mix(g,uGc,smoothstep(.45,.8,b.g)*.6);g*=.74+.5*d.b*(.7+.3*e.a);vec4 f=texture2D(uNz,q*.61),h2=texture2D(uNz,q*1.7+.37);float pb=smoothstep(.74,.8,f.r)*(.6+.4*h2.g),pl=smoothstep(.8,.86,f.r+(h2.b-.5)*.12);g*=1.-.32*pb;g+=uGc*pl*.16;g*=.93+.14*h2.a;float st=smoothstep(.55,.75,texture2D(uNz,vec2(q.x*.004,q.y*.03)).g);g=mix(g,uGb*1.08,st*.12);vec3 n0=normalize(vN);nn=normalize(n0+vec3(d.r-.5,0.,d.g-.5)*.8+vec3(e.b-.5,0.,e.r-.5)*.45+vec3(f.g-.5,0.,f.b-.5)*.35*pb);g=mix(g,uGd,smoothstep(.1,.34,1.-n0.y)*.75);g*=.94+.12*clamp(vP.y/30.,-1.,1.);g=mix(vec3(dot(g,vec3(.3,.59,.11))),g,.8);float bd=length(q-uWB);if(uWid<.5){float ma=smoothstep(.42,.62,texture2D(uNz,q*.00045+.11).g);g*=1.-.2*ma;vec2 rq=q-uWB-vec2(-900.,-1300.);float ry=smoothstep(.62,.9,texture2D(uNz,vec2(atan(rq.y,rq.x)/6.2832*5.,length(rq)*.00035)).r)*smoothstep(2600.,500.,length(rq));g*=1.+.3*ry;}else if(uWid<1.5){float rp=sin(dot(q,vec2(.83,.55))*.42+d.r*5.+b.g*3.);g*=.965+.045*rp;float lo=smoothstep(1.,-9.,vP.y)*smoothstep(.45,.62,texture2D(uNz,q*.0013+.4).b);g=mix(g,vec3(.24,.15,.12),lo*.55);}else if(uWid<2.5){float lr=smoothstep(.4,.65,texture2D(uNz,q*.0007+.7).r);g=mix(g,g*vec3(.74,.78,.9),lr*.6);float ho=smoothstep(.78,.83,texture2D(uNz,q*.0035+.21).b)*(.7+.3*e.r);g=mix(g,vec3(.62,.7,.84),ho*.6);}else if(uWid<3.5){vec2 w=q+(texture2D(uNz,q*.0005).rg-.5)*90.;float l1=abs(sin(dot(w,vec2(.6,.8))*.0062)),l2=abs(sin(dot(w,vec2(-.92,.38))*.0045+1.3)),l3=abs(sin(dot(w,vec2(.2,-.98))*.0081+.4));float bn=max(max(1.-smoothstep(.02,.11,l1),(1.-smoothstep(.015,.09,l2))*.9),(1.-smoothstep(.01,.06,l3))*.65),rg=max(1.-smoothstep(0.,.018,l1),1.-smoothstep(0.,.014,l2));g=mix(g,vec3(.62,.38,.25)*(.82+.3*d.b),bn*.7*(.7+.3*b.r));g=mix(g,vec3(.93,.96,1.),rg*.55);float ch=smoothstep(.66,.74,texture2D(uNz,q*.0006+.55).g);g=mix(g,g*vec3(.84,.74,.68),ch*.55);}else if(uWid<4.5){wl=smoothstep(.6,.66,texture2D(uNz,q*.0009+.31).g)*smoothstep(-1.,-7.,vP.y)*smoothstep(380.,520.,bd);g=mix(g,vec3(.05,.04,.03),wl);nn=normalize(mix(nn,vec3(0.,1.,0.),wl));g=mix(g,g*vec3(.55,.45,.38),smoothstep(-3.,-12.,vP.y)*.45);}else if(uWid<5.5){float fa=smoothstep(.7,.78,texture2D(uNz,q*.00032+.62).a)*(.55+.45*b.b);float fr=smoothstep(.6,.7,texture2D(uNz,q*.00032+.62).a)*(1.-fa);g=mix(g,vec3(.93,.94,.96),fa*.9);g=mix(g,g*1.35,fr*.5);}c=vec4(g,1.);vec2 du=(vP.xz-uDR.xy)/uDR.zw;if(du.x>0.&&du.y>0.&&du.x<1.&&du.y<1.){vec4 dc=texture2D(uDec,du);c.rgb=mix(c.rgb,dc.rgb,dc.a);}}else{vec2 gu=vP.xz/uW;gu=1.-abs(mod(gu,2.)-1.);c=texture2D(uBg,gu);vec2 du=(vP.xz-uDR.xy)/uDR.zw;if(du.x>0.&&du.y>0.&&du.x<1.&&du.y<1.){vec4 d=texture2D(uDec,du);c.rgb=mix(c.rgb,d.rgb,d.a);}nn=vec3(0.,1.,0.);}}
  if(uG<.5&&uHDm>.5&&vE<1.2){float gr=texture2D(uNz,vec2(vP.x+vP.y*.7,vP.z-vP.y*.5)*.09).b;c.rgb*=.86+.28*gr;}
  vec3 V=normalize(uCam-vP);float nd=dot(nn,uSun);float lt=uHDm>.5?(uG>.5?smoothstep(-.3,.6,nd):smoothstep(-.03,.12,nd)):max(nd,0.);if(uShOn>.5&&vE<1.2)lt*=shf(vP+normalize(vN)*.8);vec3 L=uAmb*(.8+.2*nn.y)*(uHDm>.5?(uG>.5?vec3(1.,1.,1.06):vec3(.9,.9,1.18)):vec3(1.))+uSunC*lt*(uHDm>.5?1.15:1.);
  for(int i=0;i<8;i++){vec3 d=uLP[i].xyz-vP;float r=uLP[i].w;if(r>0.){float k=max(0.,1.-length(d)/r);L+=uLC[i]*k*k*(.45+.55*max(dot(nn,normalize(d)),0.));}}
- float ao=(uG>.5||uHDm>.5)?1.:.64+.36*clamp(vP.y/7.,0.,1.);vec3 o=c.rgb*L*ao+c.rgb*vE;
+ float ao=(uG>.5||uHDm>.5)?1.:.64+.36*clamp(vP.y/7.,0.,1.);vec3 o=c.rgb*L*ao+c.rgb*vE;if(wl>.01){float fr=pow(1.-max(V.y,0.),3.);o=mix(o,uHaze*(.3+.9*fr)+uSunC*pow(max(dot(reflect(-V,vec3(0.,1.,0.)),uSun),0.),40.)*.9,wl*.88);}
  if(uG<.5&&vE<1.5){vec3 Hh=normalize(uSun+V);if(uHDm>.5){o+=uSunC*smoothstep(.955,.975,max(dot(nn,Hh),0.))*.34*lt;float rim=smoothstep(.55,.8,1.-max(dot(nn,V),0.));o+=rim*(uHaze*.6+uSunC*.42)*(.35+.65*lt);}else{o+=uSunC*pow(max(dot(nn,Hh),0.),28.)*.26;o+=uAmb*pow(1.-max(dot(nn,V),0.),3.)*.38;}}
  if(inW&&vE<2.9){float f=texture2D(uFog,vP.xz/uW).a;o=mix(o,uDark,f*(uHDm>.5?.72:.92));}
  float dd=length(vP-uCam);o=mix(o,uHaze,clamp((dd-uHD)/(uHD*1.6),0.,.75)*(1.-min(vE,1.)));
@@ -240,10 +240,10 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
   const hsh = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
   /* ---------- static scenery: mountains outside the map ---------- */
-  function buildStatic() {
-    n = 0; const L = S.L, WW_ = WW, WH_ = WH; let s = 11 + S.lv * 97; const r = () => (s = s * 16807 % 2147483647) / 2147483647;
+  function buildScenery() {
+    n = 0; const L = S.L, WW_ = WW, WH_ = WH; let s = 11 + S.lv * 97; const r = () => (s = s * 16807 % 2147483647) / 2147483647, QK = R3.q === 'low' ? .4 : 1;
     const c3_ = col(L.bg[3]), c1_ = col(L.bg[1]), dk = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
-    for (let i = 0; i < (HDM ? 0 : 120); i++) {
+    for (let i = 0; i < (HDM ? 0 : 120 * QK); i++) {
       const side = i % 4, t = r(); let x, y; const d = 30 + r() * 260;
       if (side === 0) { x = t * (WW_ + 400) - 200; y = -d; } else if (side === 1) { x = t * (WW_ + 400) - 200; y = WH_ + d; } else if (side === 2) { x = -d; y = t * (WH_ + 400) - 200; } else { x = WW_ + d; y = t * (WH_ + 400) - 200; }
       const w = 60 + r() * 140, h = (S.lv === 3 ? .45 : .7) * w * (.5 + r() * .9), cc = r() < .5 ? c3_ : c1_;
@@ -255,17 +255,74 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
       const a = r() * Math.PI * 2, x = WW_ / 2 + Math.cos(a) * (WW_ / 2 + 20 + r() * 80), y = WH_ / 2 + Math.sin(a) * (WH_ / 2 + 20 + r() * 80), w = 8 + r() * 20;
       put(HQ ? ROCKS[i % 4] : SPH, x, -2, y, w, w * .6, w * (.7 + r() * .5), r() * 6, 0, dk(c3_, .8 + r() * .3), 0);
     }
-    for (let i = 0; i < (HDM ? 0 : 44); i++) { // far ridges on the horizon (seen in first person)
+    for (let i = 0; i < (HDM ? 0 : 44 * QK); i++) { // far ridges on the horizon (seen in first person)
       const a = i / 44 * Math.PI * 2 + r() * .1, R = 1150 + r() * 500, x = WW_ / 2 + Math.cos(a) * R, y = WH_ / 2 + Math.sin(a) * R * .8, w = 260 + r() * 300, h = (S.lv === 3 ? .35 : .55) * w * (.4 + r() * .6);
       put(HQ ? MTNS[i % 4] : CONE4, x, -2, y, w, h, w * (.7 + r() * .5), r() * 6, 0, dk(r() < .5 ? c3_ : c1_, .55 + r() * .25), 0);
     }
-    if (HDM) { const c0 = core(), bx = c0 ? c0.x + 16 : WW_ / 2, bz = c0 ? c0.y + 16 : WH_ / 2; for (let i = 0; i < 150; i++) { const x = r() * WW_, z = r() * WH_; if (Math.hypot(x - bx, z - bz) < 170) continue; const w = 3 + r() * r() * 22; put(ROCKS[i % 4], x, -w * .15, z, w, w * (.45 + r() * .35), w * (.7 + r() * .5), r() * 6, 0, dk(r() < .5 ? c3_ : c1_, .75 + r() * .4), 0); }
-      const DS_ = REAL && mdl('dsn'); if (DS_) drawModel(DS_, bx + 290, 0, bz - 170, 1.25, .7, 0); }
+    if (HDM) { const c0 = core(), bx = c0 ? c0.x + 16 : WW_ / 2, bz = c0 ? c0.y + 16 : WH_ / 2; for (let i = 0; i < 150 * QK; i++) { const x = r() * WW_, z = r() * WH_; if (Math.hypot(x - bx, z - bz) < 170) continue; const w = 3 + r() * r() * 22; put(ROCKS[i % 4], x, -w * .15, z, w, w * (.45 + r() * .35), w * (.7 + r() * .5), r() * 6, 0, dk(r() < .5 ? c3_ : c1_, .75 + r() * .4), 0); }
+      const DS_ = REAL && mdl('dsn'); if (DS_) drawModel(DS_, bx + 290, 0, bz - 170, 1.25, .7, 0); landmarks(bx, bz, r, dk, c1_, c3_); }
     if (S.lv === 6) { let s2 = 77; const r2 = () => (s2 = s2 * 16807 % 2147483647) / 2147483647; for (let i = 0; i < 60; i++) { const x = r2() * WW_, z = r2() * WH_, hg = 6 + r2() * 12; put(CYL, x, 0, z, 1.4, hg, 1.4, 0, 0, '#3a1652', 0); put(SPH, x, hg, z, 5, 4, 5, 0, 0, r2() < .5 ? '#d070ff' : '#7df9ff', 1.6); } }
     const lk = LOOK[S.lv]; if (lk && lk.planet && S.lv === 6) { const p = lk.planet; put(SPH, WW_ / 2 + p.x, p.h - p.r, WH_ / 2 + p.y, p.r * 2, p.r * 2, p.r * 2, 0, 0, p.c, p.e || 1.1); if (p.c2) put(SPH, WW_ / 2 + p.x + p.r * .25, p.h - p.r * .7, WH_ / 2 + p.y + p.r * .3, p.r * .9, p.r * .6, p.r * .9, 0, 0, p.c2, 1.1); }
+    if (R3.noScen) n = 0; R3.scenN = n;
     gl.bindBuffer(gl.ARRAY_BUFFER, sb); gl.bufferData(gl.ARRAY_BUFFER, buf.subarray(0, n * FL), gl.STATIC_DRAW); staticN = n; staticLv = S.lv + ':' + S.L.n + ':' + HQ + ':' + HDM + REAL + TERK + ':' + (R3.mv || 0); n = 0;
   }
 
+  /* ---------- v88: pressurised walkways and utility pipes link the core to the modules people live and work in ---------- */
+  const WLK = {}, WLT = { habitat: 1, o2: 1, farm: 1, medbay: 1, lab: 1 };
+  function walkways() {
+    const c = S.b.find(b => b.t === 'core'); if (!c) return; const cx = c.x + c.w / 2, cz = c.y + c.w / 2, nt = DKn > .3;
+    const L = S.b.filter(b => WLT[b.t] && !b.ghost && !(b.pop != null && b.pop < .9) && Math.hypot(b.x + b.w / 2 - cx, b.y + b.w / 2 - cz) < 230);
+    const key = L.map(b => b.t + (b.x | 0) + ',' + (b.y | 0)).join('|') + (nt ? 'n' : 'd') + c.w;
+    cached(WLK, key, () => { for (const b of L) { const bx = b.x + b.w / 2, bz = b.y + b.w / 2, dx = bx - cx, dz = bz - cz, d = Math.hypot(dx, dz), ux = dx / d, uz = dz / d;
+        const r0 = c.w * .62, r1 = b.w * .5, len = d - r0 - r1; if (len < 6) continue; const a = Math.atan2(dz, dx), mx = cx + ux * (r0 + len / 2), mz = cz + uz * (r0 + len / 2);
+        put(BOX, mx, 0, mz, len, 1.2, 9.5, -a, 0, '#5a5f68', 0);                       // footing
+        put(BOX, mx, 1.2, mz, len, 6.5, 7.5, -a, 0, '#d6dbe2', 0);                    // tube body
+        put(BOX, mx, 7.7, mz, len, 1.4, 6, -a, 0, '#b9c0ca', 0);                      // roof
+        put(BOX, mx, 4.2, mz, len, .9, 7.7, -a, 0, '#2b3442', 0);                      // window band
+        const nw = Math.max(1, Math.floor(len / 9)); for (let i = 0; i < nw; i++) { const t = (i + .5) / nw - .5, wx = mx + ux * t * len, wz = mz + uz * t * len;
+          put(BOX, wx, 4.1, wz, 2.6, 1.1, 7.9, -a, 0, nt ? '#ffe2a8' : '#7fb8d8', nt ? 2.2 : .35); }
+        const px = -uz * 6.5, pz = ux * 6.5;                                             // utility pipe beside the walkway
+        put(BOX, mx + px, 1.6, mz + pz, len, 1.3, 1.3, -a, 0, '#c9773a', 0); put(BOX, mx + px, 0, mz + pz, 1.2, 1.6, 1.2, -a, 0, '#6a6f78', 0); } });
+  }
+  /* ---------- v85: base lights. Light masts around the core, and a blinking beacon on every working module (orange and fast when it is badly damaged) ---------- */
+  const BCH = { core: 34, habitat: 24, o2: 17, farm: 15, medbay: 17, battery: 11, drill: 22, turret: 17, tesla: 31, rtg: 13, reactor: 21, shield: 11 };
+  function beacon(b) {
+    if (b.ghost || (b.pop != null && b.pop < .4)) return; const h = BCH[b.t]; if (!h) return; const x = b.x + b.w / 2, y = b.y + b.w / 2, nt = DKn > .3, t = T();
+    if (b.t === 'core') { const R = b.w * 1.25; if (!b._mast) Object.defineProperty(b, '_mast', { value: {}, enumerable: false });
+      cached(b._mast, 'mast' + b.w + (nt ? 'n' : 'd'), () => { for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4, px = x + Math.cos(a) * R, pz = y + Math.sin(a) * R;
+          put(CYL, px, 0, pz, 1.1, 30, 1.1, 0, 0, '#9aa1ad', 0); put(BOX, px, 0, pz, 3.4, 1.2, 3.4, a, 0, '#3a3f4c', 0); put(BOX, px - Math.cos(a) * .9, 29.5, pz - Math.sin(a) * .9, 4.4, 2.2, 1.6, -a + Math.PI / 2, -.5, '#2a2d36', 0);
+          put(BOX, px - Math.cos(a) * 1.6, 29.3, pz - Math.sin(a) * 1.6, 3.8, 1.6, .5, -a + Math.PI / 2, -.5, nt ? '#fff6dc' : '#c9ccd6', nt ? 2.6 : .2); } }); }
+    if (b.off || b.nc || b.dis) return; const bad = b.m && b.hp < b.m * .35, ph = hsh(Math.floor(b.x) * 7 + Math.floor(b.y)), on = bad ? (t * 4 + ph) % 1 < .5 : (t * .9 + ph) % 1 < .14;
+    if (!on) return; put(SPHm, x, h + 1.2, y, 1.3, 1.3, 1.3, 0, 0, bad ? '#ff9a2a' : '#ff3040', nt ? 2.6 : 1.8); }
+  /* ---------- v85: every world gets its own landmarks, so a screenshot shows which world it is ---------- */
+  function landmarks(bx, bz, r, dk, c1_, c3_) {
+    const lv = S.lv, at = (dmin, dmax) => { const a = r() * Math.PI * 2, d = dmin + r() * (dmax - dmin); return [bx + Math.cos(a) * d, bz + Math.sin(a) * d * .9]; };
+    if (lv === 1) { // Mars: layered mesas and buttes, like the sedimentary hills Curiosity climbs in Gale crater
+      const BAND = ['#9c4725', '#b8603a', '#7f361b', '#c27045', '#8a3d20'];
+      for (let i = 0; i < 9; i++) { const [x, z] = at(620, 1500), w = 90 + r() * 170, k = 3 + Math.floor(r() * 3); let y = -6;
+        put(HQ ? MTNS[i % 4] : CONE4, x, -4, z, w * 1.55, w * .32, w * 1.4, r() * 6, 0, dk(c3_, .8), 0); // talus slope
+        for (let j = 0; j < k; j++) { const hh = w * (.1 + r() * .07), sh = 1 - j * .09; put(CYL, x, y, z, w * sh, hh, w * sh * (.8 + r() * .1), i, 0, BAND[(i + j) % 5], 0); y += hh; }
+        if (r() < .5) put(CYL, x + w * .2, y, z, w * .35, w * .12, w * .3, i, 0, BAND[i % 5], 0); }
+      for (let i = 0; i < 26; i++) { const [x, z] = at(330, 900), w = 30 + r() * 50; put(HEMI, x, -w * .12, z, w * 2.2, w * .3, w * .8, r() * .6 + .6, 0, '#7a3a20', 0); } // dark basaltic sand dunes
+    } else if (lv === 2) { // Mercury: lobate scarps (cliffs made as the planet cooled and shrank) and ancient boulders
+      for (let i = 0; i < 4; i++) { const [x, z] = at(700, 1300), ry = r() * 6, L = 500 + r() * 500; for (let j = -3; j <= 3; j++) { const ox = Math.cos(ry) * j * L / 7, oz = Math.sin(ry) * j * L / 7, hh = 40 * (1 - Math.abs(j) / 4.2) + 10;
+          put(BOX, x + ox, -6, z + oz, L / 6.5, hh, 90, -ry, .55, dk(c3_, .75 + r() * .2), 0); } }
+      for (let i = 0; i < 40; i++) { const [x, z] = at(260, 1000), w = 6 + r() * 26; put(ROCKS[i % 4], x, -w * .2, z, w, w * .6, w * .8, r() * 6, 0, dk(c1_, .7 + r() * .3), 0); }
+    } else if (lv === 3) { // Europa: chaos terrain, where the ice shell broke into rafts that tilted and froze again
+      for (let i = 0; i < 14; i++) { const [x, z] = at(450, 1400), n_ = 3 + Math.floor(r() * 5);
+        for (let j = 0; j < n_; j++) { const w = 40 + r() * 90, ox = (r() - .5) * 220, oz = (r() - .5) * 220; put(BOX, x + ox, -w * .2, z + oz, w, w * (.25 + r() * .35), w * (.6 + r() * .6), r() * 6, (r() - .5) * .5, r() < .6 ? '#dfeef8' : '#b9d4e6', 0); if (r() < .4) put(BOX, x + ox, w * .1, z + oz, w * .9, w * .08, w * .1, r() * 6, 0, '#9a6a4a', 0); } }
+      for (let i = 0; i < 30; i++) { const [x, z] = at(250, 800), w = 4 + r() * 12; put(CONE4, x, -1, z, w, w * (1.2 + r() * 1.5), w, r() * 6, 0, '#e8f4fc', .05); } // sharp ice blades
+    } else if (lv === 4) { // Titan: rounded water-ice cobbles, exactly what the Huygens probe photographed when it landed in 2005
+      for (let i = 0; i < 160; i++) { const [x, z] = at(240, 900), w = 3 + r() * r() * 10; put(SPH, x, -w * .15, z, w, w * .55, w * (.8 + r() * .3), r() * 6, 0, r() < .5 ? '#c79a62' : '#a8794a', 0); }
+    } else if (lv === 5) { // Ceres: Ahuna Mons, a lonely 4 km tall ice volcano with bright salt streaks down its sides
+      const [x, z] = [bx - 1150, bz - 1050], R = 420, H = 260; put(CYL, x, -10, z, R * 2, H, R * 1.8, .3, 0, '#4c4a48', 0); put(HEMI, x, H - 12, z, R * 1.7, 70, R * 1.5, .3, 0, '#55524e', 0);
+      put(CONE4, x, -12, z, R * 2.6, H * .5, R * 2.4, .9, 0, '#3f3d3a', 0);
+      for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283 + r() * .2; put(BOX, x + Math.cos(a) * R * .93, H * .35, z + Math.sin(a) * R * .84, 14 + r() * 18, H * .62, 6, -a, 0, '#e6e8ec', .15); }
+      for (let i = 0; i < 50; i++) { const [x2, z2] = at(260, 1000), w = 5 + r() * 20; put(ROCKS[i % 4], x2, -w * .2, z2, w, w * .55, w * .8, r() * 6, 0, dk(c1_, .7 + r() * .3), 0); }
+    } else if (lv === 0) { // the Moon: big boulders thrown out by impacts, scattered around the craters
+      for (let i = 0; i < 70; i++) { const [x, z] = at(260, 1100), w = 6 + r() * r() * 40; put(ROCKS[i % 4], x, -w * .2, z, w, w * .6, w * .85, r() * 6, 0, dk(c1_, .75 + r() * .35), 0); }
+    }
+  }
   /* ---------- models ---------- */
   const T = () => (typeof TT !== 'undefined' ? TT : performance.now() / 1000);
   /* ---------- v19 models: buildings keep their unchanging parts in a cache, only moving parts are rebuilt ---------- */
@@ -286,10 +343,11 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
   }
   function building(b) {
     const t = T(), m = b.lv || 1, isC = b.t === 'core', x = b.x + b.w / 2, y = b.y + b.w / 2;
-    let sc = 1; if (b.pop != null && b.pop < .4) { if (b.pop < 0) return; sc = typeof easeBack === 'function' ? easeBack(b.pop / .4) : b.pop / .4; }
+    // construction: the footprint is laid down at once, then the structure climbs out of the ground over about a second, glowing like fresh welds as it settles
+    let sc = 1, rise = 1, glow = 0; if (b.pop != null && b.pop < 1.2) { if (b.pop < 0) return; const p = b.pop, f = Math.min(1, p / .25); sc = 1 - Math.pow(1 - f, 3); const r = Math.min(1, Math.max(.06, (p - .08) / .85)); rise = r * r * (3 - 2 * r); glow = Math.max(0, 1 - p / 1.2) * .9; }
     const fl = b.hit > 0 ? .8 : 0, on = !b.off && !b.nc && !b.dis, s = sc, nt = DKn > .3, wl = on ? (nt ? 1.5 : .55) : 0;
     if (HDM && (REAL || b.t === 'farm') && hdBuilding(b, x, y, s, fl)) return;
-    const B = (dx, dz, h, w, ht, d, c, e, ry, rx) => box(x + dx * s, y + dz * s, h * s, w * s, ht * s, d * s, c, (e || 0) + fl, ry, rx);
+    const B = (dx, dz, h, w, ht, d, c, e, ry, rx) => box(x + dx * s, y + dz * s, h * s * rise, w * s, ht * s * rise, d * s, c, (e || 0) + fl + glow, ry, rx);
     const C = (dx, dz, h, w, ht, c, e, ry, rx, d) => cyl(x + dx * s, y + dz * s, h * s, w * s, ht * s, c, (e || 0) + fl, ry, rx, d && d * s);
     const Cm = (dx, dz, h, w, ht, c, e, ry, rx) => put(CYLm, x + dx * s, h * s, y + dz * s, w * s, ht * s, w * s, ry || 0, rx || 0, c, (e || 0) + fl);
     const Sp = (dx, dz, h, w, ht, d, c, e, ry) => put(SPH, x + dx * s, h * s, y + dz * s, w * s, ht * s, d * s, ry || 0, 0, c, (e || 0) + fl);
@@ -751,7 +809,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     acid: ['#f0ffc0', '#a8ff3a', '#2a9a20', '#3a4a20'], void: ['#ffe0ff', '#ff3ab0', '#7a10ff', '#1a0a2a'], sand: ['#fff0c0', '#ffb060', '#c06020', '#a07850'],
     grav: ['#f0e0ff', '#c070ff', '#5a20ff', '#2a2040'], energy: ['#ffffff', '#7df9ff', '#2a6bff', '#405060'], gold: ['#ffffff', '#ffe066', '#ff9a1a', '#504020'] };
   function vxTex() {
-    const S_ = 128, cv = document.createElement('canvas'); cv.width = S_ * 4; cv.height = S_ * 2; const g = cv.getContext('2d'), im = g.createImageData(S_ * 4, S_ * 2), d = im.data;
+    const S_ = 128, cv = document.createElement('canvas'); cv.width = S_ * 4; cv.height = S_ * 4; const g = cv.getContext('2d'), im = g.createImageData(S_ * 4, S_ * 4), d = im.data;
     const hs = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
     const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); return (hs(xi, yi) * (1 - u) + hs(xi + 1, yi) * u) * (1 - v) + (hs(xi, yi + 1) * (1 - u) + hs(xi + 1, yi + 1) * u) * v; };
     const fbm = (x, y) => vn(x, y) * .5 + vn(x * 2.1, y * 2.1) * .3 + vn(x * 4.3, y * 4.3) * .2;
@@ -764,6 +822,13 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     cell(5, (u, v, r) => Math.max(Math.exp(-r * r * 9), Math.exp(-u * u * 400) * (1 - Math.abs(v)), Math.exp(-v * v * 400) * (1 - Math.abs(u)))); // star flare
     cell(6, (u, v, r) => Math.exp(-Math.pow((r - .7) / .2, 2)) * (r < 1 ? 1 : 0));                         // soft shock ring
     cell(7, (u, v, r, x, y) => { const n = fbm(x / 10, y / 10), a = Math.atan2(v, u), ray = Math.pow(Math.abs(Math.sin(a * 7 + n * 3)), 6); return Math.max(0, 1 - r) * (.55 + .45 * n) * (r < .35 ? 1 : .4 + .6 * ray); }); // scorch decal
+    // realistic explosion parts: billowing smoke, a turbulent fireball, a jagged debris chunk, a glowing ember, a grainy dust puff
+    const BL = []; for (let i = 0; i < 16; i++) { const a = hs(i, 3) * 6.283, d = Math.pow(hs(i, 7), .6) * .42; BL.push([Math.cos(a) * d, Math.sin(a) * d * .9 - .04, .2 + hs(i, 11) * .26]); }
+    cell(8, (u, v, r, x, y) => { let s = 0; for (const b of BL) { const q = Math.hypot(u - b[0], v - b[1]) / b[2]; s += Math.exp(-q * q * 1.6); } const n = fbm(x / 14 + 2, y / 14); return Math.min(1, s * .55) * (.55 + .45 * n) * Math.max(0, 1 - Math.pow(r, 6)); });
+    cell(9, (u, v, r, x, y) => { const n = fbm(x / 16 + 5, y / 16 + 1), n2 = fbm(x / 7, y / 7); return Math.pow(Math.max(0, 1 - r * (.95 + .9 * (1 - n))), .65) * (.6 + .4 * n2); });
+    cell(10, (u, v, r) => { const a = Math.atan2(v, u), R = .45 + .22 * Math.sin(a * 3 + 1) + .12 * Math.sin(a * 7 + 2); return Math.max(0, Math.min(1, (R - r) * 18)); });
+    cell(11, (u, v, r) => Math.min(1, Math.exp(-r * r * 40) + .35 * Math.exp(-r * r * 7)));
+    cell(12, (u, v, r, x, y) => { const n = fbm(x / 6, y / 6), n2 = fbm(x / 20 + 4, y / 20); return Math.max(0, 1 - r * (1 + .9 * (1 - n2))) * (.3 + .7 * n) * .85; });
     g.putImageData(im, 0, 0); return cv;
   }
   function vxInit() {
@@ -828,8 +893,51 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
       FX.ring(x, z, { el: o.el, r1: 10, r2: r }); FX.ring(x, z, { el: o.el, r1: r * .3, r2: r * 1.4 });
       for (let i = 0; i < 40; i++) { const q = rr(0, 6.283), d = rr(0, r); vxAdd({ x: x + Math.cos(q) * d, y: y + 300, z: z + Math.sin(q) * d, vy: -rr(700, 1000), l: rr(.25, .45), s0: 5, s1: 3, c0: vcol(E[0]), c1: vcol(E[1]), a0: 1, a1: .3, tx: 3, str: 1, add: 1 }); }
       for (let i = 0; i < 14; i++) { const q = rr(0, 6.283), d = rr(0, r * .8); vxAdd({ x: x + Math.cos(q) * d, y: y + 4, z: z + Math.sin(q) * d, vy: rr(20, 60), l: rr(.5, .9), s0: 20, s1: 50, c0: vcol(E[1]), c1: vcol(E[2]), a0: .9, a1: 0, tx: 1, add: 1 }); } } };
+  /* ---------- realistic explosions (HD and Real views) ----------
+     flash → turbulent fireball that rises on its own heat → billowing smoke lit orange from below, turning grey → debris on ballistic arcs
+     with smoke trails → embers → a ground-hugging dust ring → scorch mark. Gravity and air are each world's own: on airless worlds the
+     fireball is a brief flash (no oxygen) and the regolith flies out in a perfect dome and falls back slowly, with no smoke at all. */
+  const WG = [.17, .38, .38, .13, .14, .03, .5], AIRW = [0, .55, 0, 0, 1.4, 0, .8];
+  const SMK = [['#7c7a78', '#9a9894'], ['#7a4a32', '#b07a58'], ['#6a6662', '#8a8580'], ['#c8d8e8', '#eef6ff'], ['#8a5a28', '#c08a4a'], ['#6a6a70', '#8a8a92'], ['#5a3a6a', '#8a6a9a']];
+  function realBoom(x, z, o) { const r = Math.max(8, o.r || 20), E = VEL[o.el] || VEL.fire, y = TH0(x, z), lv = S.lv || 0, air = AIRW[lv] ?? .5, gW = 220 * Math.max(.22, WG[lv] || .5), big = r > 40, Q = R3.q === 'low' ? .55 : 1, sm = SMK[lv] || SMK[0];
+    const fire = !o.el || o.el === 'fire' || o.el === 'energy', E0 = fire ? '#fff6d8' : E[0], E1 = fire ? '#ffb040' : E[1], E2 = fire ? '#e0400c' : E[2];
+    R3.flashes = R3.flashes || []; R3.flashes.push({ x, z, t: 0, r: r * 5, c: E1 });
+    // flash
+    vxAdd({ x, y: y + r * .35, z, l: .08, s0: r * 2.4, s1: r * 3.2, c0: vcol('#ffffff'), c1: vcol(E0), a0: .9, a1: 0, tx: 5, add: 1, rot: rr(0, 6) });
+    vxAdd({ x, y: y + r * .3, z, l: .14, s0: r * 1.6, s1: r * 2.4, c0: vcol('#fff2c0'), c1: vcol(E1), a0: .7, a1: 0, tx: 0, add: 1 });
+    // fireball: several turbulent lobes that swell, rise and cool from white to orange to deep red
+    const fl = air > 0 ? 1 : .45, nF = Math.round((big ? 11 : 7) * Q);
+    for (let i = 0; i < nF; i++) { const q = rr(0, 6.283), sp = rr(.25, .8) * r * (air > 0 ? 1.2 : 2.2), up = rr(.2, .7) * r;
+      vxAdd({ x: x + rr(-.2, .2) * r, y: y + rr(.15, .5) * r, z: z + rr(-.2, .2) * r, vx: Math.cos(q) * sp, vy: up + r * .5 * air, vz: Math.sin(q) * sp, dr: 3.2, g: -r * .9 * air, l: rr(.45, .85) * fl, s0: r * rr(.6, .9), s1: r * rr(1.3, 1.9), c0: fire ? [.95, .62, .25] : vcol(E0), c1: fire ? [.5, .1, .02] : vcol(E2), a0: .85, a1: 0, ez: 1, tx: 9, rot: rr(0, 6), vr: rr(-1.2, 1.2), add: 1 });
+      if (i % 2 === 0) vxAdd({ x: x + rr(-.15, .15) * r, y: y + rr(.2, .45) * r, z: z + rr(-.15, .15) * r, vx: Math.cos(q) * sp * .7, vy: up * .8 + r * .45 * air, vz: Math.sin(q) * sp * .7, dr: 3, g: -r * .8 * air, l: rr(.6, 1) * fl, s0: r * rr(.7, 1), s1: r * rr(1.4, 2), c0: fire ? [.85, .38, .08] : vcol(E1), c1: [.16, .1, .08], a0: .95, a1: 0, ez: 1, tx: 9, rot: rr(0, 6), vr: rr(-1, 1), add: 0 }); }
+    // smoke: billows lit orange from below at first, then grey; they rise, spread and slowly fade (only where there is air)
+    if (air > 0) { const nS = Math.round((big ? 16 : 9) * Q);
+      for (let i = 0; i < nS; i++) { const q = rr(0, 6.283), d = rr(0, .5) * r, sp = rr(.15, .45) * r, life = rr(2.2, 4) * (air > 1 ? 1.4 : 1);
+        const base = { x: x + Math.cos(q) * d, y: y + rr(.2, .6) * r, z: z + Math.sin(q) * d, vx: Math.cos(q) * sp, vy: rr(.4, .9) * r * .6 / Math.max(.6, air), vz: Math.sin(q) * sp, dr: 1.1 * air, l: life, rot: rr(0, 6), vr: rr(-.35, .35), add: 0 };
+        vxAdd({ ...base, s0: r * rr(.8, 1.1), s1: r * rr(2.8, 3.8), c0: vcol(fire ? '#2a160c' : E[3]), c1: vcol(sm[0]), a0: 1, a1: 0, ez: 1, tx: 8 });
+        vxAdd({ ...base, y: base.y + r * .25, s0: r * rr(.55, .8), s1: r * rr(2, 2.8), c0: vcol(fire ? '#e07020' : E[1]), c1: vcol(sm[1]), a0: .75, a1: 0, ez: 1, tx: 8, vr: -base.vr }); } }
+    else { const nD = Math.round((big ? 40 : 24) * Q);   // the airless ejecta dome: dust on clean ballistic arcs, no drag, falling back in low gravity
+      for (let i = 0; i < nD; i++) { const q = rr(0, 6.283), el = rr(.5, 1.25), sp = rr(.45, 1.15) * r * 1.5 * Math.sqrt(.4 / Math.max(.13, WG[lv])), lit = i % 3 !== 0;
+        vxAdd({ x, y: y + 2, z, vx: Math.cos(q) * Math.cos(el) * sp, vy: Math.sin(el) * sp, vz: Math.sin(q) * Math.cos(el) * sp, g: gW, bnc: 1, l: rr(1.8, 3.2), s0: r * rr(.4, .6), s1: r * rr(.9, 1.3), c0: lit ? [.95, .93, .88] : [.4, .39, .37], c1: lit ? [.8, .78, .74] : [.36, .35, .33], a0: .95, a1: 0, ez: 1, tx: lit ? 8 : 12, rot: rr(0, 6), add: 0 }); }
+      vxAdd({ x, y: y + r * .3, z, l: .5, s0: r * 1.2, s1: r * 3, c0: [.9, .88, .84], c1: vcol(sm[1]), a0: .7, a1: 0, ez: 1, tx: 12, add: 0 }); }
+    // debris: dark chunks on ballistic arcs with smoke trails, bouncing to a stop
+    const nB = Math.round((big ? 14 : 7) * Q);
+    for (let i = 0; i < nB; i++) { const q = rr(0, 6.283), el = rr(.35, 1.2), sp = rr(1.4, 3.2) * r * Math.sqrt(.45 / Math.max(.13, WG[lv]));
+      vxAdd({ x, y: y + r * .2, z, vx: Math.cos(q) * Math.cos(el) * sp, vy: Math.sin(el) * sp, vz: Math.sin(q) * Math.cos(el) * sp, g: gW, dr: .25 * air, bnc: 1, l: rr(1.6, 2.8), s0: rr(1.6, 3.4) * Math.min(2, r / 18), s1: rr(1.4, 3) * Math.min(2, r / 18), c0: vcol('#2a2624'), c1: vcol('#3a3430'), a0: 1, a1: .9, tx: 10, rot: rr(0, 6), vr: rr(-9, 9), add: 0, trail: air > 0 ? 12 : 0, tc: vcol(sm[0]) }); }
+    // sparks and embers
+    const nK = Math.round((big ? 30 : 16) * Q);
+    for (let i = 0; i < nK; i++) { const q = rr(0, 6.283), el = rr(.2, 1.3), sp = rr(r * 2.2, r * 6);
+      vxAdd({ x, y: y + 3, z, vx: Math.cos(q) * sp * Math.cos(el), vy: Math.sin(el) * sp * .8, vz: Math.sin(q) * sp * Math.cos(el), g: gW * 1.2, dr: 1.2 * air + .2, l: rr(.3, .7), s0: rr(2.5, 4.5), s1: 1, c0: vcol('#fff8e0'), c1: vcol(E1), a0: 1, a1: 0, tx: 3, str: 1, add: 1 }); }
+    for (let i = 0; i < Math.round(nK * .5); i++) { const q = rr(0, 6.283), sp = rr(.4, 1.6) * r;
+      vxAdd({ x, y: y + r * .4, z, vx: Math.cos(q) * sp, vy: rr(.5, 1.5) * r, vz: Math.sin(q) * sp, g: gW * .35, dr: .8 * air, bnc: 1, l: rr(1.2, 2.4), s0: rr(1.6, 2.6), s1: .8, c0: vcol('#ffd27a'), c1: vcol('#ff4a10'), a0: 1, a1: 0, tx: 11, add: 1 }); }
+    // ground: a dust skirt racing outwards, a heat ring, and a lasting scorch mark
+    vxAdd({ x, y: y + .8, z, l: .9, s0: r * .8, s1: r * 4.2, c0: vcol(sm[1]), c1: vcol(sm[0]), a0: .55, a1: 0, tx: 6, flat: 1, add: 0 });
+    vxAdd({ x, y: y + .6, z, l: .35, s0: r * .5, s1: r * 3, c0: vcol(E1), c1: vcol(E2), a0: .8, a1: 0, tx: 4, flat: 1, add: 1 });
+    vxAdd({ x, y: y + .4, z, l: 9, s0: r * 2.2, s1: r * 2.3, c0: vcol('#000000'), c1: vcol('#000000'), a0: .6, a1: 0, tx: 7, flat: 1, add: 0, rot: rr(0, 6.28) });
+    vxAdd({ x, y: y + .5, z, l: 2.2, s0: r * 1.4, s1: r * 1.6, c0: vcol('#ff6a1a'), c1: vcol('#3a0a00'), a0: .8, a1: 0, tx: 7, flat: 1, add: 1, rot: rr(0, 6.28) }); }
+  const oldExplode = FX.explode; FX.explode = (x, z, o) => (HDM && R3.realFx !== false) ? realBoom(x, z, o) : oldExplode(x, z, o);
   R3.fx = (k, x, z, o) => { try { if (FX[k] && VX.P.length < 2400) FX[k](x, z, o || {}); } catch (e) {} };
-  R3.fxEl = VEL;
+  R3.fxEl = VEL; R3._vx = VX; R3._dbg = () => ({ gl, prog, U, TER });
   // live per-frame sprites: bullets as glowing orbs/tracers, elemental telegraph rims on danger zones
   function vxLive(t) {
     try { vxLive2(t); } catch (e) {}
@@ -845,19 +953,21 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
   function vxDraw(dt) {
     if (!vxInit()) return; const t = T(); VX.I.length = 0; try { vxLive(t); } catch (e) {}
     const P = VX.P; for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; p.l -= dt; if (p.l <= 0) { P[i] = P[P.length - 1]; P.pop(); continue; }
-      if (p.vx != null) { const k = p.dr ? Math.exp(-p.dr * dt) : 1; p.vx *= k; p.vz *= k; p.vy = (p.vy || 0) * k - (p.g || 0) * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; }
+      if (p.vx != null) { const k = p.dr ? Math.exp(-p.dr * dt) : 1; p.vx *= k; p.vz *= k; p.vy = (p.vy || 0) * k - (p.g || 0) * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+        if (p.bnc) { const gy = TH0(p.x, p.z) + p.s0 * .25; if (p.y < gy) { p.y = gy; p.vy = Math.abs(p.vy) * .3; p.vx *= .55; p.vz *= .55; p.vr = (p.vr || 0) * .5; if (Math.abs(p.vy) < 6) { p.vy = 0; p.g = 0; p.vx *= .2; p.vz *= .2; } } }
+        if (p.trail && p.l > p.ml * .25 && Math.random() < dt * p.trail && P.length < 2300) vxAdd({ x: p.x, y: p.y, z: p.z, vx: 0, vy: 4, vz: 0, dr: 2, l: rr(.8, 1.4), s0: p.s0 * 1.8, s1: p.s0 * 5, c0: p.tc || vcol('#6a645c'), c1: p.tc || vcol('#6a645c'), a0: .6, a1: 0, ez: 1, tx: 8, rot: rr(0, 6), add: 0 }); }
       else if (p.vy) p.y += p.vy * dt; if (p.vr) p.rot += p.vr * dt; }
     VX.addArr = null; if (!P.length && !VX.I.length) return;
     const B = BAS; if (!B) return; const R_ = B.r, U_ = B.u, F_ = B.f, out = [[], []];
     const quad = (x, y, z, s, r, g, b, a, tx, add, flat, rot, str, vx, vy, vz) => {
-      const L = out[add ? 1 : 0]; if (L.length > 9 * 6 * 1400) return; const cu = (tx % 4) * .25, cv = Math.floor(tx / 4) * .5, du = .25, dv = .5, h = s / 2;
+      const L = out[add ? 1 : 0]; if (L.length > 9 * 6 * 1400) return; const cu = (tx % 4) * .25, cv = Math.floor(tx / 4) * .25, du = .25, dv = .25, h = s / 2;
       let ax, ay, az, bx, by, bz;
       if (flat) { const c = Math.cos(rot), sn = Math.sin(rot); ax = c * h; ay = 0; az = sn * h; bx = -sn * h; by = 0; bz = c * h; }
       else if (str) { let l = Math.hypot(vx, vy, vz) || 1; let dx = vx / l, dy = vy / l, dz = vz / l; let sx = dy * F_[2] - dz * F_[1], sy = dz * F_[0] - dx * F_[2], sz = dx * F_[1] - dy * F_[0], sl = Math.hypot(sx, sy, sz) || 1; const len = Math.max(h * 2.2, Math.min(l * .045, 26)); ax = dx * len; ay = dy * len; az = dz * len; bx = sx / sl * h * .5; by = sy / sl * h * .5; bz = sz / sl * h * .5; }
       else { const c = Math.cos(rot), sn = Math.sin(rot); ax = (R_[0] * c + U_[0] * sn) * h; ay = (R_[1] * c + U_[1] * sn) * h; az = (R_[2] * c + U_[2] * sn) * h; bx = (-R_[0] * sn + U_[0] * c) * h; by = (-R_[1] * sn + U_[1] * c) * h; bz = (-R_[2] * sn + U_[2] * c) * h; }
       const v = (sa, sb, u, w) => L.push(x + ax * sa + bx * sb, y + ay * sa + by * sb, z + az * sa + bz * sb, cu + u * du, cv + w * dv, r, g, b, a);
       v(-1, -1, 0, 0); v(1, -1, 1, 0); v(1, 1, 1, 1); v(-1, -1, 0, 0); v(1, 1, 1, 1); v(-1, 1, 0, 1); };
-    for (const p of P) { const k = 1 - p.l / p.ml, s = p.s0 + (p.s1 - p.s0) * k, a = p.a0 + (p.a1 - p.a0) * k, c0 = p.c0, c1 = p.c1 || c0; if (a <= .01) continue;
+    for (const p of P) { const k = 1 - p.l / p.ml, s = p.s0 + (p.s1 - p.s0) * (p.ez ? 1 - (1 - k) * (1 - k) : k), a = p.a0 + (p.a1 - p.a0) * (p.ez ? k * k : k), c0 = p.c0, c1 = p.c1 || c0; if (a <= .01) continue;
       quad(p.x, p.y, p.z, s, c0[0] + (c1[0] - c0[0]) * k, c0[1] + (c1[1] - c0[1]) * k, c0[2] + (c1[2] - c0[2]) * k, a, p.tx, p.add, p.flat, p.rot, p.str, p.vx || 0, p.vy || 0, p.vz || 0); }
     for (const q of VX.I) quad(q.x, q.y, q.z, q.s, q.c[0], q.c[1], q.c[2], q.a, q.tx, q.add, q.flat, q.rot, q.str, q.vx || 0, q.vy || 0, q.vz || 0);
     gl.useProgram(VX.prog); gl.uniformMatrix4fv(VX.U.uM, false, new Float32Array(VP)); gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, VX.tex); gl.uniform1i(VX.U.uX, 5);
@@ -1104,6 +1214,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
 
   /* ---------- the frame ---------- */
   function frame() {
+    if (R3.hold) return;   // a full-screen scene (like walking inside the outpost) covers the 3D view, so skip drawing it
     const cv = document.getElementById('c'), dpr = R3.q === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     { const now = performance.now(); if (R3.lf) { const d = Math.min(200, now - R3.lf); R3.ft = (R3.ft || 16) * .95 + d * .05; } R3.lf = now;
       // adaptive resolution: drop the render scale when frames are slow, raise it back when there is headroom
@@ -1120,7 +1231,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     if (!document.body.classList.contains('v3d')) document.body.classList.add('v3d');
     const t = T(), L = S.L, lk = LOOK[S.lv] || LOOK[0];
     HDM = R3.hd && !!prog3; REAL = HDM && !!R3.real; if (HDM) terEnsure(); HQ = R3.q !== 'low' || HDM;
-    if (staticLv !== S.lv + ':' + L.n + ':' + HQ + ':' + HDM + REAL + TERK + ':' + (R3.mv || 0)) { buildStatic(); last.bg = -9; }
+    if (staticLv !== S.lv + ':' + L.n + ':' + HQ + ':' + HDM + REAL + TERK + ':' + (R3.mv || 0)) { buildScenery(); last.bg = -9; }
     if (t - last.bg > 1.5 || t < last.bg) { upload(texBg, bg); last.bg = t; }
     if (t - last.fog > .2 || t < last.fog) { upload(texFog, FOG); last.fog = t; }
 
@@ -1199,8 +1310,8 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     hdSky(); gl.disable(gl.BLEND); R3.sky();
     gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.disable(gl.BLEND); gl.depthMask(true);
     gl.useProgram(prog); gl.uniformMatrix4fv(U.uM, false, new Float32Array(VP)); if (U.uShOn) gl.uniform1f(U.uShOn, preS && shK > .02 ? 1 : 0);
-    hdU(L); gl.uniform2f(U.uW, WW, WH); gl.uniform3fv(U.uSun, sunD); gl.uniform3fv(U.uSunC, sunCol.map((v, i) => v * sunK * .78 * stc[i])); { const PS = S.lv === 0 ? [.03, .05, .1] : S.lv === 3 ? [.08, .06, .04] : null; gl.uniform3fv(U.uAmb, lk.amb.map((v, i) => v * ambK * stc[i] * (1 - dk * .25) + (dk > .3 ? [.02, .03, .08][i] : 0) + (PS ? PS[i] * (.4 + dk) : 0))); }   /* Earthshine on the Moon, Jupitershine on Europa */
-    GRH = mix3(hor, lk.haze, .25); gl.uniform3fv(U.uHaze, GRH); gl.uniform3fv(U.uCam, eye); gl.uniform1f(U.uHD, 420 - (wall ? 260 : 120) * stormK); if (HDM) gl.uniform3f(U.uDark, .1, .08, .22); else gl.uniform3f(U.uDark, .024, .016, .047);
+    hdU(L); gl.uniform2f(U.uW, WW, WH); gl.uniform3fv(U.uSun, sunD); gl.uniform3fv(U.uSunC, sunCol.map((v, i) => v * sunK * .78 * stc[i])); { const PS = S.lv === 0 ? [.03, .05, .1] : S.lv === 3 ? [.08, .06, .04] : null; gl.uniform3fv(U.uAmb, lk.amb.map((v, i) => v * ambK * (AIRW[S.lv] === 0 && HDM ? .7 : 1) * stc[i] * (1 - dk * .25) + (dk > .3 ? [.02, .03, .08][i] : 0) + (PS ? PS[i] * (.4 + dk) : 0))); }   /* Earthshine on the Moon, Jupitershine on Europa */
+    GRH = mix3(hor, lk.haze, .25); gl.uniform3fv(U.uHaze, GRH); gl.uniform3fv(U.uCam, eye); gl.uniform1f(U.uHD, AIRW[S.lv] === 0 ? 1150 : 420 - (wall ? 260 : 120) * stormK);   /* v89: no air means no aerial perspective, so far hills stay as crisp as near ones (only the map edge fades) */ if (HDM) gl.uniform3f(U.uDark, .1, .08, .22); else gl.uniform3f(U.uDark, .024, .016, .047);
     const LT = lights(dk); for (let i = 0; i < 8; i++) { const l = LT[i]; gl.uniform4f(U.lp[i], l ? l[0] : 0, l ? l[1] : 0, l ? l[2] : 0, l ? l[3] : 0); gl.uniform3f(U.lc[i], l ? l[4] : 0, l ? l[5] : 0, l ? l[6] : 0); }
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texBg); gl.uniform1i(U.uBg, 0);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texFog); gl.uniform1i(U.uFog, 1);
@@ -1260,8 +1371,10 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, c3.width, c3.height); gl.useProgram(prog); gl.enable(gl.CULL_FACE);
     gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, SH.tex); gl.uniform1i(U.uSh, 4); gl.activeTexture(gl.TEXTURE0); gl.uniformMatrix4fv(U.uLM, false, new Float32Array(M)); gl.uniform1f(U.uShT, 1.1 / SH.size); return M; }
   function lights(dk) {
-    if (dk < .05) return [];
+    const FLs = (R3.flashes || []).filter(f => (f.t += (FDT || .016)) < .45); R3.flashes = FLs;
+    if (dk < .05 && !FLs.length) return [];
     const K = .2 + dk * 1.1, out = [], add = (x, y, h, r, c, k) => { const C = col(c); out.push([x, h + (HDM && TER ? THc(x, y) : 0), y, r, C[0] * K * (k || 1), C[1] * K * (k || 1), C[2] * K * (k || 1), Math.hypot(x - TGT.x, y - TGT.y)]); };
+    if (FLs.length) { const fo = []; FLs.forEach(f => { const k = Math.pow(1 - f.t / .45, 2), C = col(f.c), h = 14 + (HDM && TER ? THc(f.x, f.z) : 0); fo.push([f.x, h, f.z, f.r, C[0] * 3.2 * k, C[1] * 2.6 * k, C[2] * 2 * k, 0]); }); if (dk < .05) return fo.slice(0, 4); out.push(...fo.slice(0, 2)); }   /* the blast lights up the ground and buildings around it */
     const c = core(); if (c) add(c.x + 16, c.y + 16, 34, 150, '#fff1d0', .8);
     if (S.cin && S.cin.k === 'boss') add(S.cin.x, S.cin.y, 50, 200, '#ff7070', 1.6);
     add(S.p.x + S.face.x * 10, S.p.y + S.face.y * 10, 16, 95, '#e8f4ff', 1);
@@ -1277,7 +1390,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
   }
 
   function scene(cm) {
-    const ST = R3.st = { a: n, ta: tn }; S.b.forEach(building); ST.bld = n - ST.a; if (HDM) S.b.forEach(hdTierB);
+    const ST = R3.st = { a: n, ta: tn }; S.b.forEach(building); ST.bld = n - ST.a; if (HDM) { S.b.forEach(hdTierB); S.b.forEach(beacon); walkways(); }
     const SU = suitOf();
     if (S.land <= .55 && !S.drive && cm !== 'fp') { const sv = n; if (REAL) astroX(S.p.x, S.p.y, faceS(), S.walk || 0, SU, null, 1, 0, S.mv ? Math.min(1, Math.hypot(S.mv.x, S.mv.y) / 40) : 0, S.jz || 0, 1); else astro(S.p.x, S.p.y, Math.atan2(S.face.y, S.face.x), S.walk || 0, SU, null, 1); if (S.L.lowg && S.pv) { const hop = Math.min(1, Math.hypot(S.pv.x, S.pv.y) / 60) * Math.abs(Math.sin((S.walk || 0) * 5)) * 9; for (let i = sv; i < n; i++) buf[i * FL + 1] += hop; } if (S.jz) for (let i = sv; i < n; i++) buf[i * FL + 1] += S.jz; skRoll(sv); if (HDM && !REAL && S.glide) { const ang = Math.atan2(S.face.y, S.face.x), ca = Math.cos(ang), sa = Math.sin(ang), fl = Math.sin(T() * 6) * .04, hb = 11 + (S.jz || 0) - ca * 0 ; for (const q of [-1, 1]) { const px = -sa * q, pz = ca * q, bx = S.p.x - ca * 2, bz = S.p.y - sa * 2; put(BOX, bx + px * 7.6, hb, bz + pz * 7.6, 5.2, .35, 12.5, ang, q * (-.2 + fl), '#f4f7fb', .1); put(BOX, bx + px * 7.6 + ca * 2.4, hb + .15, bz + pz * 7.6 + sa * 2.4, .8, .4, 12.5, ang, q * (-.2 + fl), '#ff8a3d', .9); put(SPHm, bx + px * 13.6, hb - .8, bz + pz * 13.6, 1.1, 1.1, 1.1, 0, 0, '#7df9ff', 2); } } if (!REAL && S.emo && S.emo.k !== 'sit') { const hb = Math.abs(Math.sin((T() - S.emo.t0) * 7)) * 2.5; for (let i = sv; i < n; i++) buf[i * FL + 1] += hb; } }
     // low gravity: everyone on foot bounces the same way the player does (speed is measured from movement between frames)
@@ -1510,7 +1623,7 @@ void main(){vC=aC.rgb;if(aE>1.15||aC.a<.98){gl_Position=vec4(2.,2.,2.,1.);return
     [['aP', U.aP], ['aN', U.aN], ['aC', U.aC], ['aE', U.aE]].forEach(([k, l]) => { if (l >= 0) gl.bindAttribLocation(p, l, k); });
     gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
     ['uM', 'uCam', 'uOW', 'uOC'].forEach(k => U3[k] = gl.getUniformLocation(p, k));
-    ['uHDm', 'uNz', 'uGa', 'uGb', 'uGc', 'uGd', 'uRes'].forEach(k => U[k] = gl.getUniformLocation(prog, k));
+    ['uHDm', 'uNz', 'uGa', 'uGb', 'uGc', 'uGd', 'uRes', 'uWid', 'uWB'].forEach(k => U[k] = gl.getUniformLocation(prog, k));
     ['uNz', 'uCl', 'uHDs'].forEach(k => U2[k] = gl.getUniformLocation(prog2, k));
     texNz = mkNoise(); prog3 = p;
   }
@@ -1519,7 +1632,7 @@ void main(){vC=aC.rgb;if(aE>1.15||aC.a<.98){gl_Position=vec4(2.,2.,2.,1.);return
     if (false && HDM && R3.qs === 'auto' && S.run && !S.pz) { if ((R3.ft || 16) > 42) { if (++R3.hdSlow > 240) { R3.hdSlow = 0; R3.setHD(false); HDM = false; try { LS.set('viewhd', 0); say('HD view was running slowly on this device, so the normal 3D view is back on. You can switch HD on again any time.'); viewLabel(); } catch (e) {} } } else R3.hdSlow = 0; }
     gl.uniform1f(U.uHDm, HDM ? 1 : 0); if (!HDM) return;
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, texNz); gl.uniform1i(U.uNz, 3); gl.activeTexture(gl.TEXTURE0);
-    const B = L.bg.map(col); gl.uniform3fv(U.uGa, B[0]); gl.uniform3fv(U.uGb, B[2]); gl.uniform3fv(U.uGc, B[4]); gl.uniform3fv(U.uGd, B[3]); gl.uniform2f(U.uRes, c3.width, c3.height);
+    const B = L.bg.map(col); gl.uniform3fv(U.uGa, B[0]); gl.uniform3fv(U.uGb, B[2]); gl.uniform3fv(U.uGc, B[4]); gl.uniform3fv(U.uGd, B[3]); gl.uniform2f(U.uRes, c3.width, c3.height); gl.uniform1f(U.uWid, S.lv); gl.uniform2f(U.uWB, TER ? TER.bx : WW / 2, TER ? TER.bz : WH / 2);
   }
   function hdSky() { if (!prog3) return; gl.uniform1f(U2.uHDs, HDM ? 1 : 0); gl.uniform4fv(U2.uCl, HDM ? (CLD[S.lv] || CLD[0]) : [0, 0, 0, 0]); if (HDM) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, texNz); gl.uniform1i(U2.uNz, 3); gl.activeTexture(gl.TEXTURE0); } }
   function outlines(dn) {
@@ -1940,6 +2053,14 @@ void main(){vC=aC.rgb;if(aE>1.15||aC.a<.98){gl_Position=vec4(2.,2.,2.,1.);return
       A[1] += .13 * Math.min(1, mvk) * (air ? 0 : 1);
       const hf = S.hf > 0 ? Math.min(1, S.hf / .3) : 0; if (hf) { A[1] -= .3 * hf; A[4] -= .25 * hf; A[2] += .12 * hf; A[6] -= .4 * hf; A[8] -= .3 * hf; }
     }
+    // v87: grounded movement. Low gravity gives the Apollo-style lope (higher knees, arms held out for balance);
+    // you crouch to absorb the landing after a jump, kneel to work when you build, and hold the scanner out while scanning.
+    if (!E) { if ((WG[S.lv] || .5) < .2 && mvk > .05 && !air) { A[13] *= 1.3; A[14] *= 1.3; A[6] *= .55; A[8] *= .55; A[5] -= .12; A[7] -= .12; A[1] += .06 * mvk; } }
+    if (me && !E) { const tn = typeof TT === 'number' ? TT : t;
+      if (PSM._air && !air) S.landT = tn; PSM._air = air;
+      const lt = S.landT != null ? tn - S.landT : 9; if (lt < .3 && !air) { const k = 1 - lt / .3; A[13] += .9 * k; A[14] += .9 * k; A[11] += .4 * k; A[12] += .4 * k; A[3] -= .14 * k; A[1] += .12 * k; }
+      const bt = S.bldT != null ? tn - S.bldT : 9; if (bt < .8 && mvk < .3 && !air) { showGun = false; const k = Math.min(1, bt / .12) * Math.min(1, (.8 - bt) / .15); A[11] = 1.15 * k; A[13] = 1.7 * k; A[12] = .25 * k; A[14] = .45 * k; A[3] = -.3 * k; A[1] = .25 * k; A[5] = 1.25; A[6] = 1.3; A[9] = .9 + Math.sin(bt * 32) * .25; A[7] = 1.1; A[8] = .9; A[10] = .7; }
+      if (S.scanT > 0) { showGun = false; A[5] = 1.5; A[6] = 1.25; A[9] = .3; A[7] = 1.42; A[8] = 1.05; A[10] = .45; A[4] = .16 + Math.sin(tn * 3) * .03; A[0] = Math.sin(tn * 1.7) * .12; } }
     // smooth blending for you and the hero (critically damped); crew use the raw pose
     let Pz = A; if (me || hero) { const key = me ? 'me' : 'hero', pr = PSM[key], k = 1 - Math.exp(-14 * Math.max(.004, FDT));
       if (!pr || pr.length !== A.length) PSM[key] = A.slice(); else { for (let i = 0; i < A.length; i++) pr[i] += (A[i] - pr[i]) * (i === 17 ? 1 : k); } Pz = PSM[key]; }
