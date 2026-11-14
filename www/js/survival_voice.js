@@ -110,7 +110,12 @@ export function makeVoice(api, SET = VO) {
     el.style.cssText = 'position:absolute;left:50%;bottom:118px;transform:translateX(-50%);max-width:min(640px,90vw);background:rgba(8,14,22,.86);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 14px;font:15px/1.35 system-ui;color:#e8f1f5;display:none;pointer-events:none;z-index:6;text-align:left';
     if (innerHeight < 520) el.style.cssText += ';bottom:10px;max-width:46vw;font-size:12px;padding:5px 10px';   // phones in landscape: low and small, clear of the controls
     const host = api.host && api.host(); (host || document.body).appendChild(el); return el; }
-  function sub(line) { const b = box(); if (!line) { b.style.display = 'none'; return; } const c = CAST[line.who]; b.innerHTML = `<b style="color:${c.col}">${c.n}</b> <small style="opacity:.6">${c.role}</small><br>${line.text}`; b.style.display = 'block'; }
+  // speaker portrait (img/crew/<who>_closed|open.webp): the mouth opens and closes while the line is being spoken
+  let flapT = 0, talking = false;
+  function flap() { clearInterval(flapT); flapT = setInterval(() => { const im = el && el.querySelector('.svpor'); if (!im) return; const w = im.dataset.who;
+    const open = talking && (Date.now() / 130 | 0) % 2 === 0; const src = `img/crew/${w}_${open ? 'open' : 'closed'}.webp`; if (im.getAttribute('src') !== src) im.setAttribute('src', src); }, 65); }
+  function sub(line) { const b = box(); if (!line) { b.style.display = 'none'; talking = false; clearInterval(flapT); return; } const c = CAST[line.who]; const ph = innerHeight < 520 ? 34 : 48;
+    b.innerHTML = `<img class="svpor" data-who="${line.who}" src="img/crew/${line.who}_closed.webp" alt="" style="float:left;width:${ph}px;height:${ph}px;border-radius:8px;margin:1px 10px 2px 0;border:1px solid rgba(255,255,255,.2);object-fit:cover"><b style="color:${c.col}">${c.n}</b> <small style="opacity:.6">${c.role}</small><br>${line.text}<div style="clear:both"></div>`; b.style.display = 'block'; talking = true; flap(); }
   function tts(line, done) { const ss = window.speechSynthesis; if (!ss || !api.voiceOn()) return setTimeout(done, 900 + line.text.length * 55);
     try { const u = new SpeechSynthesisUtterance(line.text), vs = ss.getVoices().filter(v => /^en/i.test(v.lang)), c = CAST[line.who];
       const girl = /female|zira|samantha|karen|victoria|susan|fiona|tessa|moira|aria|jenny|libby|sonia|natasha|google us english$/i, boy = /\bmale|david|daniel|alex|fred|guy|mark|ryan|thomas|google uk english male/i;
@@ -121,7 +126,7 @@ export function makeVoice(api, SET = VO) {
     a.play().then(() => { ok[line.id] = true; }).catch(() => { if (!fin) { fin = true; ok[line.id] = false; tts(line, done); } }); setTimeout(end, 25000); cur = a; }
   function next() { if (!enabled) { q.length = 0; busy = false; sub(null); return; } const line = q.shift(); if (!line) { busy = false; setTimeout(() => { if (!busy) sub(null); }, 1200); return; } busy = true; sub(line);
     try { api.radio && api.radio(); } catch (e) {}
-    const done = () => setTimeout(next, 280); if (ok[line.id] === false) tts(line, done); else rec(line, done); }
+    const done = () => { talking = false; setTimeout(next, 280); }; if (ok[line.id] === false) tts(line, done); else rec(line, done); }
   function play(ev, opts = {}) { const set = SET[ev]; if (!set || !enabled) return false; const st = api.state(), now = Date.now();
     if (opts.once && st) { st.said = st.said || {}; if (st.said[ev]) return false; st.said[ev] = 1; }
     if (opts.cool && last[ev] && now - last[ev] < opts.cool * 1000) return false; if (busy && opts.skipIfBusy) return false; last[ev] = now;
