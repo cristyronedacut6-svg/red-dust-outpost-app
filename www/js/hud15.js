@@ -50,14 +50,19 @@ ${L} #top #r-mo:not(.low){display:none!important}
 ${L} #top #misp{order:8}
 ${L} #top #feed{order:9;position:fixed!important;left:calc(30px + var(--sl,0px) + min(470px,40vw))!important;top:calc(10px + var(--st,0px))!important;transform:none!important;width:min(440px,calc(100vw - min(470px,40vw) - min(300px,26vw) - 70px - var(--sl,0px) - var(--sr,0px)))!important;max-width:none!important;z-index:6!important}
 ${L} #top #feed .ban,${L} #top #feed .msg{max-width:none!important;width:auto!important}
+html body #stage #rfc{top:auto!important;bottom:calc(var(--sb,0px) + 250px)!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;max-width:min(420px,44vw)!important}
+html body #stage #rfc.on{transform:translateX(-50%)!important}
+@media (max-height:540px){html body #stage #rfc.on{transform:none!important}}
 ${L} #party{top:calc(var(--st,0px) + 46%)!important;left:calc(14px + var(--sl,0px))!important;gap:10px!important}
-${L} #tr{top:calc(10px + var(--st,0px))!important;right:calc(12px + var(--sr,0px))!important;position:absolute!important;display:block!important;width:min(300px,26vw)!important}
+${L} #tr{top:calc(10px + var(--st,0px))!important;right:calc(12px + var(--sr,0px))!important;position:absolute!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:6px!important;width:min(300px,26vw)!important}
+${L} #tr #mm{order:1} ${L} #tr #nextw{order:2} ${L} #tr .v3o{order:3}
 ${L} #tr #mm{display:block!important;width:100%!important;height:auto!important;aspect-ratio:14/9!important;border-radius:10px!important;border:2px solid rgba(255,255,255,.25)!important;opacity:.96!important}
 ${L} #tr > .r:first-child{position:absolute!important;top:8px!important;right:8px!important;z-index:2!important;display:flex!important;gap:6px!important;flex-direction:row!important}
 ${L} #tr #bShop{font-size:0!important;width:40px!important;height:40px!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:8px!important}
 ${L} #tr #bShop > *{font-size:18px!important}
 ${L} #tr #bShop svg,${L} #tr #bShop img{width:22px!important;height:22px!important}
 ${L} #tr #u-more{width:40px!important;height:40px!important;padding:0!important;font:900 20px/1 system-ui!important;border-radius:8px!important;letter-spacing:1px!important}
+${L} #tr #mHud{display:none!important}
 ${L} #tr:not(.more) #b3d,${L} #tr:not(.more) #bPause{display:none!important}
 ${L} #tr.more > .r:first-child{flex-wrap:wrap!important;justify-content:flex-end!important;width:100px!important}
 ${L} #tr.more #b3d,${L} #tr.more #bPause{width:46px!important;height:40px!important}
@@ -78,35 +83,44 @@ ${L} #act .rb{position:absolute!important;margin:0!important;border-radius:50%!i
 ${L} #act #fire{right:0!important;bottom:0!important;width:118px!important;height:118px!important}
 ${L} #act #burst{right:22px!important;bottom:130px!important;width:88px!important;height:88px!important}
 ${L} #act #earth{right:10px!important;bottom:228px!important;width:72px!important;height:72px!important}
-${L} #act #emp{right:132px!important;bottom:70px!important;width:88px!important;height:88px!important}
-${L} #act #dodge{right:136px!important;bottom:-2px!important;width:68px!important;height:68px!important}
+${L} #act #emp{right:134px!important;bottom:80px!important;width:88px!important;height:88px!important}
+${L} #act #dodge{right:138px!important;bottom:-6px!important;width:68px!important;height:68px!important}
 ${L} #act #wsw{right:216px!important;bottom:-2px!important;width:62px!important;height:62px!important}
 }
 @media (min-aspect-ratio: 1/1) and (max-height: 540px) {
-${L} #top{width:min(356px,42vw)!important;gap:4px!important}
+${L} #top{width:min(300px,33vw)!important;gap:4px!important}
+${L} #top > .row:first-child{flex-wrap:wrap!important;row-gap:3px!important}
 ${L} #top #wave .wn{display:none!important}
-${L} #top > .row:first-child > .chip{height:24px!important;font-size:12px!important;padding:0 6px!important}
+${L} #top > .row:first-child > .chip{height:24px!important;font-size:11.5px!important;padding:0 5px!important;gap:2px!important}
+${L} #top #misb{margin-right:5px!important}
 ${L} #top #r-hp .mb{height:16px!important} ${L} #top #r-hp .ri{font-size:22px!important;width:26px!important;margin-right:-10px!important}
 ${L} #top #r-fd .mb{height:10px!important} ${L} #top #r-pw .mb,${L} #top #r-o2 .mb{height:11px!important}
 ${L} #top .chip.res .ri{font-size:12px!important;width:16px!important} ${L} #top .chip.res b{font-size:11px!important}
 ${L} #top #u-obj{min-height:30px!important;font-size:12px!important;padding:4px 8px!important}
-${L} #top #feed{left:calc(22px + var(--sl,0px) + min(356px,42vw))!important;width:calc(100vw - min(356px,42vw) - min(190px,24vw) - 50px - var(--sl,0px) - var(--sr,0px))!important;font-size:11.5px!important;line-height:1.3!important}
+${L} #top #feed{left:calc(22px + var(--sl,0px) + min(300px,33vw))!important;width:calc(100vw - min(300px,33vw) - min(190px,24vw) - 50px - var(--sl,0px) - var(--sr,0px))!important;font-size:11.5px!important;line-height:1.3!important}
 ${L} #top #feed .ban{padding:4px 8px!important;font-size:11.5px!important}
-${L} #party{top:calc(var(--st,0px) + 52%)!important;gap:6px!important}
+${L} #top{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+${L} #top > .row:first-child,${L} #top #r-hp,${L} #top #r-fd,${L} #top #u-obj,${L} #top #misp,${L} #top #r-mo{grid-column:1/-1!important}
+${L} #top #r-pw,${L} #top #r-o2,${L} #top #r-rad{width:auto!important}
+${L} #party{gap:6px!important}
+${L} #party.u-row{flex-direction:row!important}
 ${L} #tr{width:min(190px,24vw)!important}
 ${L} #tr #bShop,${L} #tr #u-more,${L} #tr #rkb{width:32px!important;height:32px!important}
 ${L} #dock #bsel,${L} #dock #bh{width:62px!important;height:62px!important;font-size:12px!important}
 ${L} #dock #bsel .g4{grid-template-columns:repeat(2,11px)!important;margin-bottom:3px!important}${L} #dock #bsel .g4 i{width:11px!important;height:11px!important}
 ${L} #act{transform:scale(.66)!important;transform-origin:100% 100%!important}
+html body #stage #rfc{bottom:calc(var(--sb,0px) + 150px)!important;left:calc(22px + var(--sl,0px) + min(300px,33vw))!important;transform:none!important;width:calc(100vw - min(300px,33vw) - min(190px,24vw) - 50px - var(--sl,0px) - var(--sr,0px))!important;max-width:none!important;box-sizing:border-box!important;font-size:11px!important;padding:5px 9px!important}
+${L} #top #tmp small,${L} #top #crew small{display:none!important}
+${L} #u-entB{bottom:calc(var(--sb,0px) + 80px)!important;transform:translateX(-50%)!important;padding:5px 10px!important;font-size:12px!important}
 }
-#radw{position:absolute;left:50%;top:calc(var(--st,0px) + 33%);transform:translateX(-50%);z-index:8;pointer-events:none;display:none;text-align:center;
-  font:800 16px/1.3 system-ui,sans-serif;color:#fff;padding:8px 16px;border-radius:12px;background:rgba(60,70,10,.86);border:2px solid #d7ff3a;box-shadow:0 0 24px rgba(215,255,58,.45);letter-spacing:.02em}
+#radw{position:relative;order:2;grid-column:1/-1;z-index:8;pointer-events:none;display:none;text-align:left;box-sizing:border-box;
+  font:800 14px/1.25 system-ui,sans-serif;color:#fff;padding:5px 10px;border-radius:10px;background:rgba(60,70,10,.86);border:2px solid #d7ff3a;box-shadow:0 0 24px rgba(215,255,58,.45);letter-spacing:.02em}
 #radw.safe{background:rgba(10,60,50,.86);border-color:#4dffc3;box-shadow:0 0 18px rgba(77,255,195,.35)}
 #radw small{display:block;font-weight:600;font-size:12.5px;opacity:.9}
 #radv{position:absolute;inset:0;pointer-events:none;z-index:4;opacity:0;transition:opacity .4s;background:radial-gradient(ellipse at center,transparent 45%,rgba(190,255,40,.33) 100%)}
 #radv.on{opacity:1;animation:radp 1.1s ease-in-out infinite}
 @keyframes radp{50%{opacity:.55}}
-@media (max-height:540px){#radw{font-size:13px;padding:5px 10px;top:calc(var(--st,0px) + 30%)}#radw small{font-size:11px}}
+@media (max-height:540px){#radw{font-size:11.5px;padding:3px 8px}#radw small{font-size:10px}}
 #cutimg{width:84px;height:84px;border-radius:10px;flex:none;border:1px solid var(--line,rgba(255,255,255,.2));object-fit:cover;display:none;background:#222}
 @media (max-height:540px){#cutimg{width:54px;height:54px}}
 #ban .banpor{float:left;width:44px;height:44px;border-radius:8px;margin:0 9px 2px 0;object-fit:cover;border:1px solid rgba(255,255,255,.22)}
@@ -129,10 +143,17 @@ ${L} #act{transform:scale(.66)!important;transform-origin:100% 100%!important}
     const mm = $('#mm'); if (mm && mm.width < 280) { mm.width = 280; mm.height = 180; }
   }
   setupHud(); addEventListener('load', setupHud);
+  setInterval(() => { const pa = $('#party'), tp = $('#top'); if (!pa || !tp || !matchMedia('(min-aspect-ratio: 1/1)').matches) return; let y = 0;
+    tp.querySelectorAll(':scope > *, #res > *').forEach(c => { if (c.id === 'feed' || c.id === 'res') return; const r = c.getBoundingClientRect(); if (r.height && r.bottom > y) y = r.bottom; });
+    const sr = $('#stage').getBoundingClientRect(), h = pa.getBoundingClientRect().height || 150, below = Math.max(y - sr.top + 14, sr.height * .4);
+    const row = pa.classList.contains('u-row'), hh = row ? (pa.firstElementChild ? pa.firstElementChild.getBoundingClientRect().height * 3 + 12 : h) : h;
+    if (below + hh <= sr.height - 10) { pa.classList.remove('u-row'); pa.style.setProperty('top', Math.round(below) + 'px', 'important'); }
+    else { // not enough room under the status block (small phones): a row along the bottom-left corner
+      pa.classList.add('u-row'); const bh = pa.getBoundingClientRect().height || 40; pa.style.setProperty('top', Math.round(sr.height - bh - 10) + 'px', 'important'); } }, 250);
 
   /* ---------------- 2) radiation storms ---------------- */
   const RAD = { r: 44, safe: false, on: false, pulse: 0, warned: 0, built: 0 };
-  function radEl() { let w = $('#radw'); if (!w) { const s = $('#stage'); if (!s) return null; w = document.createElement('div'); w.id = 'radw'; s.appendChild(w); const v = document.createElement('div'); v.id = 'radv'; s.appendChild(v); } return w; }
+  function radEl() { let w = $('#radw'); if (!w) { const s = $('#stage'), tp = $('#top'); if (!s || !tp) return null; w = document.createElement('div'); w.id = 'radw'; tp.appendChild(w); const v = document.createElement('div'); v.id = 'radv'; s.appendChild(v); } return w; }
   function shields() { return S.b.filter(b => b.t === 'shield' && !b.nc && !b.dis && !(b.hp <= 0)); }
   function nearShield(sh) { const p = S.p; let best = 1e9, bs = null; for (const b of sh) { const d = Math.hypot(b.x + (b.w || 16) / 2 - p.x, b.y + (b.w || 16) / 2 - p.y); if (d < best) { best = d; bs = b; } } return { d: best, b: bs }; }
   function radStep(dt) {

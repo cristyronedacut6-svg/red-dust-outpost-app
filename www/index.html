@@ -1064,7 +1064,7 @@ function dockAfford(){if(LAY==='pc'&&!document.querySelector('.card .kh'))keyHin
 const TUT=[
 {t:'Drag on the left side of the screen to walk. On a keyboard, use WASD or the arrow keys.',ring:()=>LAY==='pc'?null:'#jhint',go:()=>{S.px=S.p.x;S.py=S.p.y},done:()=>Math.hypot(S.p.x-S.px,S.p.y-S.py)>45},
 {t:'Walk over the grey ore pile to pick it up. You build everything with ore 🪨.',go:()=>{S.m0=S.mats;addRock({x:clamp(S.p.x+60,20,WW-20),y:clamp(S.p.y-10,60,WH-40)})},done:()=>S.mats>S.m0},
-{t:'Pick Solar in the build bar, then tap 🏗 Build. A solar panel turns sunlight into power ⚡.',ring:()=>tutRing('solar'),go:()=>{S.nb0=S.b.filter(b=>b.t==='solar').length;S.mats=Math.max(S.mats,costOf('solar'));sel='solar';dockUp()},done:()=>S.b.filter(b=>b.t==='solar').length>S.nb0},
+{t:'Pick Solar, then tap 🏗 Build (or tap the ground) to place the outline. Tap ✓ Build again to build it. A solar panel turns sunlight into power ⚡.',ring:()=>tutRing('solar'),go:()=>{S.nb0=S.b.filter(b=>b.t==='solar').length;S.mats=Math.max(S.mats,costOf('solar'));sel='solar';dockUp()},done:()=>S.b.filter(b=>b.t==='solar').length>S.nb0},
 {t:'The bars at the top are your outpost’s vital signs. Let’s look at each one.',go:()=>{S.tourD=0;setTimeout(()=>{if(S&&S.tu===3&&S.run)tour(STOUR,()=>{if(S)S.tourD=1});else if(S)S.tourD=1},600)},done:()=>S.tourD},
 {t:'Now build an O2 Gen. It uses power ⚡ to make air 💨 for your crew to breathe.',ring:()=>tutRing('o2'),go:()=>{S.nb0=S.b.filter(b=>b.t==='o2').length;S.mats=Math.max(S.mats,costOf('o2'));sel='o2';dockUp()},done:()=>S.b.filter(b=>b.t==='o2').length>S.nb0},
 {t:'Look at the top: air 💨 goes up, and the O2 Gen uses some power ⚡. Every building trades one thing for another!',ring:()=>'#r-o2',go:()=>{S.tt=performance.now()},done:()=>performance.now()-S.tt>6500},
@@ -3555,7 +3555,7 @@ function frame(t){if(window.ADV_ON){last=t;requestAnimationFrame(frame);return}c
  if(MODE==='game'){if(S&&S.run&&!S.pz){if(S.net==='guest')HOOK('guestUpdate',dt);else update(dt)}HOOK('frame',dt);draw();bcardStep(dt);hudT-=dt;if(hudT<=0){hudT=.15;hudUp()}}else if(MODE==='cut'){cutStep(dt);drawCut()}else drawSpace();
  requestAnimationFrame(frame)}
 mkIcons();P=(CP&&CP.lv===TW)?CP:newP(Math.min(TW,mx));TW=P.lv;fit();init();fit();splash();requestAnimationFrame(frame);
-</script><script src="js/story_real.js"></script><script src="js/ui86.js"></script><script src="js/features87.js"></script><script src="js/save88.js"></script><script src="js/play88.js"></script><script src="js/hud15.js"></script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
+</script><script src="js/story_real.js"></script><script src="js/ui86.js"></script><script src="js/features87.js"></script><script src="js/save88.js"></script><script src="js/play88.js"></script><script src="js/hud15.js"></script><script src="js/play15.js"></script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
 <div class="mi-moon"><svg viewBox="0 0 900 420"><defs><mask id="mnM"><rect x="0" y="0" width="900" height="420" fill="#fff"/><circle cx="270" cy="200" r="103" fill="#000"/></mask></defs>
 <g class="mn-cres"><circle cx="232" cy="214" r="122" fill="#fff" mask="url(#mnM)"/></g>
 <path class="mn-trail" d="M178 243 Q262 222 322 186" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="round"/>
