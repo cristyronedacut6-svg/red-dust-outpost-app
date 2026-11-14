@@ -314,7 +314,7 @@ function build() {
   document.body.appendChild(root); root.querySelector('canvas').insertAdjacentHTML('afterend', FRAME_HTML); buildCompass(root);
   const cv = root.querySelector('canvas'), mob = matchMedia('(pointer:coarse)').matches;
   const ren = new THREE.WebGLRenderer({ canvas: cv, antialias: false, powerPreference: 'high-performance' });
-  ren.setPixelRatio(dprCap()); ren.info.autoReset = false; ren.shadowMap.enabled = true; ren.shadowMap.autoUpdate = false; ren.shadowMap.needsUpdate = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.05;
+  ren.setPixelRatio(dprCap()); ren.info.autoReset = false; ren.shadowMap.enabled = true; ren.shadowMap.autoUpdate = false; ren.shadowMap.needsUpdate = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.AgXToneMapping; ren.toneMappingExposure = 1.05;   /* AgX: film-like highlight roll-off, so sunlit regolith and white suits keep their detail */
   cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); if (R) { R.lost = true; toast('⚠ Graphics memory full: recovering…', 3000); } });
   cv.addEventListener('webglcontextrestored', () => { if (!R) return; R.lost = false; DR.s = .7; R.ren.setPixelRatio(Math.min(devicePixelRatio || 1, 2) * .7); resize(); LQ.max = 2; toast('✅ Graphics recovered', 1800); });
   const scn = new THREE.Scene(), cam = new THREE.PerspectiveCamera(60, 1, .1, 12000);

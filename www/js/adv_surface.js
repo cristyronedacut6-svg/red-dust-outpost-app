@@ -252,6 +252,9 @@ export function makeSurface(ctx) {
       const m = new THREE.Mesh(sample ? new THREE.OctahedronGeometry(.7, 0) : new THREE.IcosahedronGeometry(.45, 0), sample ? sm : fm); m.position.set(x, H(x, z) + (sample ? 1 : 2.4), z); scn.add(m);
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,.9)', sample ? 'rgba(125,249,255,.35)' : 'rgba(255,200,90,.4)'), blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(sample ? 4 : 3); m.add(halo);
       const c = { i, m, sample, fact: sample ? facts[i % facts.length] : null, got: got.has(i), key, gotSet: got }; m.visible = !c.got; S.cols.push(c); }
+    // an expedition base on the airless worlds, a short walk ahead of where you land: NASA's habitat prototype (the Habitat Demonstration Unit,
+    // tested in the Arizona desert) and a base station, with a lattice comms tower and work lights. Scale and a lived-in look are what sell a place as real.
+    S.base = null; if (body.id !== 'earth' && AIRLESS(W) && !(site && /^apollo/.test(site.id))) S.base = makeBase(scn, -.55, -.835);
     if (W.geysers) for (let i = 0; i < 5; i++) { const x = 120 + i * 40, z = -150 + i * 25; S.items.push({ geyser: 1, g: geyser(scn, x, H(x, z), z) }); }
     if (body.id === 'titan') { const hs = []; for (let z = -600; z <= 600; z += 40) for (let x = -600; x <= 600; x += 40) hs.push(H(x, z)); hs.sort((a, b) => a - b); const lv = Math.min(hs[Math.floor(hs.length * .2)], H(4, 8) - .6);
       // liquid methane–ethane lakes: dark, mirror-smooth (Cassini's radar saw them flatter than any lake on Earth)
@@ -272,7 +275,7 @@ export function makeSurface(ctx) {
       const pg = new THREE.PlaneGeometry(.3, .5); pg.rotateX(-Math.PI / 2); const pm = new THREE.MeshStandardMaterial({ map: bt, color: S.dc.clone().multiplyScalar(.95), transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 });
       const im = new THREE.InstancedMesh(pg, pm, 220); im.count = 0; im.receiveShadow = true; im.frustumCulled = false; scn.add(im); S.prints = { im, n: 0, d: 0, side: 1, last: null }; }
 
-    const ultra = (ctx.q ? ctx.q() : 'high') === 'ultra' && !matchMedia('(pointer:coarse)').matches, nearPad = (x, z) => Math.hypot(x + 12, z + 8) < 14 || Math.hypot(x - 4, z - 8) < 6 || (W.sea && x > 300) || S.items.some(it => !it.geyser && Math.hypot(x - it.g.position.x, z - it.g.position.z) < it.s * .8 + 2);
+    const ultra = (ctx.q ? ctx.q() : 'high') === 'ultra' && !matchMedia('(pointer:coarse)').matches, nearPad = (x, z) => Math.hypot(x + 12, z + 8) < 14 || Math.hypot(x - 4, z - 8) < 6 || (W.sea && x > 300) || (S.base && S.base.avoid(x, z)) || S.items.some(it => !it.geyser && Math.hypot(x - it.g.position.x, z - it.g.position.z) < it.s * .8 + 2);
     const PR = ctx.pre ? ctx.pre() : { grass: 18000, rocks: .6 };
     if (body.id === 'earth') { S.grass = makeGrass(scn, H, PR.grass, PR.grass > 20000 ? 75 : 60, (x, z) => nearPad(x, z) || Math.abs(x - 40) < 9); scatterRocks(scn, H, col('#8b8577'), Math.round(120 * PR.rocks), 600, nearPad); }
     else if (S.RM) { S.rocks = rockField(scn, H, body.id, Object.assign({ hot: S.RM.hot }, S.R), Math.max(120, Math.round(1400 * PR.rocks * (S.R.rockN || 1))), 640, nearPad, ter.userData.craters); S.peb = pebbleField(scn, H, body.id, S.R, Math.round(2400 * Math.max(.5, PR.rocks)), nearPad); }
@@ -286,6 +289,23 @@ export function makeSurface(ctx) {
     S.gEff = Math.max(W.gameG || W.g, .05); ctx.ui(body, W, 'land'); S.on = true; S.arrive = ctx.noArrive ? null : { t0: 0, T: 5.2, yaw: S.camYaw + 2.2 };
     const n = ctx.objs(body.id, site).length; ctx.toast(`🛬 Landed: <b>${body.n}</b> · ${site ? site.n : W.site}<br><small>${n ? n + ' NASA site' + (n > 1 ? 's' : '') + ' nearby · ' : ''}${S.cols.filter(c => !c.got).length} glowing finds to collect</small>`, 4500);
   }
+  // the base: two NASA models placed on the ground, plus a comms tower and work lights built here (shared materials, a handful of draw calls)
+  function makeBase(scn, dx, dz) { const C = { x: 4 + dx * 62, z: 8 + dz * 62 }, rot = Math.atan2(dx, dz), sp = [], at = (f, s) => [C.x + dx * f - dz * s, C.z + dz * f + dx * s];
+    const put = (id, f, s, size, r) => { const [x, z] = at(f, s), g = new THREE.Group(); g.position.set(x, H(x, z) - .15, z); g.rotation.y = rot + r; scn.add(g); placeModel({ o: { id }, g, s: size }, 1); sp.push([x, z, size * .6]); };
+    put('habitat-demonstration-unit', 0, 0, 11, Math.PI / 2); put('base-station', 9, 13, 8, .4);
+    const white = new THREE.MeshStandardMaterial({ color: 0xd8d8d4, roughness: .55, metalness: .45 }), dark = new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: .6, metalness: .5 }), M = (geo, m, x, y, z, p) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; p.add(o); return o; };
+    // comms tower: four tapering legs with cross braces, a platform, a dish aimed at the sky and a red beacon that blinks like an aircraft warning light
+    const [tx, tz] = at(14, -12), tw = new THREE.Group(), ty = H(tx, tz); tw.position.set(tx, ty - .3, tz); scn.add(tw); sp.push([tx, tz, 4]); const TH = 22, leg = new THREE.CylinderGeometry(.09, .14, TH, 6);
+    for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const l = M(leg, white, a * 1.1, TH / 2, b * 1.1, tw); l.rotation.set(b * -.035, 0, a * .035); }
+    const br = new THREE.CylinderGeometry(.04, .04, 2.6, 4); for (let y = 2; y < TH - 1; y += 2.6) { const w = 1.1 - y * .03; for (let k = 0; k < 4; k++) { const o = M(br, white, Math.cos(k * Math.PI / 2) * w, y + 1.3, Math.sin(k * Math.PI / 2) * w, tw); o.rotation.set(k % 2 ? .78 : 0, k * Math.PI / 2, k % 2 ? 0 : .78); } }
+    M(new THREE.BoxGeometry(2.4, .15, 2.4), dark, 0, TH, 0, tw); M(new THREE.CylinderGeometry(.5, .6, 1.4, 12), white, 0, TH + .8, 0, tw);
+    const dish = M(new THREE.SphereGeometry(1.4, 24, 10, 0, Math.PI * 2, 0, .7), white, 0, TH + 2.2, 0, tw); dish.material = white.clone(); dish.material.side = THREE.DoubleSide; dish.rotation.set(-.9, 1.2, 0); M(new THREE.CylinderGeometry(.03, .03, 1.6, 4), dark, 0, TH + 2.6, .4, tw).rotation.x = -.9;
+    const bm = new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,1)', 'rgba(255,40,30,.6)'), color: 0xff3a2a, blending: THREE.AdditiveBlending, depthWrite: false }), bc = new THREE.Sprite(bm); bc.position.set(0, TH + 3.6, 0); bc.scale.setScalar(2.4); tw.add(bc);
+    // work lights on short poles around the habitat: dim by day, warm pools of light after dark
+    const lm = new THREE.SpriteMaterial({ map: glow('rgba(255,255,255,1)', 'rgba(255,220,160,.5)'), blending: THREE.AdditiveBlending, depthWrite: false }), heads = [], pole = new THREE.CylinderGeometry(.06, .08, 4, 6);
+    for (const [f, s] of [[-7, -7], [-7, 7], [7, -7], [6, 8]]) { const [x, z] = at(f, s), g = new THREE.Group(); g.position.set(x, H(x, z), z); scn.add(g); M(pole, dark, 0, 2, 0, g); M(new THREE.BoxGeometry(.5, .25, .35), dark, 0, 4, 0, g); const h = new THREE.Sprite(lm); h.position.set(0, 3.9, 0); h.scale.setScalar(1.6); g.add(h); heads.push(h); }
+    const pl = new THREE.PointLight(0xffd8a8, 0, 45, 1.6); const [px, pz] = at(0, 0); pl.position.set(px, H(px, pz) + 6, pz); scn.add(pl);
+    return { avoid: (x, z) => sp.some(q => Math.hypot(x - q[0], z - q[1]) < q[2]), update(t, day) { bm.opacity = (t % 1.6) < .18 ? 1 : .08; const n = 1 - day; lm.opacity = .25 + .75 * n; pl.intensity = 60 * n; } }; }
   function geyser(scn, x, y, z) { const n = 60, p = new Float32Array(n * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xeaf6ff, size: 1.6, transparent: true, opacity: .8, depthWrite: false })); pts.position.set(x, y, z); pts.userData.seed = Math.random() * 10; scn.add(pts); return pts; }
   function enterDive(body, scn) { const D = DIVE[body.id]; S.D = D; scn.background = col(D.cols[0]); scn.fog = new THREE.Fog(col(D.cols[0]), 30, 420);
     const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d'); for (let i = 0; i < 26; i++) { const x = 20 + Math.random() * 88, y = 20 + Math.random() * 88, r = 16 + Math.random() * 30, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); }
@@ -360,7 +380,7 @@ export function makeSurface(ctx) {
     return things(dt, P);
   }
   function things(dt, P) {
-    LIT.litCtr.value.copy(P.position); if (S.pebbles) S.pebbles.update(P.position.x, P.position.z);
+    LIT.litCtr.value.copy(P.position); if (S.pebbles) S.pebbles.update(P.position.x, P.position.z); if (S.base) S.base.update(S.t, TU.day.value);
     const F = S.fly, cr = F ? F.s * .6 + 3 : 0;
     let near = null, nd = 1e9, want = null, wd = 1e9;
     for (const it of S.items) { if (it.up) { it.up(dt); continue; } if (it.geyser) { const a = it.g.geometry.attributes.position; for (let i = 0; i < a.count; i++) { const t = (S.t * .6 + i / a.count + it.g.userData.seed) % 1; a.setXYZ(i, Math.sin(i * 7.1) * t * 4, t * 60, Math.cos(i * 3.3) * t * 4); } a.needsUpdate = true; continue; }
