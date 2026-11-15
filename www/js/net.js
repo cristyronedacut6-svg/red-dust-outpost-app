@@ -335,9 +335,18 @@
   function channel(topic, h) {
     const url = BASE.replace(/^http/, 'ws') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(KEY) + '&vsn=1.0.0';
     const T = 'realtime:' + topic;
-    let ws, ref = 0, joinRef = null, hb = null, joined = false, closed = false;
-    try { ws = new WebSocket(url); } catch (e) { setTimeout(() => h.error && h.error('Could not open a connection.'), 0); return { send() {}, close() {}, get ready() { return false; } }; }
-    const raw = o => { if (ws.readyState === 1) ws.send(JSON.stringify(o)); };
+    let ws = null, ref = 0, joinRef = null, hb = null, joined = false, closed = false, retries = 0;
+    const raw = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
+    const expired = s => /expired|jwt|invalid token|token/i.test(String(s || ''));
+    // A sign-in token only lasts about an hour, and boot() checks it just once per launch, so a room joined later used a dead
+    // token and the server ended the session. Check (and refresh) the token right before every connection, and if the server
+    // still says it expired, get a new one and reconnect, up to twice, without dropping the room.
+    const fresh = () => (ON ? ensure() : Promise.resolve()).catch(() => {});
+    const renew = () => { if (closed || retries >= 2) return false; retries++; const old = ws; ws = null; joined = false; clearInterval(hb);
+      if (old) { old.onclose = old.onerror = old.onmessage = null; try { old.close(); } catch (e) {} }
+      (sess && sess.refresh_token ? refresh() : Promise.reject()).catch(() => { sess = null; store.set('session', null); return ensure(); }).catch(() => {}).then(start); return true; };
+    function start() { if (closed) return;
+    try { ws = new WebSocket(url); } catch (e) { setTimeout(() => h.error && h.error('Could not open a connection.'), 0); return; }
     ws.onopen = () => {
       joinRef = String(++ref);
       raw({ topic: T, event: 'phx_join', ref: joinRef, join_ref: joinRef, payload: { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, postgres_changes: [], private: false }, ...(sess ? { access_token: sess.access_token } : KEY.startsWith('eyJ') ? { access_token: KEY } : {}) } });
@@ -353,16 +362,20 @@
       let m; try { m = JSON.parse(e.data); } catch (x) { return; }
       if (m.topic !== T) return;
       if (m.event === 'phx_reply' && m.ref === joinRef) {
-        if (m.payload && m.payload.status === 'ok') { joined = true; h.open && h.open(); }
-        else h.error && h.error((m.payload && m.payload.response && (m.payload.response.reason || m.payload.response.message)) || 'The game server refused the room.');
+        if (m.payload && m.payload.status === 'ok') { const first = !h._opened; joined = true; h._opened = true; if (first) h.open && h.open(); }
+        else { const why = (m.payload && m.payload.response && (m.payload.response.reason || m.payload.response.message)) || 'The game server refused the room.';
+          if (!(expired(why) && renew())) h.error && h.error(why); }
       } else if (m.event === 'broadcast' && m.payload) h.msg && h.msg(m.payload.event, m.payload.payload);
-      else if (m.event === 'phx_error' || m.event === 'phx_close') { if (!closed) h.close && h.close(); }
+      else if (m.event === 'system' && m.payload && m.payload.status === 'error' && expired(m.payload.message)) renew();   // "token has expired": reconnect quietly
+      else if (m.event === 'phx_error' || m.event === 'phx_close') { if (!closed && !(expired(m.payload && (m.payload.reason || m.payload.message)) && renew())) h.close && h.close(); }
     };
-    ws.onerror = () => { if (!joined) h.error && h.error('Could not connect to the game server.'); };
+    ws.onerror = () => { if (!joined && !h._opened) h.error && h.error('Could not connect to the game server.'); };
     ws.onclose = () => { clearInterval(hb); joined = false; if (!closed) h.close && h.close(); };
+    }
+    fresh().then(start);
     return {
       send(event, payload) { if (joined) raw({ topic: T, event: 'broadcast', ref: null, join_ref: joinRef, payload: { type: 'broadcast', event, payload } }); },
-      close() { closed = true; clearInterval(hb); try { raw({ topic: T, event: 'phx_leave', payload: {}, ref: String(++ref), join_ref: joinRef }); ws.close(); } catch (e) {} },
+      close() { closed = true; clearInterval(hb); if (!ws) return; try { raw({ topic: T, event: 'phx_leave', payload: {}, ref: String(++ref), join_ref: joinRef }); ws.close(); } catch (e) {} },
       get ready() { return joined; }
     };
   }
