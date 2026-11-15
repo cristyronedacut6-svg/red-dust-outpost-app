@@ -1,8 +1,10 @@
 /*
-  Red Dust Outpost · live co-op for two players
-  The host runs the real game. The guest sends its position, shots and
+  Red Dust Outpost · live co-op for up to four players
+  The host runs the real game. Each guest sends its position, shots and
   build/EMP/Earth/shop requests; the host sends the world back ~10 times a
-  second over a Supabase Realtime room, and the guest smooths it out.
+  second over a Supabase Realtime room, and the guests smooth it out.
+  Every message carries the sender's id (_i); the host's also carry _h, and
+  messages meant for one guest carry _to. Guests ignore each other's traffic.
 */
 (() => {
   'use strict';
@@ -12,9 +14,14 @@
   const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const QUIET = new Set(['ui', 'open', 'close', 'sel', 'type', 'next', 'no', 'step']);
   const CO = window.COOP = {
-    on: false, role: null, code: '', ch: null, peer: null, me: null,
+    on: false, role: null, code: '', ch: null, peer: null, me: null, id: '',
+    peers: new Map(), av: new Map(), rost: new Map(), inSig: '', inLast: 0,
     rxT: 0, inT: 0, txT: 0, n: 0, aid: 1, sq: [], ft: [], bSig: '', rSig: '', lost: false, world: 0, dif: 1, roles: 0, fxq: []
   };
+  const MAXP = 4;   // host + 3 guests
+  // host: S.p2 is the first guest's avatar (the core game knows it), S.px the others; guest: S.p2 is the host, S.px the other guests
+  const syncAv = () => { if (typeof S === 'undefined' || !S) return; const l = [...CO.av.values()]; S.p2 = l[0] || null; S.px = l.slice(1); };
+  const others = () => CO.role === 'host' ? [...CO.peers.values()] : [CO.peer, ...[...CO.rost.values()]].filter(Boolean);
   const esc = s => (window.NET ? NET.esc(s) : String(s));
   const meInfo = () => (typeof meLobby === 'function' ? meLobby() : { name: window.NET ? NET.name : 'Commander', suit: typeof SUIT !== 'undefined' ? SUIT : 'classic' });
   const pInfo = (d, def) => ({ name: String(d.name || def).slice(0, 16), suit: d.suit, rk: Math.max(1, Math.min(999, d.rk | 0)) || 1, rn: String(d.rn || 'Cadet').slice(0, 24), lead: Math.max(0, Math.min(2, d.lead | 0)) });
@@ -24,7 +31,8 @@
   /* ---------------- rooms ---------------- */
   function connect(code, role, onOpen) {
     leave(true);
-    Object.assign(CO, { on: true, role, code, peer: null, lost: false, rxT: performance.now(), inT: performance.now(), aid: 1, sq: [], ft: [], bSig: '', rSig: '' });
+    Object.assign(CO, { on: true, role, code, peer: null, lost: false, rxT: performance.now(), inT: performance.now(), aid: 1, sq: [], ft: [], bSig: '', rSig: '', inSig: '', inLast: 0 });
+    CO.id = Math.random().toString(36).slice(2, 10); CO.peers.clear(); CO.av.clear(); CO.rost.clear();
     const token = CO.token = {};
     NET.boot().catch(() => {}).finally(() => {
       if (CO.token !== token || !CO.on) return;
@@ -37,12 +45,31 @@
     });
   }
   function leave(silent) {
-    if (CO.ch) { try { CO.ch.send('bye', {}); } catch (e) {} CO.ch.close(); }
+    if (CO.ch) { try { send('bye', {}); } catch (e) {} CO.ch.close(); }
     Object.assign(CO, { on: false, role: null, ch: null, peer: null });
-    if (typeof S !== 'undefined' && S) { S.p2 = null; S.net = null; }
+    CO.peers.clear(); CO.av.clear(); CO.rost.clear(); clearInterval(CO.hiT);
+    if (typeof S !== 'undefined' && S) { S.p2 = null; S.px = []; S.net = null; }
     if (!silent && typeof title === 'function') { reloadSave(); init(); title(); }
   }
-  const send = (ev, p) => CO.ch && CO.ch.send(ev, p);
+  const send = (ev, p) => {
+    if (!CO.ch) return;
+    p = p && typeof p === 'object' ? p : {};
+    p._i = CO.id; if (CO.role === 'host') p._h = 1;
+    CO.ch.send(ev, p);
+  };
+  // host: the crew list every guest shows in the lobby
+  const roster = () => { if (CO.role === 'host') send('roster', { l: [...CO.peers.values()].map(p => ({ ...p })) }); };
+  // host: the in-game avatar for one guest (made on demand)
+  function avatar(id) {
+    let p = CO.av.get(id);
+    if (!p) {
+      const n = CO.av.size + 1, pr = CO.peers.get(id);
+      p = { x: S.p.x + 20 * (n % 2 ? 1 : -1), y: S.p.y + 6 * n, cd: 0, walk: 0, inT: performance.now(), name: pr ? pr.name : 'Partner', suit: pr && pr.suit, id };
+      p.tx = p.x; p.ty = p.y; CO.av.set(id, p); syncAv();
+    }
+    return p;
+  }
+  function dropAv(id) { if (CO.av.delete(id)) syncAv(); }
 
   function menu() {
     if (!window.NET || !NET.on) {
@@ -50,7 +77,7 @@
       q('#cBack').onclick = title; return;
     }
     show(`<div class="eyebrow">🤝 Co-op</div><h2>Play with a friend</h2>
-      <p class="sub">Two astronauts, one outpost. You share the base, the crew, credits and ore. One player hosts and picks the world; the other joins with a room code.</p>
+      <p class="sub">Up to four astronauts, one outpost. You share the base, the crew, credits and ore. One player hosts and picks the world; the others join with a room code.</p>
       <div class="acts"><button class="big" id="cHost">🛰 Host a game</button></div>
       <div class="box"><h3>JOIN A GAME</h3><div class="frow"><input id="cCode" maxlength="4" placeholder="Room code" autocapitalize="characters" autocomplete="off" aria-label="Room code" style="text-transform:uppercase;letter-spacing:.2em;font-weight:700"><button class="btn pri" id="cJoin">Join</button></div><p class="ferr" id="cErr"></p></div>
       <div class="acts"><button class="btn" id="cBack">Back</button></div>`);
@@ -71,11 +98,11 @@
     hostLobby('Opening the room…');
   }
   function hostLobby(status) {
-    const p = CO.peer; CO.hst = status;
+    const L = others(), p = L[0] || null; CO.peer = p; CO.hst = status;
     show(`<div class="eyebrow">🤝 Co-op · You are hosting</div><h2>Room code</h2>
       <div class="roomcode">${CO.code.split('').map(c => `<span>${c}</span>`).join('')}</div>
       <p class="sub" style="text-align:center">Tell your friend to tap 🤝 Co-op, then Join, and type this code.</p>
-      ${typeof vLobby === 'function' ? vLobby(p, true) + (p ? '' : '<p class="sub" style="text-align:center;margin:-4px 0 8px">' + (status || '⏳ Waiting for your partner to join…') + '</p>') : `<div class="box"><h3>CREW</h3><p style="margin:0">👩‍🚀 ${esc(NET.name)} (you)<br>${p ? '🧑‍🚀 ' + esc(p.name) + ' <span class="nb">joined!</span>' : '<span class="sub">' + (status || '⏳ Waiting for your partner to join…') + '</span>'}</p></div>`}
+      ${typeof vLobby === 'function' ? vLobby(L, true) + (p ? '' : '<p class="sub" style="text-align:center;margin:-4px 0 8px">' + (status || '⏳ Waiting for your partner to join…') + '</p>') : `<div class="box"><h3>CREW</h3><p style="margin:0">👩‍🚀 ${esc(NET.name)} (you)${L.map(o => '<br>🧑‍🚀 ' + esc(o.name) + ' <span class="nb">joined!</span>').join('')}${p ? '' : '<br><span class="sub">' + (status || '⏳ Waiting for your partner to join…') + '</span>'}</p></div>`}
       <div class="box"><h3>WORLD</h3><div class="worlds">${LV.slice(0, typeof secOpen === 'function' && secOpen() ? 7 : 6).map((l, i) => `<button class="wd${i === CO.world ? ' on' : ''}" data-w="${i}" ${i > mx && i < 6 ? 'disabled' : ''}><span class="pl" style="${plCss(i)}"></span>${i > mx && i < 6 ? '🔒 ' : ''}${l.n}</button>`).join('')}</div>
         <div class="seg" role="group" aria-label="Difficulty">${[['Easy', .75], ['Normal', 1], ['Hard', 1.3]].map(d => `<button data-d="${d[1]}" class="${CO.dif == d[1] ? 'on' : ''}">${d[0]}</button>`).join('')}</div></div>
       <div class="box"><h3>ROLES</h3><div class="seg" role="group" aria-label="Roles">${['Both do everything', 'You build, partner fights', 'You fight, partner builds'].map((t, i) => `<button data-r="${i}" class="${CO.roles === i ? 'on' : ''}">${t}</button>`).join('')}</div>
@@ -86,7 +113,7 @@
     ov.querySelectorAll('.seg button[data-r]').forEach(b => b.onclick = () => { CO.roles = +b.dataset.r; hostLobby(status); });
     if (typeof vLobbyBind === 'function') vLobbyBind();
     q('#cLeave').onclick = () => leave();
-    q('#cStart').onclick = () => { if (!CO.peer) return; P = newP(CO.world); DF = CO.dif; start(); };
+    q('#cStart').onclick = () => { if (!CO.peers.size) return; P = newP(CO.world); DF = CO.dif; start(); };
   }
   function join(code) {
     connect(code, 'guest', () => {
@@ -104,7 +131,7 @@
   function guestLobby(status) {
     CO.gst = status;
     show(`<div class="eyebrow">🤝 Co-op · Room ${esc(CO.code)}</div><h2>${CO.peer ? 'Joined ' + esc(CO.peer.name) + '’s outpost' : 'Joining…'}</h2>
-      ${typeof vLobby === 'function' ? vLobby(CO.peer, false) : ''}<div class="box"><p style="margin:0">${status || '⏳ Waiting for the host to start the mission…'}</p></div>
+      ${typeof vLobby === 'function' ? vLobby(others(), false) : ''}<div class="box"><p style="margin:0">${status || '⏳ Waiting for the host to start the mission…'}</p></div>
       <div class="acts"><button class="btn" id="cLeave">Leave</button></div>`);
     if (typeof vLobbyBind === 'function') vLobbyBind();
     q('#cLeave').onclick = () => leave();
@@ -123,28 +150,43 @@
   /* ---------------- messages ---------------- */
   function onMsg(ev, d) {
     const now = performance.now();
+    d = d && typeof d === 'object' ? d : {};
+    if (d._to && d._to !== CO.id) return;            // meant for another guest
+    const from = String(d._i || 'legacy');
     if (CO.role === 'host') {
+      if (d._h) return;                                // another host on the same code: ignore
       CO.inT = now;
       if (ev === 'hello') {
-        CO.peer = pInfo(d, 'Commander');
-        send('welcome', meInfo());
-        if (MODE === 'game' && S && S.run) { send('start', { P: P0, DF, roles: CO.roles }); send('s', snapshot(true)); }
+        const known = CO.peers.has(from);
+        if (!known && CO.peers.size >= MAXP - 1) { send('full', { _to: from }); return; }
+        CO.peers.set(from, { ...pInfo(d, 'Commander'), id: from });
+        CO.peer = CO.peers.values().next().value;
+        send('welcome', { ...meInfo(), id: CO.id, _to: from }); roster();
+        if (MODE === 'game' && S && S.run) { const a = avatar(from); a.name = CO.peers.get(from).name; a.suit = CO.peers.get(from).suit; a.inT = now; send('start', { P: P0, DF, roles: CO.roles, _to: from }); send('s', Object.assign(snapshot(true), { _to: from })); if (!known) say('🤝 ' + CO.peers.get(from).name + ' joined the mission!'); }
         else if (q('#cStart')) hostLobby();
-        snd('boot');
-      } else if (ev === 'info') { if (CO.peer) { Object.assign(CO.peer, pInfo(d, CO.peer.name)); if (q('#cStart')) hostLobby(CO.hst); }
+        if (!known) snd('boot');
+      } else if (ev === 'info') {
+        const pr = CO.peers.get(from);
+        if (pr) { Object.assign(pr, pInfo(d, pr.name)); const a = CO.av.get(from); if (a) { a.name = pr.name; a.suit = pr.suit; } roster(); if (q('#cStart')) hostLobby(CO.hst); }
       } else if (ev === 'in' && S && S.run) {
-        const p = S.p2 || (S.p2 = { x: d.x, y: d.y, cd: 0, walk: 0 });
-        p.tx = d.x; p.ty = d.y; p.fx = d.fx; p.fire = d.f; p.wp = d.wp; p.name = CO.peer ? CO.peer.name : 'Partner'; p.suit = CO.peer && CO.peer.suit; p.moving = d.m;
-      } else if (ev === 'act' && S && S.run) act(d);
+        if (!CO.av.has(from) && !CO.peers.has(from) && CO.peers.size >= MAXP - 1) return;
+        const pr = CO.peers.get(from), p = avatar(from);
+        p.tx = d.x; p.ty = d.y; p.fx = d.fx; p.fire = d.f; p.wp = d.wp; p.name = pr ? pr.name : 'Partner'; p.suit = pr && pr.suit; p.moving = d.m; p.inT = now;
+      } else if (ev === 'act' && S && S.run) act(d, CO.av.get(from));
       else if (ev === 'bye') {
-        CO.peer = null; if (S) S.p2 = null;
-        if (MODE === 'game' && S && S.run) { say('🤝 Your partner left the mission. Keep going solo!'); snd('no'); }
+        const pr = CO.peers.get(from); CO.peers.delete(from); dropAv(from); CO.peer = CO.peers.values().next().value || null; roster();
+        if (MODE === 'game' && S && S.run) { say('🤝 ' + (pr ? pr.name : 'Your partner') + ' left the mission.' + (CO.peers.size ? '' : ' Keep going solo!')); snd('no'); }
         else if (q('#cStart')) hostLobby();
       }
     } else {
+      const fromHost = !!d._h || !d._i;                // old builds sent no ids: treat as the host
+      if (!fromHost) return;                           // another guest's traffic: the host relays what matters
       CO.rxT = now;
-      if (ev === 'info') { if (CO.peer) { Object.assign(CO.peer, pInfo(d, CO.peer.name)); if (q('#vlob') && !(S && S.run && MODE === 'game')) guestLobby(CO.gst); } }
-      else if (ev === 'welcome') { CO.peer = pInfo(d, 'Host'); clearInterval(CO.hiT); snd('boot'); guestLobby(); }
+      const lob = () => { if (q('#vlob') && !(S && S.run && MODE === 'game')) guestLobby(CO.gst); };
+      if (ev === 'info') { if (CO.peer) { Object.assign(CO.peer, pInfo(d, CO.peer.name)); lob(); } }
+      else if (ev === 'roster') { CO.rost.clear(); (Array.isArray(d.l) ? d.l : []).slice(0, MAXP - 1).forEach(p => { if (p && p.id && p.id !== CO.id) CO.rost.set(String(p.id), { ...pInfo(p, 'Commander'), id: String(p.id) }); }); lob(); }
+      else if (ev === 'welcome') { const fresh = !CO.peer; CO.peer = pInfo(d, 'Host'); clearInterval(CO.hiT); if (fresh) snd('boot'); if (!(S && S.run && MODE === 'game')) guestLobby(); }
+      else if (ev === 'full') { clearInterval(CO.hiT); lobbyError('That room is full (' + MAXP + ' players).'); }
       else if (ev === 'story') { if (typeof coopStory === 'function') coopStory(d.c); }
       else if (ev === 'start') { if (typeof CUT !== 'undefined' && CUT) { CUT = null; q('#cut').hidden = true; q('#cut').classList.remove('glitch'); if (window.CUT3D) CUT3D.hide(); if (typeof horDrone === 'function') horDrone(false); } P = d.P; DF = d.DF; CO.roles = d.roles || 0; CO.lost = false; start(); }
       else if (ev === 's' && S && S.net === 'guest') apply(d);
@@ -156,18 +198,18 @@
   }
 
   /* ---------------- host side ---------------- */
-  function act(d) {
-    const p = S.p2; if (!p) return;
+  function act(d, p) {
+    p = p || S.p2; if (!p) return;
     if (d.k === 'build' && BT[d.t]) place(d.t, d.x | 0, d.y | 0, p);
     else if (d.k === 'emp') doEMP(p);
     else if (d.k === 'call' && CI.some(c => c.id === d.id)) callIn(d.id, p);
     else if (d.k === 'shop') { const it = SHOP[d.i | 0]; if (it) { const pr = it.p(); if (!(it.max && it.max()) && S.cr >= pr && !(it.ok && !it.ok())) { S.cr -= pr; it.f(); snd('cr'); } } }
   }
-  H.hostUpdate = dt => {
-    const p = S.p2; if (!p) return;
+  H.hostUpdate = dt => { CO.av.forEach(p => guestStep(p, dt)); };
+  function guestStep(p, dt) {
     if (p.tx != null) { const k = Math.min(1, dt * 12); p.x += (p.tx - p.x) * k; p.y += (p.ty - p.y) * k; }
     if (p.moving) p.walk = (p.walk || 0) + dt;
-    S.revT2 = (S.revT2 || 0) - dt; if (S.revT2 <= 0) { S.revT2 = .2; reveal(p.x, p.y, 125); }
+    p.revT = (p.revT || 0) - dt; if (p.revT <= 0) { p.revT = .2; reveal(p.x, p.y, 125); }
     p.cd = (p.cd || 0) - dt;
     if (p.fire && p.cd <= 0) {
       const wi = S.wo[p.wp] ? p.wp : 0, w = WP[wi]; p.cd = w.cd * Math.pow(.85, S.fr);
@@ -184,7 +226,7 @@
     });
     S.pois.forEach(po => { if (!po.found && Math.hypot(po.x - p.x, po.y - p.y) < 34) discover(po); });
     S.secs.forEach(sc => { if (!sc.done && sc.k === 'ruins' && Math.hypot(sc.x - p.x, sc.y - p.y) < 26) lootRuins(sc); });
-  };
+  }
   function snapshot(full) {
     const r = S.res, o = {
       t: r1(S.t), sol: S.sol, pz: S.pz ? 1 : 0, hp: r1(S.hp), cr: S.cr, mats: S.mats, up: r1(S.up), crew: S.crew, storm: r1(S.storm), emp: 0,
@@ -192,6 +234,7 @@
       disc: S.disc, dome: r1(S.dome), shel: r1(S.shel), arm: r1(S.arm), lvl: S.lvl, fr: S.fr, wo: S.wo, kills: S.kills, k0w: S.k0w,
       winT: r1(S.winT), bint: r1(S.bint), land: r1(S.land), solMod: S.solMod,
       p: [r1(S.p.x), r1(S.p.y), S.face.x < 0 ? -1 : 1, S.drive ? 1 : 0, r1(S.walk || 0), S.wp],
+      g: [...CO.av.values()].map(b => [b.id, r1(b.x), r1(b.y), b.fx < 0 ? -1 : 1, b.moving ? 1 : 0]),
       al: S.al.map(a => [a.id || (a.id = CO.aid++), a.ty, r1(a.x), r1(a.y), Math.ceil(a.hp), a.mh,
         (a.stun > 0 ? 1 : 0) | (a.hid ? 2 : 0) | (a.rg ? 4 : 0) | (a.ty === 'golem' && a.cd < .8 ? 8 : 0) | (a.fl > 0 ? 16 : 0) | (a.elite ? 32 : 0) | (a.pull > 0 ? 64 : 0) | (a.fuse != null ? 128 : 0),
         a.st || '', r1(a.rise || 0), a.ty === 'egg' ? r1(a.hatch) : a.ty === 'tent' ? r1(a.sl || 0) : r1(a.tm || 0), (a.ufo ? 1 : 0) | (a.gate ? 2 : 0) | (a.mini ? 4 : 0) | (a.echo ? 8 : 0), a.r]),
@@ -254,6 +297,10 @@
     $('#stage').classList.toggle('cine', o.bint > 0);
     const hp = S.p2 || (S.p2 = { x: o.p[0], y: o.p[1], walk: 0 });
     hp.tx = o.p[0]; hp.ty = o.p[1]; hp.fx = o.p[2]; hp.drive = o.p[3]; hp.walkT = o.p[4]; hp.name = CO.peer ? CO.peer.name : 'Host'; hp.suit = CO.peer && CO.peer.suit;
+    if (Array.isArray(o.g)) {   // the other guests (3- and 4-player rooms)
+      const was = new Map((S.px || []).map(b => [b.id, b]));
+      S.px = o.g.filter(g => g[0] !== CO.id).map(g => { const b = was.get(g[0]) || { id: g[0], x: g[1], y: g[2], walk: 0 }, r = CO.rost.get(g[0]); b.tx = g[1]; b.ty = g[2]; b.fx = g[3]; b.moving = g[4]; b.name = r ? r.name : 'Partner'; b.suit = r && r.suit; return b; });
+    }
     const old = new Map(S.al.map(a => [a.id, a]));
     S.al = o.al.map(d => {
       let a = old.get(d[0]);
@@ -323,7 +370,7 @@
     }
     const kk = Math.min(1, dt * 12);
     S.al.forEach(a => { a.an += dt * 6; if (a.gx != null) { a.x += (a.gx - a.x) * kk; a.y += (a.gy - a.y) * kk; } });
-    const h2 = S.p2; if (h2 && h2.tx != null) { const mv = Math.hypot(h2.tx - h2.x, h2.ty - h2.y) > .4; h2.x += (h2.tx - h2.x) * kk; h2.y += (h2.ty - h2.y) * kk; if (mv) h2.walk = (h2.walk || 0) + dt; }
+    [S.p2, ...(S.px || [])].forEach(h2 => { if (h2 && h2.tx != null) { const mv = Math.hypot(h2.tx - h2.x, h2.ty - h2.y) > .4; h2.x += (h2.tx - h2.x) * kk; h2.y += (h2.ty - h2.y) * kk; if (mv) h2.walk = (h2.walk || 0) + dt; } });
     S.npc.forEach(n => { if (n.gx != null) { n.x += (n.gx - n.x) * kk; n.y += (n.gy - n.y) * kk; } });
     S.bul.forEach(b => { b.x += b.vx * dt; b.y += b.vy * dt; b.l -= dt; }); S.bul = S.bul.filter(b => b.l > 0);
     S.eb.forEach(e => { e.x += e.vx * dt; e.y += e.vy * dt; });
@@ -381,24 +428,30 @@
   H.role = () => (CO.on ? CO.role : null);
   H.start = () => {
     if (!CO.on) return;
-    if (CO.role === 'host') { CO.n = 0; send('start', { P: P0, DF, roles: CO.roles }); send('s', snapshot(true)); if (CO.peer) S.p2 = { x: S.p.x + 20, y: S.p.y + 6, cd: 0, walk: 0, tx: S.p.x + 20, ty: S.p.y + 6, name: CO.peer.name, suit: CO.peer.suit }; }
-    else { CO.got = false; S.land = 0; S.p2 = null; CO.rxT = performance.now(); }
+    if (CO.role === 'host') { CO.n = 0; CO.av.clear(); S.px = []; CO.peers.forEach((pr, id) => avatar(id)); syncAv(); send('start', { P: P0, DF, roles: CO.roles }); send('s', snapshot(true)); }
+    else { CO.got = false; S.land = 0; S.p2 = null; S.px = []; CO.rxT = performance.now(); }
   };
   H.frame = () => {
     if (!CO.on || !S) return;
     const now = performance.now();
     if (CO.role === 'host') {
       if (now - CO.txT >= 100) { CO.txT = now; CO.n++; send('s', snapshot(false)); }
-      if (S.p2 && now - CO.inT > 8000) { S.p2 = null; say('🤝 Lost contact with your partner. They can rejoin with the same room code.'); }
+      CO.av.forEach((p, id) => { if (now - (p.inT || 0) > 8000) { dropAv(id); say('🤝 Lost contact with ' + (p.name || 'your partner') + '. They can rejoin with the same room code.'); } });
     } else {
-      if (now - CO.txT >= 100 && S.run) { CO.txT = now; send('in', { x: r1(S.p.x), y: r1(S.p.y), fx: S.face.x < 0 ? -1 : 1, f: !!(keys[' '] || fireHeld), wp: S.wp, m: S.moving ? 1 : 0 }); }
+      if (now - CO.txT >= 100 && S.run) {
+        CO.txT = now;
+        const m = { x: r1(S.p.x), y: r1(S.p.y), fx: S.face.x < 0 ? -1 : 1, f: !!(keys[' '] || fireHeld), wp: S.wp, m: S.moving ? 1 : 0 }, sig = JSON.stringify(m);
+        // standing still: send less often (keeps a 4-player room under the Realtime message limit)
+        if (sig !== CO.inSig || now - CO.inLast > 1000) { CO.inSig = sig; CO.inLast = now; send('in', m); }
+      }
       if (S.run && now - CO.rxT > 6000 && !CO.lost) { CO.lost = true; lobbyError('Lost contact with the host. Check your internet connection.'); }
     }
   };
   H.act = d => send('act', d);
-  H.quit = () => { if (!CO.on) return; if (CO.role === 'host' && CO.peer) send('lobby', {}); leave(true); };
-  H.drawBuddy = () => {
-    const b = S.p2; if (!b || b.x == null) return;
+  H.quit = () => { if (!CO.on) return; if (CO.role === 'host' && CO.peers.size) send('lobby', {}); leave(true); };
+  H.drawBuddy = () => { [S.p2, ...(S.px || [])].forEach(drawOne); };
+  function drawOne(b) {
+    if (!b || b.x == null) return;
     const SU = (typeof SUITS !== 'undefined' && SUITS.find(s => s.id === b.suit)) || SUITS[0];
     if (b.drive) return;
     const w = Math.floor((b.walk || 0) * 10) % 2, fx = b.fx < 0 ? -1 : 1;

@@ -1,7 +1,8 @@
 // Red Dust Outpost · Adventure "space-tech" HUD skin.
 // A layer on top of the base Adventure styles: angular holographic panels, a glowing frame with corner brackets,
 // faint scanlines, rotating rings on the action buttons, a compass tape on foot and boot-up animations.
-// Only looks change here; every size and position rule for phones stays in adventure.js.
+// Mostly looks; the "HUD layout" block at the end also fixes positions for every screen size. This sheet is added
+// after the base Adventure styles (and after ui86.js), so its rules win at equal specificity.
 
 export const TECH_CSS = `
 #adv{--hc:#7df9ff;--hc2:rgba(125,249,255,.55);--hcl:rgba(125,249,255,.16);--hbg:rgba(4,12,24,.72);--hbg2:rgba(8,22,40,.55);--hw:#ffcf4a;--cut:9px}
@@ -88,6 +89,49 @@ export const TECH_CSS = `
 #adv .crd.dsc .fx h4.sh{border-bottom:1px solid rgba(125,249,255,.18);padding-bottom:4px;margin-top:18px}
 @keyframes tGrow{from{opacity:.4;transform:scale(.92)}to{opacity:1;transform:none}}
 @media (max-width:760px),(orientation:portrait){#adv .pnl.full .crd.dsc{grid-template-columns:1fr;grid-template-rows:46vh 1fr;overflow:hidden}#adv .pnl.full .crd.dsc .dv{height:46vh;border-right:0;border-bottom:1px solid var(--hc2)}#adv .pnl.full .crd.dsc .inf{padding:16px 16px calc(16px + env(safe-area-inset-bottom))}}
+/* ---- HUD layout: no element sits on another, and the middle of the view stays clear on every screen ---- */
+/* graphics button: always on the bar (never folded into the ☰ menu), with a gold edge so it is easy to find */
+#adv #aTop #aQ{border-color:rgba(255,207,74,.75)!important;box-shadow:0 0 10px rgba(255,207,74,.22)}
+/* LAND / FLY / DRIVE stack in the bottom-right corner above SCAN, instead of across the bottom middle */
+#adv #aLand,#adv #aFly,#adv #aDrv{left:auto;right:calc(20px + env(safe-area-inset-right));transform:none;white-space:nowrap}
+#adv #aLand{bottom:calc(104px + env(safe-area-inset-bottom))}#adv #aFly{bottom:calc(154px + env(safe-area-inset-bottom))}#adv #aDrv{bottom:calc(198px + env(safe-area-inset-bottom))}
+/* a long mission list scrolls inside its panel instead of running down into the suit read-out */
+#adv #aMis{max-height:min(60vh,calc(100vh - 200px));overflow:auto;scrollbar-width:thin}
+/* laptops and small windows (incl. 125-150 % Windows scaling): icon-only top bar */
+@media (max-width:1280px){#adv #aTop .lb{display:none}}
+/* the extra tools fold into the ☰ menu whenever the full bar would reach the mission panel: portrait and landscape phones, tablets in portrait, small windows */
+@media (max-width:1000px),(max-height:520px){#adv #aTop #aMore{display:inline-grid}#adv #aTop .sec{display:none}
+  #adv #aTop.open{flex-wrap:wrap;justify-content:flex-end;max-width:min(272px,calc(100vw - 16px));background:rgba(6,10,22,.9);border:1px solid rgba(125,249,255,.3);padding:6px;z-index:6}#adv #aTop.open .sec{display:inline-grid}}
+/* touch screens and narrow windows: compact, edge-pinned controls */
+@media (pointer:coarse),(max-width:760px){
+  #adv #aTop .ab{width:36px;height:36px;font-size:15px!important;line-height:1}
+  #adv #aSpd,#adv #aLd{font-size:9.5px!important}
+  #adv #aSpd{max-width:calc(100vw - 170px - env(safe-area-inset-left) - env(safe-area-inset-right))}
+  #adv #aLd{bottom:calc(64px + env(safe-area-inset-bottom))}
+  #adv #aMis{overflow:hidden}
+  #adv #aLand,#adv #aFly,#adv #aDrv{right:calc(10px + env(safe-area-inset-right));font-size:11px!important;padding:7px 11px;max-width:46vw;overflow:hidden;text-overflow:ellipsis}
+  #adv #aLand{bottom:calc(152px + env(safe-area-inset-bottom))}#adv #aFly{bottom:calc(192px + env(safe-area-inset-bottom))}#adv #aDrv{bottom:calc(232px + env(safe-area-inset-bottom))}
+  #adv.helm #aSuit{left:calc(10px + env(safe-area-inset-left));transform:none;text-align:left;max-width:48vw;font-size:9px;top:calc(var(--misH,64px) + 14px + env(safe-area-inset-top))}
+  #adv #aFps{left:auto;bottom:auto;right:calc(12px + env(safe-area-inset-right));top:calc(92px + env(safe-area-inset-top))}
+  #adv #aGd .lb{max-width:44vw;overflow:hidden;text-overflow:ellipsis}
+  #adv #aToast{max-width:min(86vw,460px)}
+  #adv .seg button{min-height:42px;min-width:58px;flex:1 1 auto}
+}
+/* portrait phones: the mission panel moves below the top bar, so the two never share a row */
+@media (max-width:600px){
+  #adv #aMis{top:calc(52px + env(safe-area-inset-top));max-width:min(64vw,280px);max-height:28vh}
+  #adv #aSuit,#adv.helm #aSuit{top:calc(var(--misH,64px) + 60px + env(safe-area-inset-top))}
+}
+/* short landscape screens (phones on their side, small laptop windows): smaller titles and cockpit, more room for the view */
+@media (max-height:520px){
+  #adv #aArr{top:12%}#adv #aArr .nm{font-size:clamp(28px,6vw,52px);margin:4px 0}#adv #aArr .fc{font-size:11px;max-width:70vw;margin-top:6px}
+  #adv #aBan{top:26%}#adv #aBan b{font-size:clamp(20px,4vw,32px)}#adv #aBan span{font-size:12px;margin-top:4px}
+  #adv #aHud .cp.dash{height:19vh;padding-top:1.6vh}#adv #aHud .mfd{height:14vh;min-height:0;padding:3px 5px;line-height:1.3}
+  #adv .crd{max-height:94vh;padding:12px 14px}
+  #adv .pnl.full .crd.dsc .inf{padding:calc(12px + env(safe-area-inset-top)) 16px calc(12px + env(safe-area-inset-bottom))}#adv .pnl.full .crd.dsc h2{font-size:20px}#adv .pnl.full .crd.dsc .vh{bottom:calc(6px + env(safe-area-inset-bottom))}
+}
+@media (max-height:520px) and (pointer:coarse){#adv #aMis{max-height:40vh}}
+@media (max-height:420px) and (pointer:coarse){#adv #aLand,#adv #aFly,#adv #aDrv{padding:6px 10px}#adv #aLand{bottom:calc(146px + env(safe-area-inset-bottom))}#adv #aFly{bottom:calc(180px + env(safe-area-inset-bottom))}#adv #aDrv{bottom:calc(214px + env(safe-area-inset-bottom))}}
 `;
 
 export const FRAME_HTML = '<div id="aFrame"><div class="vg"></div><div class="sl"></div><div class="sw"></div><i class="fc a"></i><i class="fc b"></i><i class="fc c"></i><i class="fc d"></i></div><div id="aCmp"><div class="st"></div></div>';

@@ -242,7 +242,7 @@
     const draw = body => {
       show(`<div class="eyebrow">Worldwide</div><h2>🏆 Leaderboard</h2>
         <div class="tabs lbtabs">${tabs.map(([m, w, n], i) => `<button data-i="${i}" class="${m === mode && w === world ? 'on' : ''}">${n}</button>`).join('')}</div>
-        <p class="sub" style="font-size:13px">${mode === 'campaign' && world == null ? 'Each commander’s best score on every world, added together.' : mode === 'daily' ? 'Best scores in today’s daily challenge.' : mode === 'coop' ? 'Best scores from two-player missions.' : 'Best scores on ' + LV[world].n + '.'}</p>
+        <p class="sub" style="font-size:13px">${mode === 'campaign' && world == null ? 'Each commander’s best score on every world, added together.' : mode === 'daily' ? 'Best scores in today’s daily challenge.' : mode === 'coop' ? 'Best scores from co-op missions.' : 'Best scores on ' + LV[world].n + '.'}</p>
         ${body}<div class="acts"><button class="big" id="lbBack">Back</button></div>`);
       ov.querySelectorAll('.lbtabs button').forEach(b => b.onclick = () => { const t = tabs[+b.dataset.i]; board(t[0], t[1], back); });
       q('#lbBack').onclick = back;
@@ -341,7 +341,13 @@
     ws.onopen = () => {
       joinRef = String(++ref);
       raw({ topic: T, event: 'phx_join', ref: joinRef, join_ref: joinRef, payload: { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, postgres_changes: [], private: false }, ...(sess ? { access_token: sess.access_token } : KEY.startsWith('eyJ') ? { access_token: KEY } : {}) } });
-      hb = setInterval(() => raw({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++ref) }), 25000);
+      let tick = 0;
+      hb = setInterval(() => {
+        raw({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++ref) });
+        // Realtime drops a room when the sign-in token it joined with expires (about an hour), so refresh it and hand the new one over
+        if (++tick % 8 === 0 && joined && sess && sess.refresh_token && sess.expires_at - 600 < Date.now() / 1000)
+          refresh().then(() => raw({ topic: T, event: 'access_token', payload: { access_token: sess.access_token }, ref: String(++ref), join_ref: joinRef })).catch(() => {});
+      }, 25000);
     };
     ws.onmessage = e => {
       let m; try { m = JSON.parse(e.data); } catch (x) { return; }

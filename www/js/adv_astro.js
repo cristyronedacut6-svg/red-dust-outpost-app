@@ -140,20 +140,23 @@ export function makeAstronaut(o = {}) {
     if (s.landed) st.land = Math.min(1, Math.abs(s.landed) / 9);
     // speeding up tips the body forward, braking tips it back (a person leans into the push)
     if (dt > 0) { st.acc += (clamp((spd - st.spd) / Math.max(dt, 1e-3), -14, 14) - st.acc) * Math.min(1, dt * 5); st.spd = spd; }
-    // stride: longer when running and much longer, slower and bouncier in low gravity (Apollo crews loped and hopped)
-    const stride = (2.3 + run * 1.6) * (1 + low * 1.1); if (s.ground) st.ph = (st.ph + dt * spd / stride * Math.PI * 2) % (Math.PI * 200);
-    const off = Math.PI * (1 - low * .82);               // left/right phase offset: 180° walking, near-together hops on the Moon
-    const pL = st.ph, pR = st.ph + off, A = (.42 + run * .28) * (1 - low * .25), K = 1.0 + run * .5;
-    const hipA = p => -A * Math.sin(p), kneeA = p => .12 + K * Math.pow(Math.max(0, Math.cos(p)), 1.6) * (1 - low * .35) + low * .35 * Math.max(0, -Math.sin(p * 2 - .4));
+    // walking is always a real alternating stride (legs 180° apart), a little longer and floatier in low gravity; only sprinting in low
+    // gravity turns into the Apollo "bunny hop" lope with the feet nearly together. (Letting all low-gravity walking hop made the legs
+    // swing together and slide over the ground, so the astronaut looked as if it glided instead of walking.)
+    const lope = low * run;
+    const stride = (2.3 + run * 1.6) * (1 + low * .55 + lope * .45); if (s.ground) st.ph = (st.ph + dt * spd / stride * Math.PI * 2) % (Math.PI * 200);
+    const off = Math.PI * (1 - lope * .78);              // left/right phase offset: 180° walking, near-together hops when loping
+    const pL = st.ph, pR = st.ph + off, A = (.46 + run * .26) * (1 - lope * .2), K = 1.0 + run * .5;
+    const hipA = p => -A * Math.sin(p), kneeA = p => .12 + K * Math.pow(Math.max(0, Math.cos(p)), 1.6) * (1 - lope * .35) + lope * .35 * Math.max(0, -Math.sin(p * 2 - .4));
     const w = mv * (1 - st.air), id = (1 - mv) * (1 - st.air), ai = st.air, jt = st.jet;
     // turning: bank into the turn like a person does
     if (s.yaw != null) { if (st.yawPrev != null) { let dy = s.yaw - st.yawPrev; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; st.bank += (clamp(-dy / Math.max(dt, 1e-3) * .06 * mv, -.22, .22) - st.bank) * Math.min(1, dt * 6); } st.yawPrev = s.yaw; }
-    const breathe = Math.sin(st.t * 1.7), sway = Math.sin(st.t * .41) * Math.sin(st.t * .13 + 1), bob = w * ((.03 + run * .02) * Math.cos(st.ph * 2) * (1 - low) + low * (.12 + run * .1) * Math.abs(Math.sin(st.ph))) - st.land * .16 - id * .005 * (1 - breathe);
+    const breathe = Math.sin(st.t * 1.7), sway = Math.sin(st.t * .41) * Math.sin(st.t * .13 + 1), bob = w * ((.03 + run * .02) * Math.cos(st.ph * 2) * (1 - low) + low * (1 - lope) * .07 * Math.abs(Math.sin(st.ph)) + lope * (.12 + run * .1) * Math.abs(Math.sin(st.ph))) - st.land * .16 - id * .005 * (1 - breathe);
     body.position.y += (bob - body.position.y) * k; body.rotation.z += (st.bank - body.rotation.z) * k;
     const lean = w * (.06 + run * .12 + low * .14) + ai * .05 + st.land * .25 + st.acc * .011 * (1 - ai) + jt * .14;
     // standing still is never still: breathing, and the weight drifting from one leg to the other
-    set(hips, 'x', lean * .4, k); set(hips, 'y', w * .09 * Math.sin(pL) * (1 - low), k); set(hips, 'z', w * .035 * Math.cos(pL) * (1 - low) + id * .022 * sway, k);
-    set(spine, 'x', lean * .6 + id * .015 * breathe + jt * .008 * Math.sin(st.t * 43), k); set(spine, 'y', -w * .12 * Math.sin(pL) * (1 - low), k); set(spine, 'z', -id * .016 * sway, k);
+    set(hips, 'x', lean * .4, k); set(hips, 'y', w * .09 * Math.sin(pL) * (1 - lope), k); set(hips, 'z', w * .035 * Math.cos(pL) * (1 - lope) + id * .022 * sway, k);
+    set(spine, 'x', lean * .6 + id * .015 * breathe + jt * .008 * Math.sin(st.t * 43), k); set(spine, 'y', -w * .12 * Math.sin(pL) * (1 - lope), k); set(spine, 'z', -id * .016 * sway, k);
     set(neck, 'x', -lean * .7, k); set(head, 'y', id * .35 * Math.sin(st.t * .23) * Math.sin(st.t * .11), Math.min(1, dt * 2)); set(head, 'x', id * .06 * Math.sin(st.t * .17), Math.min(1, dt * 2));
     for (const [lg, p, sg] of [[L.lL, pL, 1], [L.lR, pR, -1]]) {
       const hw = hipA(p) * w, kw = kneeA(p) * w, first = lg === L.lL;
@@ -162,7 +165,7 @@ export function makeAstronaut(o = {}) {
       set(lg.hp, 'x', hipT, k); set(lg.hp, 'z', sg * (.04 + ai * .08 + low * .05 * w), k); set(lg.kn, 'x', kneeT, k);
       set(lg.an, 'x', -(hipT + kneeT) * .75 + w * .25 * Math.max(0, Math.sin(p + .9)) - ai * (.15 + .25 * jt), k); }
     for (const [am, p, sgn] of [[L.aL, pR, 1], [L.aR, pL, -1]]) {
-      const swing = -(.32 + run * .3) * Math.sin(p) * (1 - low * .5) * w;
+      const swing = -(.32 + run * .3) * Math.sin(p) * (1 - lope * .5) * w;
       set(am.sh, 'x', swing + id * (.04 + .015 * breathe) + ai * .18 - low * .25 * w + st.land * -.3, k);
       set(am.sh, 'z', sgn * (.16 + R.abd + low * .22 * w + ai * (.55 - .2 * jt) + id * .02 * breathe), k);   // the bulky suit holds the arms a little away from the body
       set(am.el, 'x', -(.28 + R.elb + run * .55 + low * .35 * w) * Math.max(w, id * .8) - ai * .35 - jt * .2, k); set(am.wr, 'x', -.1 - run * .2 * w, k); }
