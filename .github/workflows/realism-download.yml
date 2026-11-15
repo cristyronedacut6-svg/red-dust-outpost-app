@@ -76,5 +76,6 @@ jobs:
           files: |
             RedDustOutpost-Realism.apk
             RedDustOutpost-Realism-Windows.zip
+          target_commitish: ${{ github.sha }}
           prerelease: true
           make_latest: false
