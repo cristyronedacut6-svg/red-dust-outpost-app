@@ -477,6 +477,48 @@ body.hc .chip,body.hc .ban,body.hc #msg,body.hc .card,body.hc .rb,body.hc .btn,b
 @media (max-height:430px){.tsub{display:none}.worlds2{margin-top:8px!important}}
 #vseg button{padding:7px 10px}
 </style>
+<style id="hudfit">
+/* Story HUD fit (Nov 2026): every HUD piece stays on an edge, stacked in lanes that do not overlap, so the middle of the
+   play area stays clear. #stage#stage outranks the layouts that js/hud15.js and js/mobile15.js add at the end of <body>.
+   Bottom-centre lanes, low to high: Choose/Build dock, context button, boss bar (body.bossOn), toast. */
+/* laptops and tablets held sideways */
+@media (min-aspect-ratio:1/1) and (min-height:541px){
+html body #stage#stage #ctx{bottom:calc(104px + var(--sb,0px))!important}
+html body #stage#stage #toast{top:auto!important;bottom:calc(144px + var(--sb,0px))!important}
+html body.bossOn #stage#stage #ctx{bottom:calc(142px + var(--sb,0px))!important}
+html body.bossOn #stage#stage #toast{bottom:calc(184px + var(--sb,0px))!important}
+}
+/* short laptop screens (1366x768 with browser bars is about 650px tall): a bit smaller so the map, action cluster and status card do not meet */
+@media (min-aspect-ratio:1/1) and (min-height:541px) and (max-height:720px){
+html body #stage#stage #top{width:min(420px,36vw)!important}
+html body #stage#stage #top #u-obj{min-height:36px!important;font-size:14px!important}
+html body #stage#stage #top #feed{left:calc(26px + var(--sl,0px) + min(420px,36vw))!important;width:min(440px,calc(100vw - min(420px,36vw) - min(240px,22vw) - 64px - var(--sl,0px) - var(--sr,0px)))!important}
+html body #stage#stage #tr{width:min(240px,22vw)!important}
+html body #stage#stage #act{transform:scale(.8)!important;transform-origin:100% 100%!important}
+html body #stage#stage #dock #bsel,html body #stage#stage #dock #bh{width:72px!important;height:72px!important}
+}
+/* phones held sideways (js/mobile15.js layout): the toast goes under the top-centre message slot instead of the bottom lane */
+html body.u-mob #stage#stage #toast{top:calc(70px + var(--st,0px))!important;bottom:auto!important;max-width:min(330px,calc(100vw - 400px - var(--sl,0px) - var(--sr,0px)))!important}
+html body.u-mob #stage#stage #jhint{bottom:calc(52px + var(--sb,0px))!important}
+html body.u-mob.bossOn #stage#stage #u-pur,html body.u-mob.bossOn #stage#stage #u-place{bottom:calc(136px + var(--sb,0px))!important}
+/* phones held upright */
+@media (max-aspect-ratio:1/1) and (max-width:480px){
+html body #stage#stage #top{max-width:calc(100% - 112px - var(--sr,0px) - var(--sl,0px))!important}
+html body #stage#stage #top .row,html body #stage#stage #res{flex-wrap:wrap!important;row-gap:3px}
+html body #stage#stage #tr{top:calc(4px + var(--st,0px))!important;width:100px;align-items:flex-end}
+html body #stage#stage #tr .r{flex-wrap:wrap;justify-content:flex-end}
+html body #stage#stage #tr:not(.more) #b3d,html body #stage#stage #tr:not(.more) #bPause{display:none!important}
+html body #stage#stage #tr #bShop,html body #stage#stage #tr #u-more{width:32px!important;height:32px!important;padding:0!important;font-size:0!important;display:flex;align-items:center;justify-content:center}
+html body #stage#stage #tr #bShop *{font-size:0!important}
+html body #stage#stage #tr #bShop svg,html body #stage#stage #tr #bShop img{width:18px!important;height:18px!important}
+html body #stage#stage #tr #u-more{font:900 16px/1 system-ui!important}
+html body #stage#stage #tr #mm{width:96px!important}
+html body #stage#stage #tr #nextw{max-width:100px;font-size:10px;padding:3px 6px;white-space:normal}
+html body #stage#stage #ctx{left:50%!important;transform:translateX(-50%)!important;bottom:calc(164px + var(--sb,0px))!important}
+html body #stage#stage #tray{bottom:calc(160px + var(--sb,0px))!important}
+html body #stage#stage #toast{top:calc(156px + var(--st,0px))!important;bottom:auto!important;left:auto!important;right:calc(6px + var(--sr,0px))!important;transform:none!important;max-width:calc(50vw - 10px)!important}
+}
+</style>
 </head><body>
 <div id="stage">
 <canvas id="c" width="480" height="320"></canvas>
@@ -875,7 +917,7 @@ function update(dt){if(!(dt>=0))dt=0;if(S.hs>0){S.hs-=dt;return}if(S.smo>0){S.sm
   for(let i=0;i<w.s;i++){const q=an+(i-(w.s-1)/2)*.28+(w.spr?rnd(-w.spr,w.spr):0);S.bul.push({h0:S.jz||0,x:p.x,y:p.y-2,vx:Math.cos(q)*(w.sp||240),vy:Math.sin(q)*(w.sp||240),l:w.l||.7,d:(1+S.lvl+pk('gun')+(S.mod.dmg||0))*w.m,pi:w.pi,col:w.col,c:w.col,el:w.el,h:[]})}
   S.pt.push({x:p.x+Math.cos(an)*7,y:p.y-2+Math.sin(an)*7,vx:0,vy:0,l:.07,ml:.07,c:'#fff6c0',s:5});S.fi=1;S.fT=TT;snd(w.snd||['sh','sc','pl'][S.wp])}
  S.bul.forEach(b=>{b.x+=b.vx*dt;b.y+=b.vy*dt;b.l-=dt;for(const a of S.al){if(b.l<=0)break;if(!a.hid&&dist(a,b)<a.r+3&&!b.h.includes(a)){HIT_EL=b.el||null;const dm=dmgA(a,b.d*(S.coRole?1.3:1));HIT_EL=null;hitFx(a,b,dm);if(dm<b.d){if(Math.random()<.35)S.ft.push({x:a.x,y:a.y-a.r-6,t:'BLOCKED',c:'#9fd8ff',l:.5})}else if(dm>=2)S.ft.push({x:a.x+rnd(-3,3),y:a.y-a.r-3,t:''+Math.round(dm),c:dm>=3?'#ffe066':'#ffffff',l:.65,pop:dm>=3?1.8:1.4});if(b.pi)b.h.push(a);else b.l=0;S.pt.push({x:b.x,y:b.y,vx:rnd(-30,30),vy:rnd(-30,30),l:.15,ml:.15,c:b.col,s:2});snd('hit')}}});S.bul=S.bul.filter(b=>b.l>0&&b.x>-10&&b.x<WW+10&&b.y>-10&&b.y<WH+10);
- S.eb.forEach(e=>{e.x+=e.vx*dt;e.y+=e.vy*dt;e.l-=dt;if((dist(e,p)<6&&!(e.nb&&(S.jz||0)>5))||(S.p2&&dist(e,S.p2)<6)){e.l=0;if(e.frz){S.slow=2.2;ftxt(p.x,p.y-12,'FROZEN!','#bfe8ff')}hurt(e.d,e.nb?'A boss bullet hit the crew.':'An alien shot hit the crew.',e.nb?'Boss bullets come in patterns: step between fan lines, find the gap in a ring, or JUMP over them.':'Keep moving to dodge shots. Turrets and the EMP help keep attackers back.');S.shk=3}else if(!e.nb)for(const b of S.b){if(e.x>b.x&&e.x<b.x+b.w&&e.y>b.y&&e.y<b.y+b.w){e.l=0;dmgB(b,e.d);boom(e.x,e.y,4,'#b6ff5a');break}}});S.eb=S.eb.filter(e=>e.l>0);
+ S.eb.forEach(e=>{e.x+=e.vx*dt;e.y+=e.vy*dt;e.l-=dt;if((dist(e,p)<6&&!(e.nb&&(S.jz||0)>5))||(S.p2&&dist(e,S.p2)<6)||pxl().some(q=>q&&q.x!=null&&dist(e,q)<6)){e.l=0;if(e.frz){S.slow=2.2;ftxt(p.x,p.y-12,'FROZEN!','#bfe8ff')}hurt(e.d,e.nb?'A boss bullet hit the crew.':'An alien shot hit the crew.',e.nb?'Boss bullets come in patterns: step between fan lines, find the gap in a ring, or JUMP over them.':'Keep moving to dodge shots. Turrets and the EMP help keep attackers back.');S.shk=3}else if(!e.nb)for(const b of S.b){if(e.x>b.x&&e.x<b.x+b.w&&e.y>b.y&&e.y<b.y+b.w){e.l=0;dmgB(b,e.d);boom(e.x,e.y,4,'#b6ff5a');break}}});S.eb=S.eb.filter(e=>e.l>0);
  // pickups
  S.rocks=S.rocks.filter(r=>{if(Math.hypot(r.x-p.x,r.y-p.y)<12){if(r.sup){S.mats+=25;S.res.o2=clamp(S.res.o2+20,0,100);S.res.fd=clamp(S.res.fd+15,0,100);ftxt(r.x,r.y-6,'+25🪨 +20💨 +15🌽','#9fd6ff');snd('sup');vib(30)}else if(r.c){S.cr+=r.a;ftxt(r.x,r.y,'+'+r.a+'💰');snd('cr')}else{const n=Math.round(r.a*(1+.3*jc('min'))*(S.mod.ore||1)*(hasT('isru')?1.2:1));S.mats+=n;ftxt(r.x,r.y,'+'+n+'🪨','#d8e2ea');snd('col')}return false}return true});
  S.rockT+=dt;if(S.rockT>5&&S.rocks.length<32){S.rockT=0;addRock()}
@@ -900,7 +942,7 @@ function update(dt){if(!(dt>=0))dt=0;if(S.hs>0){S.hs-=dt;return}if(S.smo>0){S.sm
  // aliens
  S.al.forEach(a=>{a.an+=dt*6;a.fl=Math.max(0,(a.fl||0)-dt);if(a.rise>0){a.rise-=dt;return}if(a.ty=='egg'){eggAI(a,dt);return}if(a.ty=='tent'){tentAI(a,dt);return}if(a.stun>0){a.stun-=dt;return}if(a.boss){bossAI(a,dt);return}if(a.ty=='charger'&&chargerAI(a,dt))return;if(a.ty=='bomber'&&bomberAI(a,dt))return;
   let t=null,d=1e9;S.b.forEach(b=>{const q=Math.hypot(a.x-b.x-b.w/2,a.y-b.y-b.w/2);if(q<d){d=q;t=b}});
-  const pp=S.p2&&dist(a,S.p2)<dist(a,p)?S.p2:p,pd=dist(a,pp),toP=pd<60||!t||a.tut,tx=toP?pp.x:t.x+t.w/2,ty=toP?pp.y:t.y+t.w/2,td=toP?pd:d,reach=toP?a.r+3:t.w/2+a.r,dd=td||1;
+  const pp=tgtP(a),pd=dist(a,pp),toP=pd<60||!t||a.tut,tx=toP?pp.x:t.x+t.w/2,ty=toP?pp.y:t.y+t.w/2,td=toP?pd:d,reach=toP?a.r+3:t.w/2+a.r,dd=td||1;
   const mv=s=>{a.x+=(tx-a.x)/dd*s*dt;a.y+=(ty-a.y)/dd*s*dt};
   if(a.ty=='spit'){if(td>80)mv(a.sp);a.cd-=dt;if(a.cd<=0&&td<120){a.cd=2.3;const an=Math.atan2(ty-a.y,tx-a.x);S.eb.push({x:a.x,y:a.y,vx:Math.cos(an)*75,vy:Math.sin(an)*75,l:2.5,d:7});snd('spit')}return}
   
@@ -1062,7 +1104,7 @@ function dockAfford(){if(LAY==='pc'&&!document.querySelector('.card .kh'))keyHin
 
 /* ---------- tutorial ---------- */
 const TUT=[
-{t:'Drag on the left side of the screen to walk. On a keyboard, use WASD or the arrow keys.',ring:()=>LAY==='pc'?null:'#jhint',go:()=>{S.px=S.p.x;S.py=S.p.y},done:()=>Math.hypot(S.p.x-S.px,S.p.y-S.py)>45},
+{t:'Drag on the left side of the screen to walk. On a keyboard, use WASD or the arrow keys.',ring:()=>LAY==='pc'?null:'#jhint',go:()=>{S.mvx=S.p.x;S.mvy=S.p.y},done:()=>Math.hypot(S.p.x-S.mvx,S.p.y-S.mvy)>45},
 {t:'Walk over the grey ore pile to pick it up. You build everything with ore 🪨.',go:()=>{S.m0=S.mats;addRock({x:clamp(S.p.x+60,20,WW-20),y:clamp(S.p.y-10,60,WH-40)})},done:()=>S.mats>S.m0},
 {t:'Pick Solar, then tap 🏗 Build (or tap the ground) to place the outline. Tap ✓ Build again to build it. A solar panel turns sunlight into power ⚡.',ring:()=>tutRing('solar'),go:()=>{S.nb0=S.b.filter(b=>b.t==='solar').length;S.mats=Math.max(S.mats,costOf('solar'));sel='solar';dockUp()},done:()=>S.b.filter(b=>b.t==='solar').length>S.nb0},
 {t:'The bars at the top are your outpost’s vital signs. Let’s look at each one.',go:()=>{S.tourD=0;setTimeout(()=>{if(S&&S.tu===3&&S.run)tour(STOUR,()=>{if(S)S.tourD=1});else if(S)S.tourD=1},600)},done:()=>S.tourD},
@@ -1449,7 +1491,7 @@ function drawMM(){const c=$('#mm');if(!c||!S)return;const g=c.getContext('2d'),s
  S.al.forEach(a=>{if(Math.hypot(a.x-S.p.x,a.y-S.p.y)<260||Math.hypot(a.x-WW/2,a.y-WH/2)<260){g.fillStyle=a.boss?'#ff2050':'#ff5466';g.fillRect(a.x*sx-1,a.y*sy-1,a.boss?4:2,a.boss?4:2)}});
  g.font='bold 10px sans-serif';g.textAlign='center';g.textBaseline='middle';S.pois.forEach(q=>{g.fillStyle=q.found?'#5fe08a':(Math.floor(TT*3)%2?'#ffe066':'#ff7a3d');g.fillText(q.found?'✓':'?',q.x*sx,q.y*sy)});S.secs.forEach(q=>{if(q.seen){g.fillStyle=q.done?'#777':'#ff9a3d';g.fillText('◆',q.x*sx,q.y*sy)}});
  if(S.rv&&!S.drive){g.fillStyle='#ffcf4a';g.fillRect(S.rv.x*sx-1,S.rv.y*sy-1,3,2)}
- if(S.p2){g.fillStyle='#7df9ff';g.beginPath();g.arc(S.p2.x*sx,S.p2.y*sy,2.3,0,7);g.fill()}g.fillStyle='#fff';g.beginPath();g.arc(S.p.x*sx,S.p.y*sy,2.3,0,7);g.fill();g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=1;g.strokeRect(CAM.x*sx+.5,CAM.y*sy+.5,W*sx,H*sy)}
+ ;[S.p2,...pxl()].forEach(q=>{if(q&&q.x!=null){g.fillStyle='#7df9ff';g.beginPath();g.arc(q.x*sx,q.y*sy,2.3,0,7);g.fill()}});g.fillStyle='#fff';g.beginPath();g.arc(S.p.x*sx,S.p.y*sy,2.3,0,7);g.fill();g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=1;g.strokeRect(CAM.x*sx+.5,CAM.y*sy+.5,W*sx,H*sy)}
 function splash(){MODE='space';$('#stage').classList.add('nohud');show(`<div class="splashc"><div class="eyebrow">A space outpost adventure</div><h1>RED DUST OUTPOST</h1><p class="sub">Five real worlds. One crew. Earth is counting on you.</p><div class="acts"><button class="big pulse" id="begin">▶ Tap to begin</button></div><p class="sub" style="font-size:13px">🔊 Turn your sound on for the full experience.</p></div>`);ov.className='clear';$('#begin').onclick=()=>{const first=!LS.get('tut',0)&&!mx&&!CP;playCut(cutIntro(),first?()=>{P=newP(0);TW=0;start()}:title)}}
 
 function cutSfx(sc){switch(sc.sc){case'earth':snd('comms');break;case'launch':snd('beep');setTimeout(()=>snd('beep'),400);setTimeout(()=>snd('beep'),800);setTimeout(()=>{snd('go');snd('liftoff')},1150);break;case'travel':snd('warp');break;case'conquer':snd('flag');setTimeout(()=>{if(CUT)snd('fanfare')},1150);break;case'home':snd('triumph');break}}
@@ -1478,11 +1520,11 @@ function updHaz(dt){const p=S.p;S.slow=Math.max(0,(S.slow||0)-dt);if(S.bossT>0){
  S.hz.forEach(h=>{
  if(h.k=='circle'){h.t-=dt;if(h.fx=='met'&&h.t<h.t0&&Math.random()<.8)S.pt.push({x:h.x+h.t*140+rnd(-2,2),y:h.y-h.t*240,vx:40,vy:-60,l:.3,ml:.3,c:pick(['#ffb347','#ff6a3d','#fff3b0']),s:2});
   if(h.fx=='met'&&h.t<h.t0&&!h.whs){h.whs=1;snd('pod')}
-  if(h.t<=0){h.done=1;hzFx(h);if(h.sp&&S.al.length<26)spawnAl(h.sp,h.x,h.y,{np:1});if(h.fx==='slam'){if(Math.hypot(p.x-h.x,p.y-h.y)<170)vib([70,30,70]);S.hz.push({k:'shock',x:h.x,y:h.y,r:10,max:h.r+10,v:200,hit:1,bh:S.b.slice(),nd:1});S.shk=Math.max(S.shk,10);boom(h.x,h.y,18,'#cfd6de');snd('slam')}if(h.onHit)h.onHit(h);if(h.dmg>0&&(Math.hypot(p.x-h.x,p.y-h.y)<h.r||(S.p2&&Math.hypot(S.p2.x-h.x,S.p2.y-h.y)<h.r)))hurt(h.dmg,h.why||'A meteor hit the crew.',h.tip||'Watch for red circles on the ground and step out of them fast.');S.b.forEach(b=>{if(Math.hypot(b.x+b.w/2-h.x,b.y+b.w/2-h.y)<h.r+6)dmgB(b,h.bd)});
+  if(h.t<=0){h.done=1;hzFx(h);if(h.sp&&S.al.length<26)spawnAl(h.sp,h.x,h.y,{np:1});if(h.fx==='slam'){if(Math.hypot(p.x-h.x,p.y-h.y)<170)vib([70,30,70]);S.hz.push({k:'shock',x:h.x,y:h.y,r:10,max:h.r+10,v:200,hit:1,bh:S.b.slice(),nd:1});S.shk=Math.max(S.shk,10);boom(h.x,h.y,18,'#cfd6de');snd('slam')}if(h.onHit)h.onHit(h);if(h.dmg>0&&(Math.hypot(p.x-h.x,p.y-h.y)<h.r||(S.p2&&Math.hypot(S.p2.x-h.x,S.p2.y-h.y)<h.r)||pxl().some(q=>q&&q.x!=null&&Math.hypot(q.x-h.x,q.y-h.y)<h.r)))hurt(h.dmg,h.why||'A meteor hit the crew.',h.tip||'Watch for red circles on the ground and step out of them fast.');S.b.forEach(b=>{if(Math.hypot(b.x+b.w/2-h.x,b.y+b.w/2-h.y)<h.r+6)dmgB(b,h.bd)});
    if(h.fx=='met'){S.al.forEach(a=>{if(!a.boss&&dist(a,h)<h.r)a.hp-=h.big?20:8});S.rocks.push({x:h.x,y:h.y,a:15,met:1});scorch(h.x,h.y);boom(h.x,h.y,h.big?44:22,'#ffb347');boom(h.x,h.y,h.big?16:6,'#ffffff');S.ring.push({x:h.x,y:h.y,r:4,l:h.big?.6:.35});gibsAt(h.x,h.y,['#5a4a40','#8a7a6a','#ff9a3d'],h.big?16:7,h.big,2);S.shk=Math.max(S.shk,h.big?16:7);snd('metf');if(h.big){snd('slam');S.flash=NOFL?.1:.35}if(Math.hypot(p.x-h.x,p.y-h.y)<150)vib(h.big?[90,40,140]:45)}}}
  else if(h.k=='shock'){h.r+=h.v*dt;const d=Math.hypot(p.x-h.x,p.y-h.y);if(!h.hit&&!h.nd&&Math.abs(d-h.r)<8){h.hit=1;hurt(14,'A shockwave hit the crew.',BOSS.golem.tip2);S.shk=8}
   S.b.forEach(b=>{if(!h.bh.includes(b)&&Math.abs(Math.hypot(b.x+b.w/2-h.x,b.y+b.w/2-h.y)-h.r)<10){h.bh.push(b);dmgB(b,12)}});if(h.r>=h.max)h.done=1}
- else if(h.k=='fire'){h.life-=dt;if(Math.hypot(p.x-h.x,p.y-h.y)<h.r||(S.p2&&Math.hypot(S.p2.x-h.x,S.p2.y-h.y)<h.r))hurt(8*dt,'The crew walked through Scorcher fire.','Fire patches burn for a few seconds. Walk around them.');if(Math.random()<.25)S.pt.push({x:h.x+rnd(-6,6),y:h.y,vx:0,vy:-22,l:.4,ml:.4,c:pick(['#ffcf4a','#ff7a3d','#ff4020']),s:2});if(h.life<=0)h.done=1}
+ else if(h.k=='fire'){h.life-=dt;if(Math.hypot(p.x-h.x,p.y-h.y)<h.r||(S.p2&&Math.hypot(S.p2.x-h.x,S.p2.y-h.y)<h.r)||pxl().some(q=>q&&q.x!=null&&Math.hypot(q.x-h.x,q.y-h.y)<h.r))hurt(8*dt,'The crew walked through Scorcher fire.','Fire patches burn for a few seconds. Walk around them.');if(Math.random()<.25)S.pt.push({x:h.x+rnd(-6,6),y:h.y,vx:0,vy:-22,l:.4,ml:.4,c:pick(['#ffcf4a','#ff7a3d','#ff4020']),s:2});if(h.life<=0)h.done=1}
  else if(h.k=='line'){h.t-=dt;if(h.t<=0)h.done=1}
  else if(h.k=='crack'){h.t-=dt;if(h.t<=0){h.done=1;if(S.al.filter(a=>a.ty=='tent').length<5)spawnAl('tent',h.x,h.y,{np:1,life:9,cd:.6});boom(h.x,h.y,14,'#cfe9ff');snd('thud')}}});
  S.hz.forEach(h=>hz2(h,dt));S.hz=S.hz.filter(h=>!h.done)}
@@ -1979,9 +2021,10 @@ function rankHtml(){const R=rankOf(XP),d=dqGet(),s=LS.get('streak',{n:0});
 function dqMis(){const d=dqGet();return`<b style="margin-top:6px">Today’s quests</b>${d.q.map(q=>`<div class="${q.done?'md':''}">${q.done?'✓':'○'} ${q.t} (${q.c}/${q.n})</div>`).join('')}`}
 
 /* ---------- telegraphed attacks: every attack shows a red zone first ---------- */
-const players=()=>[S.p,S.p2].filter(q=>q&&q.x!=null);
+function pxl(){return S&&Array.isArray(S.px)?S.px:[]} // co-op players 3 and 4 (coop.js keeps them in S.px)
+const players=()=>[S.p,S.p2,...pxl()].filter(q=>q&&q.x!=null);
 const angTo=(a,q)=>Math.atan2(q.y-a.y,q.x-a.x);
-function tgtP(a){let best=S.p,bd=dist(a,S.p);if(S.p2&&S.p2.x!=null){const d=dist(a,S.p2);if(d<bd){bd=d;best=S.p2}}return best}
+function tgtP(a){let best=S.p,bd=dist(a,S.p);[S.p2,...pxl()].forEach(q=>{if(q&&q.x!=null){const d=dist(a,q);if(d<bd){bd=d;best=q}}});return best}
 const RZ_TIP='Red zones show where an attack will land. Step out before they fill up!';
 const TELE=()=>DF<1?1.3:DF>1?.9:1;
 function hzC(x,y,r,t,dmg,o={}){t*=TELE();dmg=Math.round(dmg*DF*bossHzMul());S.hz.push({k:'circle',x:clamp(x,15,WW-15),y:clamp(y,15,WH-15),r,t,t0:t,dmg,bd:o.bd!=null?o.bd:Math.round(dmg*1.2),...o})}
@@ -2104,7 +2147,7 @@ function emStep(dt){if(S.tu!=null||S.net==='guest')return;const E=S.emg;
  if(!E){if(S.sol<2||S.cin||S.al.some(a=>a.boss)||S.winT>0)return;S.emT=(S.emT==null?rnd(25,40):S.emT)-dt;if(S.emT>0)return;S.emT=rnd(45,70);
   const opts=EMG.filter(e=>e.id!==S.emLast&&e.tg());if(!opts.length)return;const e=pick(opts),tg=e.tg();S.emLast=e.id;S.emg={...e,tgt:tg,left:e.time,p:0};
   if(tg.pod)S.rocks.push(S.emg.rock={x:tg.x,y:tg.y,a:0,sup:1,em:1});snd('alarm');vib([60,40,60]);wb(cleanText(e.t),e.d,1);logE('⚠',e.t);return}
- E.left-=dt;const g=E.tgt,gx=g.w?g.x+g.w/2:g.x,gy=g.w?g.y+g.w/2:g.y,near=Math.hypot(S.p.x-gx,S.p.y-gy)<(g.w?g.w/2+20:24)||(S.p2&&S.p2.x!=null&&Math.hypot(S.p2.x-gx,S.p2.y-gy)<24);
+ E.left-=dt;const g=E.tgt,gx=g.w?g.x+g.w/2:g.x,gy=g.w?g.y+g.w/2:g.y,near=Math.hypot(S.p.x-gx,S.p.y-gy)<(g.w?g.w/2+20:24)||(S.p2&&S.p2.x!=null&&Math.hypot(S.p2.x-gx,S.p2.y-gy)<24)||pxl().some(q=>q&&q.x!=null&&Math.hypot(q.x-gx,q.y-gy)<24);
  if(E.rock&&!S.rocks.includes(E.rock)){emDone(true);return}
  if(near){E.p+=dt;if(Math.random()<dt*4)S.pt.push({x:gx+rnd(-6,6),y:gy-4,vx:rnd(-20,20),vy:-30,l:.4,ml:.4,c:'#9fffb0',s:2});if(E.p>=E.need){emDone(true);return}}else E.p=Math.max(0,E.p-dt*.5);
  if(E.left<=0||(g.hp!=null&&g.hp<=0))emDone(false)}
@@ -2628,7 +2671,7 @@ function storyStep(dt){if(!storyOK())return;const s=S.sol;if(S.demo){S.sv=s;S.sv
  if(s===3&&S.svT>10&&!d.st&&!S.cin&&!(S.bint>0)){d.st=1;storyBeat()}
  if(s>=2&&s!==3&&S.svT>18&&!d.ch&&Math.random()<.7){d.ch=1;const tier=S.lv<2?0:S.lv<4?1:2;chatter(pick(CHAT[tier]))}
  const hb=S.al.some(a=>a.boss);if(hb)S.hbS=1;else if(S.hbS&&!S.tyD){S.tyD=1;setTimeout(()=>{if(!S||!S.run)return;staticHit(2);glKick(.4);say('📻 ……thank… you……');speakCreepy('thank you',0,.35)},2800)}
- const o=S.sto;if(o){o.t+=dt;if(!o.sc&&o.k!=='flicker'&&(dist(o,S.p)<36||(S.p2&&S.p2.x!=null&&dist(o,S.p2)<36))){o.sc=1;scanStory(o)}}
+ const o=S.sto;if(o){o.t+=dt;if(!o.sc&&o.k!=='flicker'&&(dist(o,S.p)<36||(S.p2&&S.p2.x!=null&&dist(o,S.p2)<36)||pxl().some(q=>q&&q.x!=null&&dist(o,q)<36))){o.sc=1;scanStory(o)}}
  if(S.flk>0)S.flk-=dt}
 function storyBeat(){const St=STORY[S.lv],c=core()||{x:WW/2,y:WH/2},a=rnd(0,6.283),x=clamp(c.x+16+Math.cos(a)*150,40,WW-40),y=clamp(c.y+16+Math.sin(a)*120,40,WH-40);
  S.sto={k:St.k,x,y,t:0};if(St.k==='flicker'){S.flk=3.5;setTimeout(()=>{if(S&&S.sto){S.sto.sc=1;scanStory(S.sto)}},5200)}
@@ -3555,7 +3598,59 @@ function frame(t){if(window.ADV_ON){last=t;requestAnimationFrame(frame);return}c
  if(MODE==='game'){if(S&&S.run&&!S.pz){if(S.net==='guest')HOOK('guestUpdate',dt);else update(dt)}HOOK('frame',dt);draw();bcardStep(dt);hudT-=dt;if(hudT<=0){hudT=.15;hudUp()}}else if(MODE==='cut'){cutStep(dt);drawCut()}else drawSpace();
  requestAnimationFrame(frame)}
 mkIcons();P=(CP&&CP.lv===TW)?CP:newP(Math.min(TW,mx));TW=P.lv;fit();init();fit();splash();requestAnimationFrame(frame);
-</script><script src="js/story_real.js"></script><script src="js/ui86.js"></script><script src="js/features87.js"></script><script src="js/save88.js"></script><script src="js/play88.js"></script><script src="js/hud15.js"></script><script src="js/play15.js"></script><script src="js/mobile15.js"></script><div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
+</script><script src="js/story_real.js"></script><script src="js/ui86.js"></script><script src="js/features87.js"></script><script src="js/save88.js"></script><script src="js/play88.js"></script><script src="js/hud15.js"></script><script src="js/play15.js"></script><script src="js/mobile15.js"></script>
+<style id="storyfix">
+/* Story HUD fixes. hud15.js forces #top/#tr/#dock/#act visible with "html body #stage ..." (2 ids), which beat the older
+   "#stage.nohud .ui{display:none!important}", so the map and the status bars showed on the title/hub. These win again. */
+html body #stage.nohud #top,html body #stage.nohud #tr,html body #stage.nohud #dock,html body #stage.nohud #act,html body #stage.nohud #joy{display:none!important}
+/* boss bar: lifted out of the HUD while a boss is up (see the script below), drawn over the build bar, never blocks taps */
+html body #stage > #boss{z-index:5!important;pointer-events:none}
+html body #stage.nohud > #boss,html body #stage.cine > #boss{display:none!important}
+/* building descriptions: placed beside the building button by the script below and never in the way of the pointer */
+html body #stage #bcard,html body #stage #u-bdet{pointer-events:none!important}
+html body #stage #bcard{animation:none}
+html body #stage #bcard .bcx{pointer-events:auto}
+/* phones: the 2D / 3D / HD / Real view button stays on screen next to the map, 44px tall */
+html body.lay-ph #stage > #b3d{display:flex!important;align-items:center;justify-content:center;position:absolute;z-index:5;min-width:44px;height:44px;padding:0 10px;margin:0;box-sizing:border-box;border-radius:12px;font:700 13px var(--disp,sans-serif);color:#fff;background:rgba(20,16,40,.85);border:1px solid rgba(255,255,255,.3);white-space:nowrap;pointer-events:auto;touch-action:manipulation}
+html body.lay-ph.v3d #stage > #b3d{background:var(--cool,#2a6bd8)}
+html body.lay-ph #stage.nohud > #b3d,html body.lay-ph #stage.cine > #b3d,html body.lay-ph #stage.arrive > #b3d{display:none!important}
+html body.lay-ph #vseg button{min-height:44px;min-width:44px}
+</style>
+<script>(function(){
+ const q=s=>document.querySelector(s),ph=()=>document.body.classList.contains('lay-ph');
+ // boss bar: while a boss fight is on, #boss is position:fixed. Inside #feed (transformed on phones) it was placed relative to the
+ // message slot and pushed off the top of the screen, and inside #top (z-index 3) the build bar painted over the HP bar.
+ function bossHome(){const st=q('#stage'),bo=q('#boss'),fd=q('#feed');if(!st||!bo||!fd)return;const on=document.body.classList.contains('bossOn');
+  if(on&&bo.parentNode!==st)st.appendChild(bo);else if(!on&&bo.parentNode!==fd){fd.insertBefore(bo,fd.firstChild);bo.style.removeProperty('bottom')}
+  if(!on||bo.hidden)return;bo.style.removeProperty('bottom');const r=bo.getBoundingClientRect(),dk=q('#dock'),d=dk&&dk.getBoundingClientRect();
+  if(d&&d.height&&r.height&&r.bottom>d.top-6&&r.right>d.left&&r.left<d.right)bo.style.bottom=Math.round(document.documentElement.clientHeight-d.top+8)+'px'}
+ // building descriptions: to the right of the hovered card (or the Build button once the bar closes), to the left when there is no room
+ let anc=null;
+ // a card in the open build bar: beside the whole bar (so it never hides the other buildings), level with the hovered card
+ function ancRect(){for(const a of [anc,q('#bh'),q('#dock')]){if(!a||!a.isConnected)continue;const r=a.getBoundingClientRect();if(!r.width||!r.height)continue;
+  const p=a===anc&&a.closest('#cards'),pr=p&&p.getBoundingClientRect();
+  if(pr&&pr.width)return{left:pr.left,right:pr.right,top:r.top,bottom:pr.bottom,ctop:pr.top,cy:r.top+r.height/2};
+  return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,ctop:r.top,cy:r.top+r.height/2}}return null}
+ function put(el,left){const st=q('#stage'),r=ancRect();if(!st||!r)return null;const s=st.getBoundingClientRect(),w=el.offsetWidth,h=el.offsetHeight,W=s.width,H=s.height,g=10;
+  const L=r.left-s.left,R=r.right-s.left,T=r.ctop-s.top,B=r.bottom-s.top,CY=r.cy-s.top;let x=left?L-g-w:R+g,y;
+  if(left?x<8:x+w>W-8)x=left?R+g:L-g-w;
+  if(x<8||x+w>W-8){x=Math.min(Math.max(8,L+(R-L-w)/2),W-w-8);y=T-g-h;if(y<8)y=B+g}else y=CY-h/2;
+  y=Math.min(Math.max(8,y),H-h-8);el.style.left=Math.round(x)+'px';el.style.top=Math.round(y)+'px';el.style.right='auto';el.style.bottom='auto';el.style.transform='none';return x>L}
+ function descPlace(){const bc=q('#bcard'),bd=q('#u-bdet');let side=null;
+  if(bc&&!bc.hidden)side=put(bc,false);
+  if(bd&&bd.classList.contains('on'))put(bd,side===true)}
+ document.addEventListener('mouseover',e=>{const c=e.target&&e.target.closest&&e.target.closest('#cards .card');if(c){anc=c;requestAnimationFrame(descPlace)}},true);
+ document.addEventListener('click',e=>{const c=e.target&&e.target.closest&&e.target.closest('#cards .card');if(c){anc=null;setTimeout(descPlace,20)}},true);
+ // phones: the view button lives beside the map instead of inside a menu that is hidden on phones held sideways
+ function b3dHome(){const b=q('#b3d'),st=q('#stage');if(!b||!st)return;
+  if(ph()){if(b.parentNode!==st)st.appendChild(b);const mm=q('#mm'),r=mm&&mm.getBoundingClientRect(),s=st.getBoundingClientRect();
+   if(!r||!r.width||!r.height){b.style.visibility='hidden';return}b.style.visibility='';const w=b.offsetWidth||44;
+   if(innerWidth>=innerHeight){b.style.left=Math.round(Math.max(8,r.left-s.left-8-w))+'px';b.style.top=Math.round(r.top-s.top)+'px'}
+   else{b.style.left=Math.round(Math.max(8,r.right-s.left-w))+'px';b.style.top=Math.round(r.bottom-s.top+8)+'px'}}
+  else if(b.parentNode===st){const row=q('#tr .r'),pz=q('#bPause');if(row)row.insertBefore(b,pz&&pz.parentNode===row?pz:null);['left','top','visibility'].forEach(k=>b.style.removeProperty(k))}}
+ setInterval(()=>{try{bossHome()}catch(e){}try{descPlace()}catch(e){}try{b3dHome()}catch(e){}},150);
+})();</script>
+<div id="mintro" aria-label="Moon Productions presents Red Dust Outpost">
 <div class="mi-moon"><svg viewBox="0 0 900 420"><defs><mask id="mnM"><rect x="0" y="0" width="900" height="420" fill="#fff"/><circle cx="270" cy="200" r="103" fill="#000"/></mask></defs>
 <g class="mn-cres"><circle cx="232" cy="214" r="122" fill="#fff" mask="url(#mnM)"/></g>
 <path class="mn-trail" d="M178 243 Q262 222 322 186" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="round"/>

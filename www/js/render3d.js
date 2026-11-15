@@ -509,8 +509,24 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
     p = at(f - .7, R + .15); box(p[0], p[1], hh - .2, 1.2, .45, 1.15, gc, .8, a); p = at(f - .9, R); put(SPH, p[0], hh - 2, p[1], 1.5, 1.6, 1.5, a, 0, suitOf().p, 0);
     if (rc > .72) { p = at(f + 3.2, R); put(SPH, p[0], hh - .75, p[1], 1 + Math.random() * .6, 1 + Math.random() * .6, 1 + Math.random() * .6, 0, 0, gc, 3, .85, true); }
   }
-  function rover(r, ang, sk) { // six-wheel rocker-bogie rover
-    const x = r.x, y = r.y, t = T(), ca = Math.cos(ang), sa = Math.sin(ang), at = (f, q) => [x + ca * f - sa * q, y + sa * f + ca * q], mv = S.drive ? (S.walk || 0) * 9 : 0;
+  /* rover wheels roll by the distance the rover really travelled along its heading (a jump over 40 units is a teleport and is not rolled) */
+  const RVW = { x: 0, y: 0, d: 0, ok: false };
+  function rvRoll(r, ha) { const dx = r.x - RVW.x, dy = r.y - RVW.y; if (RVW.ok && dx * dx + dy * dy < 1600) RVW.d += dx * Math.cos(ha) + dy * Math.sin(ha); RVW.x = r.x; RVW.y = r.y; RVW.ok = true; return RVW.d; }
+  // the NASA Perseverance model has no parts: tag its six wheel triangles (measured from the model: radius .257 m, axles at y .257, z -.99 / .086 / 1.268) so a pose can spin them
+  const RVWZ = [-.99, .086, 1.268], RVWY = .257, RVWR = .272; let RVMs = null, RVMo = null;
+  function rvM(M) {
+    if (RVMs === M) return RVMo; const P = M.P, part = new Uint8Array(M.nv);
+    for (let f = 0; f < M.n; f++) { let w = -1;
+      for (let k = 0; k < 3; k++) { const i3 = (f * 3 + k) * 3, y = P[i3 + 1], z = P[i3 + 2]; let m = -1;
+        if (Math.abs(P[i3]) > .84) for (let i = 0; i < 3; i++) if (Math.hypot(y - RVWY, z - RVWZ[i]) < RVWR) m = i + 1;
+        if (k === 0) w = m; else if (m !== w) w = -1; if (w < 0) break; }
+      if (w > 0) part[f * 3] = part[f * 3 + 1] = part[f * 3 + 2] = w; }
+    RVMs = M; RVMo = Object.assign({}, M, { part, sk: false }); return RVMo;
+  }
+  // model forward is -z, so a forward roll is a negative turn about the x axis; 8.6 world units per metre
+  function rvPose(d) { const R = rotM(0, -d / 8.6 / RVWY); return [[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0], aff(R, [0, RVWY, RVWZ[0]]), aff(R, [0, RVWY, RVWZ[1]]), aff(R, [0, RVWY, RVWZ[2]])]; }
+  function rover(r, ang, sk, rd) { // six-wheel rocker-bogie rover
+    const x = r.x, y = r.y, t = T(), ca = Math.cos(ang), sa = Math.sin(ang), at = (f, q) => [x + ca * f - sa * q, y + sa * f + ca * q], mv = -(rd || 0) / 2.6; // tread phase: wheel radius 2.6, top of the tread moves forward
     let p;
     for (const f of [-7.5, 0, 7.5]) for (const q of [-1, 1]) { p = at(f, q * 6.9 - 1.3); put(CYL, p[0], 3, p[1], 5.6, 2.6, 5.6, ang, Math.PI / 2, '#2a2833', 0);
       p = at(f, q * 6.9 - .3); put(CYLm, p[0], 3, p[1], 2.6, .7 + (q > 0 ? 1.3 : 0), 2.6, ang, Math.PI / 2, '#b9bdc6', 0);
@@ -1412,7 +1428,7 @@ void main(){vec3 d=normalize(uF+uR*vQ.x*uTH*uAsp+uU*vQ.y*uTH);float e=d.y;
         if (!so.sc) put(SPH, x, 24 + Math.sin(t * 3) * 2, y, 3, 3, 3, 0, 0, '#d070ff', 2.2); }
       const gd = S.gd; if (gd) { const B = (typeof BOSS !== 'undefined' && BOSS[gd.ty]) || {}; const sv = n, st0 = tn, K = .4; try { alien({ ty: gd.ty, x: gd.x, y: gd.y, r: B.r || 30, boss: 1, hp: 1, mh: 1, fl: 0, stun: 0, f: gd.f, face: gd.f, rise: 0 }); } catch (e) { box(gd.x, gd.y, 0, 10, 12, 10, '#7df9ff', .6, 0); }
         for (let i = sv; i < n; i++) { const o = i * FL; buf[o] = gd.x + (buf[o] - gd.x) * K; buf[o + 1] *= K; buf[o + 2] = gd.y + (buf[o + 2] - gd.y) * K; } for (let i = st0; i < tn; i++) { const o = i * FL; tbuf[o] = gd.x + (tbuf[o] - gd.x) * K; tbuf[o + 1] *= K; tbuf[o + 2] = gd.y + (tbuf[o + 2] - gd.y) * K; } } }
-    if (S.rv) { const svr = n, ha = heading(S.rv, S.rv.f < 0 ? Math.PI : 0), RM = REAL && mdl('rover'); if (RM) { if (S.drive || !TER) drawModel(RM, S.rv.x, 0, S.rv.y, 8.6, ha + Math.PI / 2, 0); else cached(S.rv, 'rv' + Math.round(S.rv.x) + ':' + Math.round(S.rv.y) + ':' + ha.toFixed(2), () => { const s0 = n; drawModel(RM, S.rv.x, 0, S.rv.y, 8.6, ha + Math.PI / 2, 0); tiltR(s0, n, S.rv.x, S.rv.y, 16, 0); }); if (S.drive) { const ca = Math.cos(ha), sa = Math.sin(ha); put(SPHm, S.rv.x + ca * 9, 9, S.rv.y + sa * 9, 1.4, 1.4, 1.4, 0, 0, '#fff3b0', 2.2); } } else rover(S.rv, ha, rskin()); if (HDM && TER) rvPhys(svr, S.rv); }
+    if (S.rv) { const svr = n, ha = heading(S.rv, S.rv.f < 0 ? Math.PI : 0), RM = REAL && mdl('rover'), rd = rvRoll(S.rv, ha); if (RM) { if (S.drive || !TER) drawModel(rvM(RM), S.rv.x, 0, S.rv.y, 8.6, ha + Math.PI / 2, 0, rvPose(rd)); else cached(S.rv, 'rv' + Math.round(S.rv.x) + ':' + Math.round(S.rv.y) + ':' + ha.toFixed(2), () => { const s0 = n; drawModel(rvM(RM), S.rv.x, 0, S.rv.y, 8.6, ha + Math.PI / 2, 0, rvPose(rd)); tiltR(s0, n, S.rv.x, S.rv.y, 16, 0); }); if (S.drive) { const ca = Math.cos(ha), sa = Math.sin(ha); put(SPHm, S.rv.x + ca * 9, 9, S.rv.y + sa * 9, 1.4, 1.4, 1.4, 0, 0, '#fff3b0', 2.2); } } else rover(S.rv, ha, rskin(), rd); if (HDM && TER) rvPhys(svr, S.rv); }
     ST.crew = n - ST.a - ST.bld; const nAl = n, tAl = tn; S.al.forEach(a => { const sva = n; alien(a); const skc = a.boss && skCfg(a); if (HDM && a.boss && !a.hid && a.ty !== 'worm' && !skc) { bossAura(a); bossHD(a, heading(a, 0)); } if (a.boss && !a.hid && a.ty !== 'worm' && a.ph && !skc) bossPh(a); if (HDM && TER && !a.boss && a.ty !== 'fly' && !a.echo && !a.gate && !a.hid) tiltR(sva, n, a.x, a.y, 8); }); if (HDM && TER) { grass(); motes(); }
     ST.al = n - nAl; ST.alT = tn - tAl; S.allies.forEach(a => { if (!a.freed && REAL && mdl('robo')) { astroX(a.x, a.y, heading(a, a.face > 0 ? 0 : Math.PI), a.walk || 0, null, null, 1.3, 0, 1, 0, 0, 'robo'); return; } if (a.freed) { try { alien({ ty: 'grunt', x: a.x, y: a.y, r: 8, hp: 1, mh: 1, fl: 0, stun: 0, rise: 0, f: a.face, face: a.face, walk: a.walk || 0, sp: 1 }); } catch (e) {} return; } const ang = heading(a, a.face > 0 ? 0 : Math.PI), ca = Math.cos(ang), sa = Math.sin(ang), at = (f, q) => [a.x + ca * f - sa * q, a.y + sa * f + ca * q], w = Math.sin(T() * 9 + a.x) * .5; let p;
       for (const q of [-1, 1]) { p = at(Math.sin(w * q) * 1.5, q * 2); box(p[0], p[1], 0, 2.4, 6, 2.4, '#5a6170', 0, ang); box(p[0], p[1], 0, 3.4, 1.2, 3, '#3a3f4c', 0, ang); }
