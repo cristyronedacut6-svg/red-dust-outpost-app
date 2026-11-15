@@ -5,6 +5,8 @@ import { GLTFLoader } from './vendor/three/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from './vendor/three/libs/meshopt_decoder.module.js';
 import { EXTRA, VARIANTS, MOONS, PLUTO, SURF, SAMPLE_FACTS, NEWOBJ, SITES, VESTA, DEM } from './adv_data.js';
 import { makeSurface, WORLD, DIVE, DAYH } from './adv_surface.js';
+import { makeAstronaut } from './adv_astro.js';
+import { makeRover } from './adv_rover.js';
 import { RoomEnvironment } from './vendor/three/environments/RoomEnvironment.js';
 import { EffectComposer } from './vendor/three/postprocessing/EffectComposer.js';
 import { RenderPass } from './vendor/three/postprocessing/RenderPass.js';
@@ -752,7 +754,7 @@ const coList = () => [...CO.peers.values()];
 function coPanel() { const p = document.createElement('div'); p.className = 'pnl'; const online = !!(window.NET && NET.on), L = coList();
   p.innerHTML = `<div class="crd"><div class="ey">👥 CO-OP · FLY TOGETHER</div><h2>${CO.on ? 'Room ' + CO.code : 'Explore with a friend'}</h2>
     ${!online ? '<div class="mt">Co-op needs the game’s online features (Supabase in config.js). Story Mode co-op uses the same setup.</div><div class="row"><button id="kX">Close</button></div>' :
-    CO.on ? `<div class="mt">${L.length ? L.map(P => `🟢 <b>${esc1(P.n)}</b>${P.h ? ' ★' : ''} is flying the ${esc1((SHIPS.find(s => s.id === P.s) || SHIPS[0]).n)}${P.surf && BI[P.surf] ? ' · on ' + BI[P.surf].n : ''}`).join('<br>') : '⏳ Waiting for your friend to join with code <b style="letter-spacing:.2em">' + CO.code + '</b>…'}</div>
+    CO.on ? `<div class="mt">${L.length ? L.map(P => `🟢 <b>${esc1(P.n)}</b>${P.h ? ' ★' : ''} is flying the ${esc1((SHIPS.find(s => s.id === P.s) || SHIPS[0]).n)}${P.surf && BI[P.surf] ? ' · 🪐 ' + coWhereTxt(P) : ''}`).join('<br>') : '⏳ Waiting for your friend to join with code <b style="letter-spacing:.2em">' + CO.code + '</b>…'}</div>
       <div class="row">${L.map(P => `<button class="pr" data-go="${esc1(P.key)}">${P.surf ? '🪐' : '🚀'} Fly to ${esc1(P.n)}</button>`).join('')}<button id="kL">Leave room</button><button id="kX">Close</button></div>` :
     `<div class="mt">Open Adventure Mode on up to four devices. One makes a room, the others type its code and fly straight to them. You see each other’s ship live, anywhere in the solar system.</div>
       <div class="row"><button class="pr" id="kH">🛰 Make a room</button></div><div class="row"><input id="kC" maxlength="4" placeholder="CODE" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800;width:110px;padding:10px;border-radius:10px;border:1px solid #7df9ff;background:#0a0f20;color:#fff;text-align:center"><button id="kJ">Join</button><button id="kX">Close</button></div>`}</div>`;
@@ -767,9 +769,18 @@ function coJoin(code, host) { coLeave(true); if (!window.NET || !NET.on) return;
   const go = () => { if (!CO.on || CO.code !== code) return; CO.ch = NET.channel('rdo-adv-' + code, { open: () => { toast(CO.host ? '👥 In room <b>' + code + '</b>. Share the code with your friends!' : '👥 Joined room <b>' + code + '</b>. Finding your friend…', 3500); coSend(true); }, msg: coMsg, error: m => { toast('⚠ Co-op: ' + m, 3500); coLeave(true); }, close: () => { if (CO.on) toast('⚠ Co-op room closed', 2500); coLeave(true); } }); };
   try { NET.boot().catch(() => {}).finally(go); } catch (e) { go(); } }
 function coLeave(silent) { if (CO.ch) { try { CO.ch.send('bye', { id: CO.id }); CO.ch.close(); } catch (e) {} } CO.ch = null; CO.on = false; CO.pend = null; coDrop(); if (!silent) toast('👥 Left the co-op room', 1500); }
-function coDrop(key) { for (const [k, P] of [...CO.peers]) { if (key != null && k !== key) continue; R.scn.remove(P.g); if (P.lab) P.lab.remove(); CO.peers.delete(k); } }
+function coDrop(key) { for (const [k, P] of [...CO.peers]) { if (key != null && k !== key) continue; R.scn.remove(P.g); if (P.lab) P.lab.remove(); coAstroDrop(P); CO.peers.delete(k); } }
+// the surface we are walking on, if it is one friends can share (not a gas-giant dive, not mid lift-off)
+const coLand = () => { const S = R.surf && R.surf.S; return S && S.on && S.mode === 'land' && !S.launch && S.scn && S.player && S.body ? S : null; };
+const coSiteId = S => (S && S.site && S.site.id) || '';
 function coSend(hi) { if (!CO.ch) return; const s = R.ship, r = v => Math.round(v * 100) / 100, sf = R.surf && R.surf.S && R.surf.S.on && R.surf.S.body;
-  CO.ch.send(hi ? 'hi' : 'st', { id: CO.id, h: CO.host ? 1 : 0, p: [r(s.position.x), r(s.position.y), r(s.position.z)], q: [r(s.quaternion.x), r(s.quaternion.y), r(s.quaternion.z), r(s.quaternion.w)], v: [r(R.vel.x), r(R.vel.y), r(R.vel.z)], s: (R.shipStat || SHIPS[0]).id, n: CO.name, b: R.burn > .3 ? 1 : 0, surf: sf ? sf.id : null }); }
+  const m = { id: CO.id, h: CO.host ? 1 : 0, p: [r(s.position.x), r(s.position.y), r(s.position.z)], q: [r(s.quaternion.x), r(s.quaternion.y), r(s.quaternion.z), r(s.quaternion.w)], v: [r(R.vel.x), r(R.vel.y), r(R.vel.z)], s: (R.shipStat || SHIPS[0]).id, n: CO.name, b: R.burn > .3 ? 1 : 0, surf: sf ? sf.id : null };
+  // on the ground: which landing site, and where the astronaut (or the rover they drive) is. Older builds ignore these fields.
+  const S = coLand(); if (S) { const P = S.player.position, f = (S.onGround ? 1 : 0) | (Math.hypot(S.vel.x, S.vel.z) > 7 ? 2 : 0) | (S.thrusting ? 4 : 0);
+    m.ls = coSiteId(S);
+    if (S.drive && S.rover && S.rover.st) { const st = S.rover.st; m.la = [r(st.x), r(st.y), r(st.z), r(st.yaw), r(st.v || 0), 0, 0, f | 8]; }
+    else m.la = [r(P.x), r(P.y), r(P.z), r(S.fly ? (S.fyaw || 0) : S.player.rotation.y), r(S.vel.x), r(S.vel.y), r(S.vel.z), f | (S.fly ? 16 : 0)]; }
+  CO.ch.send(hi ? 'hi' : 'st', m); }
 const coKey = d => (d && d.id ? 'i:' + String(d.id).slice(0, 12) : 'n:' + String((d && d.n) || 'Friend').slice(0, 16));
 function coMsg(ev, d) {
   if (ev === 'bye') { const k = d && d.id ? coKey(d) : (CO.peers.size === 1 ? [...CO.peers.keys()][0] : null); const P = k && CO.peers.get(k); if (P) { toast('👋 <b>' + esc1(P.n) + '</b> left the room', 2500); coDrop(k); } return; }
@@ -778,30 +789,90 @@ function coMsg(ev, d) {
   if (!P2) { if (CO.peers.size >= CO_MAX) return; P2 = coShip(d, key); CO.peers.set(key, P2); toast(`👥 <b>${esc1(P2.n)}</b> joined! Look for the green marker.`, 3500); sfx('chime'); say(String(d.n || 'Your friend').slice(0, 16) + ' has joined your flight.'); coSend(true); }
   if (d.s !== P2.s && SHIPS.some(x => x.id === d.s)) { P2.s = d.s; coModel(P2); }
   P2.n = String(d.n || 'Friend').slice(0, 16); P2.h = d.h ? 1 : 0; P2.tp.fromArray(d.p); P2.tv.fromArray(Array.isArray(d.v) && d.v.length === 3 && d.v.every(Number.isFinite) ? d.v : [0, 0, 0]); if (Array.isArray(d.q) && d.q.length === 4 && d.q.every(Number.isFinite)) P2.tq.fromArray(d.q).normalize(); P2.rx = performance.now(); P2.b = d.b ? 1 : 0;
-  const sf = d.surf && BI[d.surf] ? d.surf : null; if (sf !== P2.surf) { P2.surf = sf; if (sf && !fresh) toast(`👥 <b>${esc1(P2.n)}</b> landed on ${BI[sf].n}`, 2500); } if (fresh) P2.g.position.copy(P2.tp);
+  const sf = d.surf && BI[d.surf] ? d.surf : null; P2.surf = sf; if (fresh) P2.g.position.copy(P2.tp);   // where they are gets announced by coPeer (coWhere)
+  P2.site = sf && typeof d.ls === 'string' ? d.ls.slice(0, 40) : null;
+  P2.L = sf && Array.isArray(d.la) && d.la.length >= 8 && d.la.every(Number.isFinite) ? d.la.slice(0, 8) : null;
   // just joined someone's room: travel to the room maker (older builds send no 'h', so the first ship heard counts)
   if (!CO.met && (d.h || d.h === undefined)) { CO.met = true; CO.pend = key; } }
 // the joiner can't warp while standing on a world or diving through an atmosphere: wait until they are back in space
 const coBusy = () => !!(R.entry || R.ending || (R.surf && R.surf.S && R.surf.S.on));
-function coGo(P) { if (!P) return; if (coBusy()) { CO.pend = P.key; CO.pendT = 1; toast(T('Take off first (🚀 LAUNCH), then you fly to {0}', esc1(P.n)), 3500); return; }
-  CO.pend = null; R.ap = null; R.vel.set(0, 0, 0); const b = P.surf && BI[P.surf], c = b && R.bpos[b.id];
-  if (b && c) {   // they are on a world: park in orbit over it, ready to land beside them
-    R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); toast(`🪐 In orbit around <b>${esc1(b.n)}</b>, where <b>${esc1(P.n)}</b> landed. Tap LAND to join them.`, 4500); }
+// standing on a world (walking, driving or flying there, no lift-off or survival run going on): we can hop straight to a friend's world
+const coHop = () => !!(coLand() && !R.entry && !R.ending && !(R.sv && R.sv.on) && !TOURA);
+const coSiteN = (b, id) => { const s = id && (SITES[b.id] || []).find(x => x.id === id); return s ? s.n.split(' (')[0].split(' ·')[0] : ''; };
+function coGo(P) { if (!P) return; const b = P.surf && BI[P.surf], S0 = coLand();
+  if (b && S0 && S0.body.id === b.id && P.site != null && coSiteId(S0) === P.site) { CO.pend = null; toast(T('👥 {0} is right here with you. Look for the green name.', '<b>' + esc1(P.n) + '</b>'), 3500); return; }
+  if (coHop()) { try { media().stop(600); } catch (e) {} try { R.surf.exit(); surfUI(null); } catch (e) {} }   // leave this surface at once (no lift-off scene) and fly to them
+  if (coBusy()) { CO.pend = P.key; CO.pendT = 1; toast(T('Take off first (🚀 LAUNCH), then you fly to {0}', esc1(P.n)), 3500); return; }
+  CO.pend = null; CO.goK = P.key; CO.goT = performance.now(); R.ap = null; R.vel.set(0, 0, 0); const c = b && R.bpos[b.id];
+  if (b && c) {   // they are on a world: park in orbit over it, then land at the same site so we stand next to them
+    R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c);
+    const kind = DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null, site = kind === 'land' && P.site ? (SITES[b.id] || []).find(s => s.id === P.site) || null : null;
+    if (kind) {   // no site known (older build): the normal site picker opens
+      const sn = site ? coSiteN(b, site.id) : '', key = P.key;
+      toast(sn ? T('🛬 Landing at {0} on {1}, next to {2}', sn, '<b>' + esc1(b.n) + '</b>', '<b>' + esc1(P.n) + '</b>') : T('🛬 Landing on {0}, next to {1}', '<b>' + esc1(b.n) + '</b>', '<b>' + esc1(P.n) + '</b>'), 4000);
+      (site ? loadDEM(site) : Promise.resolve()).catch(() => {}).then(() => { if (!R || !CO.on || !CO.peers.get(key) || R.entry || R.ending || (R.surf && R.surf.S && R.surf.S.on)) return; R.site = site; landOrLaunch.go(b); }); }
+    else toast(`🪐 In orbit around <b>${esc1(b.n)}</b>, where <b>${esc1(P.n)}</b> landed. Tap LAND to join them.`, 4500); }
   else { const tp = P.tp.clone().addScaledVector(P.tv, Math.min(.5, (performance.now() - P.rx) / 1000)); P.g.position.copy(tp);
     R.ship.position.copy(tp).add(new THREE.Vector3(8, 2, 8)); lookAtYP(tp); toast('🚀 Warped next to <b>' + esc1(P.n) + '</b>', 3000); }
   try { R.warp && R.warp.kick && R.warp.kick(); } catch (e) {} try { R.rings.add(R.ship.position, 0x9dff9d, 8, .8, R.cam.position); } catch (e) {} sfx('chime'); }
 function coShip(d, key) { const g = new THREE.Group(), fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.flame.material && R.flame.material.map || null, color: 0x9dff9d, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); fl.scale.setScalar(1.2); g.add(fl);
   const nv = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new THREE.MeshBasicMaterial({ color: 0x66ff88 })); nv.position.y = .9; g.add(nv); R.scn.add(g);
   const lab = document.createElement('div'); lab.className = 'cop'; R.root.querySelector('#aHud') ? R.root.querySelector('#aHud').appendChild(lab) : R.root.appendChild(lab);
-  const P2 = { key, g, fl, nv, lab, s: d.s, h: d.h ? 1 : 0, n: String(d.n || 'Friend').slice(0, 16), tp: new THREE.Vector3(), tv: new THREE.Vector3(), tq: new THREE.Quaternion(), rx: performance.now(), surf: null, b: 0, mdl: null }; coModel(P2); return P2; }
+  const P2 = { key, g, fl, nv, lab, s: d.s, h: d.h ? 1 : 0, n: String(d.n || 'Friend').slice(0, 16), tp: new THREE.Vector3(), tv: new THREE.Vector3(), tq: new THREE.Quaternion(), rx: performance.now(), surf: null, site: null, L: null, a: null, wr: null, wh: 0, b: 0, mdl: null }; coModel(P2); return P2; }
 function coModel(P2) { const sh = SHIPS.find(x => x.id === P2.s) || SHIPS[0]; R.ship.userData.loader.load('models/nasa/' + sh.m + '.glb', gl => { if (CO.peers.get(P2.key) !== P2 || P2.s !== sh.id) return; const m = gl.scene; fixMat(m); if (sh.r) m.rotation.set(sh.r[0], sh.r[1], sh.r[2], 'YXZ'); const w = new THREE.Group(); w.add(m); m.updateMatrixWorld(true); const sph = new THREE.Box3().setFromObject(w).getBoundingSphere(new THREE.Sphere()), k = sh.sz / sph.radius;
     w.scale.setScalar(k); w.position.copy(sph.center).multiplyScalar(-k); if (P2.mdl) P2.g.remove(P2.mdl); P2.g.add(w); P2.mdl = w; P2.fl.position.set(0, 0, sh.sz * 1.05); P2.nv.position.y = sh.sz * .7; }); }
 function coStep(dt) { if (!CO.on) return; CO.tx -= dt; if (CO.tx <= 0) { CO.tx = .1; coSend(); }
-  if (CO.pend && !coBusy()) { const P = CO.peers.get(CO.pend); CO.pend = null; if (P) coGo(P); }
+  if (CO.pend && (!coBusy() || coHop())) { const P = CO.peers.get(CO.pend); CO.pend = null; if (P) coGo(P); }
   else if (CO.pend && !CO.pendT) { CO.pendT = 1; const P = CO.peers.get(CO.pend); if (P) toast(T('Take off first (🚀 LAUNCH), then you fly to {0}', esc1(P.n)), 3500); }
   if (!CO.pend) CO.pendT = 0;
-  let near = false; for (const P2 of coList()) if (coPeer(P2, dt)) near = true;
+  let near = false; for (const P2 of coList()) { if (coPeer(P2, dt)) near = true; if (CO.peers.get(P2.key) === P2 && coSurfPeer(P2, dt)) near = true; }
   if (near) { CO.near += dt; if (CO.near > 10) trophy('a_coop'); } else CO.near = 0; }
+/* ---- co-op on the ground: friends at the same landing site walk (or drive) next to you as real astronauts ---- */
+const coV = new THREE.Vector3(), coV2 = new THREE.Vector3(), coWrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+function coWhereTxt(P) { const b = P.surf && BI[P.surf]; if (!b) return ''; const sn = coSiteN(b, P.site); return sn ? T('{0} on {1}', esc1(sn), esc1(b.n)) : esc1(b.n); }
+function coSurfPeer(P2, dt) { const S = coLand(), here = !!(S && P2.L && P2.surf === S.body.id && P2.site === coSiteId(S));
+  // tell the player where their friend is whenever that changes (and when they meet)
+  const rk = P2.surf ? P2.surf + '/' + (P2.site == null ? '?' : P2.site) : '', hk = here ? 1 : 0;
+  if (rk !== P2.wr || hk !== P2.wh) { const first = P2.wr == null, moved = rk !== P2.wr, n = '<b>' + esc1(P2.n) + '</b>'; P2.wr = rk; P2.wh = hk;
+    if (here) { toast(T('👥 {0} is here with you. Look for the green name.', n), 3500); sfx('chime'); }
+    else if (moved && rk && !(CO.goK === P2.key && performance.now() - CO.goT < 6000)) toast(T('👥 {0} is at {1}', n, '<b>' + coWhereTxt(P2) + '</b>') + '<br><small>' + T('Open 👥 Co-op and tap Fly to {0} to join them', esc1(P2.n)) + '</small>', 4500);
+    else if (moved && !first) toast(T('🚀 {0} lifted off and is back in space', n), 2500); }
+  if (P2.a && (!here || P2.a.scn !== S.scn)) coAstroDrop(P2);
+  if (!here) return false;
+  if (!P2.a) P2.a = coAstro(P2, S);
+  return coAstroStep(P2, P2.a, S, dt); }
+function coAstro(P2, S) { const rig = makeAstronaut({ loader: R.ship.userData.loader, suit: 0xe2f6e4 }), g = new THREE.Group(); g.add(rig.root); rig.root.traverse(n => { if (n.isMesh) n.castShadow = true; }); if (S.dc) rig.tint(S.dc);
+  const bc = new THREE.Mesh(new THREE.SphereGeometry(.35, 10, 8), new THREE.MeshBasicMaterial({ color: 0x66ff88 })); bc.visible = false; g.add(bc);   // beacon while they fly a craft
+  const L = P2.L; g.position.set(L[0], L[1], L[2]); g.rotation.y = L[3]; S.scn.add(g);
+  const lab = document.createElement('div'); lab.className = 'cop'; R.root.appendChild(lab);   // not in #aHud: that is hidden on the ground
+  return { g, rig, bc, lab, scn: S.scn, rv: null, wasG: true, vy: 0 }; }
+function coAstroDrop(P2) { const A = P2 && P2.a; if (!A) return; P2.a = null;
+  try { if (A.g.parent) A.g.parent.remove(A.g); if (A.rv && A.rv.g.parent) A.rv.g.parent.remove(A.rv.g); } catch (e) {}
+  // not rig.dispose(): the Z-2 suit mesh shares its vertex buffers with your own astronaut (and other friends), and freeing them mid-walk breaks those suits.
+  // Mark the rigs dead (a suit still loading never attaches) and free only what is this astronaut's own.
+  A.rig.dead = true; if (A.rv && A.rv.rider) A.rv.rider.dead = true;
+  try { const dg = o => { if (o.isSkinnedMesh) { if (o.skeleton) o.skeleton.dispose(); } else if (o.geometry) o.geometry.dispose(); }; A.g.traverse(dg); if (A.rv) A.rv.g.traverse(dg); A.bc.material.dispose(); } catch (e) {}
+  A.rv = null; A.lab.remove(); }
+function coAstroStep(P2, A, S, dt) { const L = P2.L, f = L[7] | 0, dr = !!(f & 8), fl = !!(f & 16), gnd = !!(f & 1), age = Math.min(.4, (performance.now() - P2.rx) / 1000), k = Math.min(1, dt * 10), H = R.surf.H, gr = S.gEff || 1.6;
+  // smooth like the ships in space: extrapolate along the last velocity, then ease toward it
+  const vx = dr ? Math.cos(L[3]) * L[4] : L[4], vz = dr ? -Math.sin(L[3]) * L[4] : L[6];
+  coV.set(L[0] + vx * age, L[1] + (fl ? L[5] * age : 0), L[2] + vz * age);
+  if (A.g.position.distanceToSquared(coV) > 400) A.g.position.copy(coV); else A.g.position.lerp(coV, k);
+  A.rig.root.visible = !dr && !fl; A.bc.visible = fl;
+  if (dr) { if (!A.rv) { const kind = S.body.id === 'moon' ? (S.site && /^apollo/.test(S.site.id) ? 'lrv' : 'pxr') : S.body.id === 'mars' ? 'perse' : null;   // the same rover the driver sees at this site
+      if (kind) { A.rv = makeRover(kind, R.ship.userData.loader, fixMat); S.scn.add(A.rv.g); A.rv.place(coV.x, coV.z, L[3], H); } }
+    if (A.rv) { const st = A.rv.st; if (Math.hypot(st.x - coV.x, st.z - coV.z) > 20) { st.x = coV.x; st.z = coV.z; st.yaw = L[3]; } else { st.x += (coV.x - st.x) * k; st.z += (coV.z - st.z) * k; st.yaw += coWrap(L[3] - st.yaw) * Math.min(1, dt * 8); }
+      st.v = L[4]; A.rv.update(dt, {}, H, gr); A.g.position.set(st.x, st.y, st.z); } }
+  else if (!fl) { A.g.rotation.y += coWrap(L[3] - A.g.rotation.y) * (1 - Math.exp(-dt * 10));
+    let landed = 0; if (gnd && !A.wasG) landed = A.vy; A.wasG = gnd; if (!gnd) A.vy = L[5];
+    A.rig.update(dt, { spd: Math.hypot(L[4], L[6]), ground: gnd, g: gr, run: !!(f & 2), hold: !!(f & 4), yaw: A.g.rotation.y, landed: landed < -2.5 ? landed : 0 }); }
+  else A.bc.material.color.setHex(Math.sin(performance.now() / 250) > .6 ? 0xffffff : 0x33cc55);
+  // name tag over their head (or at the screen edge, pointing the way, when they are behind you)
+  const d = A.g.position.distanceTo(S.player.position), Lb = A.lab; if (CAM.photo) { Lb.style.display = 'none'; return d < 40; }
+  const p = coV2.copy(A.g.position); p.y += dr ? 3 : fl ? 1 : 2.3; p.project(R.cam); const W = innerWidth, Hh = innerHeight, on = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1;
+  const sx = p.z < 1 ? p.x : -p.x, sy = p.z < 1 ? p.y : -p.y, x = on ? (p.x + 1) / 2 * W : (sx > 0 ? W - 90 : 90), y = on ? (1 - p.y) / 2 * Hh : Math.max(70, Math.min(Hh - 70, (1 - Math.max(-1, Math.min(1, sy))) / 2 * Hh));
+  Lb.style.display = 'block'; Lb.style.transform = `translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`; const t = `👥 ${P2.n} · ${d < 1000 ? d.toFixed(0) + ' m' : (d / 1000).toFixed(1) + ' km'}${on ? '' : ' ◀▶'}`; if (Lb._t !== t) { Lb.textContent = t; Lb._t = t; }
+  return d < 40; }
 function coPeer(P2, dt) {
   if (performance.now() - P2.rx > 15000) { toast('⚠ Lost contact with <b>' + esc1(P2.n) + '</b>', 2500); coDrop(P2.key); return false; }
   // smooth: extrapolate along the last velocity, then ease toward it (no rubber-banding at 10 updates a second)
@@ -926,8 +997,8 @@ function nearBody() { let best = null, bd = 1e9; for (const b of BODIES) { if (b
 function landOrLaunch() { const S = R.surf.S; if (R.entry) return; if (S.on) { if (S.launch) return; if (S.mode === 'land') { try { media().start('Lift-off from ' + S.body.n, { title: S.body.n, sub: 'Lift-off', stamp: S.body.n }); } catch (e) {} R.root.classList.add('cine'); sfx('liftoff'); say('Main engine start. And lift-off!', 1); R.surf.launch(() => { R.root.classList.remove('cine'); landOrLaunch.done(); }); return; } return landOrLaunch.done(); }
   landOrLaunch.go(); }
 landOrLaunch.done = function () { const S = R.surf.S; try { media().stop(2200); } catch (e) {} { const b = S.body; R.surf.exit(); surfUI(null); const c = R.bpos[b.id]; R.ship.position.copy(c).add(new THREE.Vector3(0, b.r + 10, b.r + 14)); lookAtYP(c); R.vel.set(0, 0, 0); toast('🚀 Back in orbit around <b>' + b.n + '</b>'); say('Orbit achieved around ' + b.n + '.'); R.rings.add(R.ship.position, 0xffd27a, 8, .8, R.cam.position); } };
-landOrLaunch.go = function () {
-  const b = nearBody(); if (!b) return; const kind = DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null; if (!kind) return; R.ap = null; R.vel.set(0, 0, 0);
+landOrLaunch.go = function (bb) {   // bb: land on this world (co-op join) instead of the nearest one
+  const b = bb || nearBody(); if (!b) return; const kind = DIVE[b.id] ? 'dive' : WORLD[b.id] ? 'land' : null; if (!kind) return; R.ap = null; R.vel.set(0, 0, 0);
   if (kind === 'land' && SITES[b.id] && !R.site) { sitePicker(b); return; }
   const fl = (kind === 'dive' ? 'dive:' : 'land:') + b.id; dailyHit(fl); if (R.site) { const sf = 'site:' + b.id + ':' + R.site.id; if (!ST.flags.has(sf)) { ST.flags.add(sf); save(); reward(3, 30); } } if (!ST.flags.has(fl)) { ST.flags.add(fl); save(); reward(5, 50); setTimeout(checkMissions, 4800); }
   const st = R.site || null; R.site = null; startEntry(b, kind, st); };
