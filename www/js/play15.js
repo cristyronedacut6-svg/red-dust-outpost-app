@@ -2,7 +2,9 @@
    1) Pacing: at least 22 s of calm between big events (storms, Mission Control decisions, meteor showers).
    2) Advisor: when a bar runs low, a tip names the building that fixes it (tap it to select that building).
    3) "What hurt me": every damage shows its cause and the building that stops it.
-   4) Placement in two steps: tap (or right-click) to put the outline down, tap it again (or ✓) to build.
+   4) Build mode starts ONLY from the Build button (or B / gamepad Y). The first press puts the outline next to you;
+      in build mode a tap moves it, tapping it again (or ✓ Build) builds it and leaves build mode. Esc or ✕ cancels.
+      Without build mode no outline is shown and tapping the ground never builds anything.
    5) Construction: buildings take a few seconds to build, rising out of a scaffold, and work once finished.
    6) Purpose icons: picking a building shows what it makes and what it needs as icons. */
 (function () {
@@ -42,11 +44,13 @@
 #u-pur .pp b{display:flex}#u-pur .pp b .ic{width:24px;height:24px}#u-pur .pt .ic{width:13px;height:13px;vertical-align:-2px} #u-pur .pp small{font-size:10px;opacity:.8}
 #u-pur .pa{font-size:18px;opacity:.7}
 #u-pur .pt{font-size:11px;opacity:.85;border-left:1px solid rgba(255,255,255,.25);padding-left:8px;margin-left:2px}
-#u-place{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sb,0px) + 104px);z-index:6;display:none;padding:6px 12px;border-radius:999px;background:rgba(18,60,30,.94);
-  border:2px solid #5fe08a;color:#fff;font:700 13px system-ui;pointer-events:none;white-space:nowrap}
+#u-place{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sb,0px) + 104px);z-index:6;display:none;align-items:center;gap:8px;padding:5px 6px 5px 12px;border-radius:14px;background:rgba(18,60,30,.94);
+  border:2px solid #5fe08a;color:#fff;font:700 13px system-ui;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);box-sizing:border-box}
+#u-place .n{font-weight:600;opacity:.85}#u-place .h{white-space:normal;font-weight:600}
+#u-place .x{pointer-events:auto;flex:none;border:0;border-radius:50%;width:28px;height:28px;background:rgba(255,255,255,.2);color:#fff;font:800 14px system-ui;cursor:pointer}
 html body #stage #dock #bh.u-conf{background:#5fe08a!important;color:#062010!important;border-color:#fff!important;box-shadow:0 0 0 3px rgba(95,224,138,.45),0 0 18px rgba(95,224,138,.6)!important}
 @media (max-height:540px){#u-adv{font-size:11px;padding:3px 6px 3px 8px}#u-adv .at small{font-size:10.5px}#u-adv .ai{font-size:16px}#u-adv button{padding:4px 7px;font-size:11px}#u-adv button img{width:16px;height:16px}
-  #u-pur,#u-place{bottom:calc(var(--sb,0px) + 118px);font-size:11px;padding:4px 8px}#u-pur .pp b .ic{width:18px;height:18px}#u-pur img{width:22px;height:22px}#u-pur .pt{display:none}}
+  #u-pur,#u-place{bottom:calc(var(--sb,0px) + 118px);font-size:11px;padding:4px 8px}#u-pur .pp b .ic{width:18px;height:18px}#u-pur img{width:22px;height:22px}#u-pur .pt{display:none}#u-place .x{width:22px;height:22px;font-size:12px}#u-place .n{display:none}}
 `;
   document.head.appendChild(st); addEventListener('load', () => document.body.appendChild(st));
   const stage = () => $('#stage');
@@ -78,7 +82,7 @@ html body #stage #dock #bh.u-conf{background:#5fe08a!important;color:#062010!imp
     e.className = 'ui' + (hurt ? ' hurt' : ''); e.innerHTML = `<span class="ai">${ic(icon)}</span><span class="at">${title}<small>${sub}</small></span>${b}`; e.style.display = 'flex';
     const bt = e.querySelector('button'); if (bt) bt.onclick = ev => { ev.stopPropagation(); pick(k); };
   }
-  function pick(k) { if (!usable(k)) return; sel = k; try { snd('sel', 2); } catch (e) {} dockUp(); clearPend(); purposeShow(k, true); }
+  function pick(k) { if (!usable(k)) return; sel = k; try { snd('sel', 2); } catch (e) {} dockUp(); if (PEND) retarget(); else purposeShow(k, true); }   // picks only; never starts build mode
   function advise() { if (!ok() || S.tu != null || S.pz || S.cin || S.land > 0) return;
     const r = S.res, nt = typeof night === 'function' ? night() : false, low = [];
     if (r.o2 < 35) low.push(['o2', 'air', 'Oxygen is low', 'O₂ Generators make air (they need power).']);
@@ -98,35 +102,68 @@ html body #stage #dock #bh.u-conf{background:#5fe08a!important;color:#062010!imp
 
   /* ---------------- 6) purpose strip ---------------- */
   let PUR = 0;
-  function purposeShow(k, force) { const e = el('u-pur'); if (!e || !BT[k]) return; e.innerHTML = `${ICON[k] ? `<img src="${ICON[k]}" alt="">` : ''}<span class="pn">${nameOf(k)}</span>${purposeHTML(k)}<span class="pt">${costOf(k)} ${ic('ore')} · tap the ground, then tap again to build</span>`;
+  function purposeShow(k, force) { const e = el('u-pur'); if (!e || !BT[k]) return; e.innerHTML = `${ICON[k] ? `<img src="${ICON[k]}" alt="">` : ''}<span class="pn">${nameOf(k)}</span>${purposeHTML(k)}<span class="pt">${costOf(k)} ${ic('ore')}</span><span class="pt">Tap Build to place it</span>`;
     e.style.display = 'flex'; PUR = force ? 6 : 4; }
   // hook the build cards: picking one shows its purpose
-  function hookCards() { document.querySelectorAll('#cards .card').forEach(c => { if (c._p15) return; c._p15 = 1; c.addEventListener('click', () => { if (ok()) { clearPend(); purposeShow(c.dataset.k, true); } }); }); }
+  function hookCards() { document.querySelectorAll('#cards .card').forEach(c => { if (c._p15) return; c._p15 = 1; c.addEventListener('click', () => { if (ok()) { if (PEND) retarget(); else purposeShow(c.dataset.k, true); } }); }); }
   setInterval(hookCards, 1000);
 
-  /* ---------------- 4) two-step placement ---------------- */
+  /* ---------------- 4) build mode (only from the Build button) + two-step placement ----------------
+     PEND is the outline: build mode is on exactly while it exists. Only buildNow() (the Build button, B key, gamepad Y)
+     can create it from nothing; picking a card or an advisor tip only selects a building. */
   let PEND = null;
-  function clearPend() { PEND = null; const b = $('#bh'); if (b) b.classList.remove('u-conf'); bhLabel('Build'); const p = $('#u-place'); if (p) p.style.display = 'none'; }
+  function clearPend() { PEND = null; const b = $('#bh'); if (b) b.classList.remove('u-conf'); bhLabel('Build'); const p = $('#u-place'); if (p) { p.style.display = 'none'; p._k = ''; } }
   function bhLabel(t) { const b = $('#bh'); if (!b) return; for (const n of b.childNodes) if (n.nodeType === 3 && n.textContent.trim()) { if (n.textContent.trim() !== t) n.textContent = t; return; } }
+  function showPend() { if (!PEND) return; const b = $('#bh'); if (b) b.classList.add('u-conf'); bhLabel('✓ Build');
+    const p = el('u-place'); if (!p) return; const sm = innerHeight < 540 || innerWidth < 640, k = PEND.t + (sm ? ':s' : ':l');
+    if (p._k !== k) { p._k = k;
+      p.innerHTML = `<b>Build mode</b><span class="n"></span><span class="h">${sm ? 'Tap a spot, then ✓ Build' : 'Tap a spot to move it, then tap ✓ Build'}</span><button class="x" type="button" aria-label="Cancel" title="Esc">✕</button>`;
+      p.querySelector('.n').textContent = nameOf(PEND.t);
+      p.querySelector('.x').onclick = ev => { ev.stopPropagation(); clearPend(); try { snd('ui'); } catch (e) {} }; }
+    p.style.display = 'flex'; const pu = $('#u-pur'); if (pu) pu.style.display = 'none'; }
   function setPend(x, y) { if (!free(x, y)) { say('That spot is taken. Tap an empty spot.'); try { snd('no'); } catch (e) {} return; }
     if (Math.hypot(x + 8 - S.p.x, y + 8 - S.p.y) > 125) { say('Too far away. Walk closer, then tap the spot.'); try { snd('no'); } catch (e) {} return; }
-    PEND = { x, y, t: sel }; const b = $('#bh'); if (b) b.classList.add('u-conf'); bhLabel('✓ Build');
-    const p = el('u-place'); if (p) { p.textContent = innerHeight < 540 ? 'Tap again to build' : `Tap the outline again or ✓ Build to build the ${nameOf(sel)}`; p.style.display = 'block'; }
-    const pu = $('#u-pur'); if (pu) pu.style.display = 'none'; try { snd('sel', 4); } catch (e) {} }
-  function confirmPend() { const g = PEND; clearPend(); if (g) place(sel, g.x, g.y); }
-  if (typeof ghost === 'function') { const _g = ghost; ghost = function () { if (PEND && ok() && sel === PEND.t && !S.cin && !S.photo) return { x: PEND.x, y: PEND.y }; return _g(); }; }
+    PEND = { x, y, t: sel }; showPend(); try { snd('sel', 4); } catch (e) {} }
+  function retarget() { if (!PEND) return; PEND.t = sel; showPend(); }   // another building picked while in build mode: keep the spot
+  function confirmPend() { const g = PEND; clearPend(); if (g) place(sel, g.x, g.y); }   // building it leaves build mode
+  const _g = typeof ghost === 'function' ? ghost : () => null;   // the game's own "free spot next to the player"
+  if (typeof ghost === 'function') { ghost = function () { if (!ok()) return null; if (PEND && sel === PEND.t && !S.cin && !S.photo) return { x: PEND.x, y: PEND.y }; return null; }; }
   if (typeof buildNow === 'function') { buildNow = function () { if (!ok() || S.pz || S.land > 0 || S.winT > 0) return; if (PEND && PEND.t === sel) return confirmPend();
-      const g = ghost(); if (!g) { say('No free space here. Move a little and try again.'); try { snd('no'); } catch (e) {} return; } setPend(g.x, g.y); };
+      if (PEND) return retarget();
+      const g = _g(); if (!g) { say('No free space here. Move a little and try again.'); try { snd('no'); } catch (e) {} return; } setPend(g.x, g.y); };
     const bh = $('#bh'); if (bh) bh.onclick = () => buildNow(); }
-  if (typeof tap === 'function') { const _t = tap; tap = function (cx, cy) {
-    if (!ok() || S.pz || S.land > 0 || S.winT > 0 || !sel) return _t(cx, cy);
+  // the game's own tap without its "tap the ground to build" part: drive the rover, inspect a building, or close the inspector
+  function tapPlain(cx, cy) { if (!S || !S.run || S.pz || S.land > 0 || S.winT > 0) return;
     const r = cv.getBoundingClientRect(); let x = (cx - r.left) * W / r.width + CAM.x, y = (cy - r.top) * H / r.height + CAM.y; const v3 = window.R3 && R3.on();
     if (v3) { const q = R3.pick(cx, cy); if (!q) return; x = q.x; y = q.y; }
-    if (S.rv && Math.hypot(x - S.rv.x, y - S.rv.y) < 14) return _t(cx, cy);
-    const b = (v3 && R3.pickB(cx, cy)) || S.b.find(b => x >= b.x - 3 && x <= b.x + b.w + 3 && y >= b.y - 3 && y <= b.y + b.w + 3); if (b) { clearPend(); return _t(cx, cy); }
+    if (S.rv && Math.hypot(x - S.rv.x, y - S.rv.y) < 14 && (S.drive || Math.hypot(S.rv.x - S.p.x, S.rv.y - S.p.y) < 26)) { toggleDrive(); return; }
+    const b = (v3 && R3.pickB(cx, cy)) || S.b.find(b => x >= b.x - 3 && x <= b.x + b.w + 3 && y >= b.y - 3 && y <= b.y + b.w + 3);
+    if (b) { if (S.net === 'guest') { say('In co-op, the host upgrades and repairs buildings.'); return; } openInsp(b); return; }
+    closeInsp(); }
+  if (typeof tap === 'function') { tap = function (cx, cy) {
+    if (!PEND || !ok() || S.pz || S.land > 0 || S.winT > 0 || !sel) return tapPlain(cx, cy);   // not in build mode: a tap never builds
+    const r = cv.getBoundingClientRect(); let x = (cx - r.left) * W / r.width + CAM.x, y = (cy - r.top) * H / r.height + CAM.y; const v3 = window.R3 && R3.on();
+    if (v3) { const q = R3.pick(cx, cy); if (!q) return; x = q.x; y = q.y; }
+    if (S.rv && Math.hypot(x - S.rv.x, y - S.rv.y) < 14) { clearPend(); return tapPlain(cx, cy); }
+    const b = (v3 && R3.pickB(cx, cy)) || S.b.find(b => x >= b.x - 3 && x <= b.x + b.w + 3 && y >= b.y - 3 && y <= b.y + b.w + 3); if (b) { clearPend(); return tapPlain(cx, cy); }
     closeInsp(); const gx = Math.floor(x / 16) * 16, gy = Math.floor(y / 16) * 16;
-    if (PEND && PEND.t === sel && Math.abs(gx - PEND.x) <= 16 && Math.abs(gy - PEND.y) <= 16) return confirmPend();
+    if (PEND.t === sel && Math.abs(gx - PEND.x) <= 16 && Math.abs(gy - PEND.y) <= 16) return confirmPend();
     setPend(gx, gy); }; }
+  // Esc leaves build mode (before it would open the pause menu)
+  addEventListener('keydown', e => { if (e.key !== 'Escape' || !PEND || !ok() || S.pz || S.cin || S.arr) return; const o = $('#ov'), sh = $('#shop');
+    if ((o && !o.hidden) || (sh && !sh.hidden)) return; clearPend(); try { snd('ui'); } catch (x) {} e.preventDefault(); e.stopImmediatePropagation(); }, true);
+  if (window.I18N && I18N.add) { const R = [
+      ['Build mode', 'Mode ng pagtatayo', 'Mode sa pagtukod', 'Modo construcción', 'Mode construction', 'Modo construção', 'Baumodus', 'Mode bangun', '建設モード', '建造模式', '건설 모드', 'निर्माण मोड'],
+      ['Tap a spot, then ✓ Build', 'Pumili ng lugar, tapos ✓ Magtayo', 'Pili og dapit, dayon ✓ Tukod', 'Toca un sitio y luego ✓ Construir', 'Touche un endroit, puis ✓ Construire', 'Toque num local e depois ✓ Construir', 'Tippe auf eine Stelle, dann ✓ Bauen', 'Ketuk tempat, lalu ✓ Bangun', '場所をタップして ✓ 建てる', '点一个位置，然后点 ✓ 建造', '자리를 누른 뒤 ✓ 건설', 'जगह पर टैप करें, फिर ✓ बनाएँ'],
+      ['Tap a spot to move it, then tap ✓ Build', 'Pindutin ang lugar para ilipat ito, tapos pindutin ang ✓ Magtayo', 'Pindota ang dapit aron ibalhin, dayon pindota ang ✓ Tukod', 'Toca un sitio para moverlo y luego toca ✓ Construir', 'Touche un endroit pour le déplacer, puis touche ✓ Construire', 'Toque num local para movê-lo e depois toque em ✓ Construir', 'Tippe auf eine Stelle zum Verschieben, dann auf ✓ Bauen', 'Ketuk tempat untuk memindahkannya, lalu ketuk ✓ Bangun', '場所をタップして動かし、✓ 建てる をタップ', '点一个位置移动它，然后点 ✓ 建造', '자리를 눌러 옮긴 뒤 ✓ 건설을 누르세요', 'खिसकाने के लिए किसी जगह पर टैप करें, फिर ✓ बनाएँ दबाएँ'],
+      ['Tap Build to place it', 'Pindutin ang Magtayo para ilagay', 'Pindota ang Tukod aron ibutang', 'Toca Construir para colocarlo', 'Touche Construire pour le placer', 'Toque em Construir para colocá-lo', 'Tippe auf Bauen, um es zu platzieren', 'Ketuk Bangun untuk menempatkannya', '建てる をタップして配置', '点 建造 来放置', '건설을 눌러 배치하세요', 'रखने के लिए बनाएँ दबाएँ']];
+    try { I18N.add(R); } catch (e) {}
+    const NEW = { vi: ['Chế độ xây', 'Chạm một chỗ, rồi ✓ Xây', 'Chạm một chỗ để dời nó, rồi chạm ✓ Xây', 'Chạm Xây để đặt'],
+      th: ['โหมดก่อสร้าง', 'แตะจุดที่ต้องการ แล้วกด ✓ สร้าง', 'แตะจุดเพื่อย้าย แล้วแตะ ✓ สร้าง', 'แตะ สร้าง เพื่อวาง'],
+      ru: ['Режим стройки', 'Нажми на место, затем ✓ Строить', 'Нажми на место, чтобы передвинуть, затем ✓ Строить', 'Нажми «Строить», чтобы поставить'],
+      it: ['Modalità costruzione', 'Tocca un punto, poi ✓ Costruisci', 'Tocca un punto per spostarlo, poi tocca ✓ Costruisci', 'Tocca Costruisci per piazzarlo'],
+      tr: ['İnşa modu', 'Bir yere dokun, sonra ✓ İnşa et', "Taşımak için bir yere dokun, sonra ✓ İnşa et'e dokun", "Yerleştirmek için İnşa et'e dokun"] };
+    if (I18N.more) for (const l in NEW) { const d = {}; R.forEach((r, i) => d[r[0]] = NEW[l][i]); try { I18N.more(l, d); } catch (e) {} } }
 
   /* ---------------- 5) construction ---------------- */
   const BUILD_T = t => Math.max(2.2, Math.min(6, 1.6 + costOf(t) * .13));
@@ -152,7 +189,8 @@ html body #stage #dock #bh.u-conf{background:#5fe08a!important;color:#062010!imp
   if (typeof update === 'function') { const _u = update; update = function (dt) { try { paceBefore(); } catch (e) {} _u(dt);
       try { paceAfter(); conStep(dt); advStep(dt); if (Math.random() < dt * 2) advise();
         if (PUR > 0) { PUR -= dt; if (PUR <= 0) { const e = $('#u-pur'); if (e) e.style.display = 'none'; } }
-        if (PEND && (PEND.t !== sel || !free(PEND.x, PEND.y))) clearPend(); } catch (e) { console.warn('play15', e); } }; }
+        if (PEND && PEND.t !== sel) retarget();   // picking another building keeps build mode on
+        if (PEND && !free(PEND.x, PEND.y)) { const g = _g(); if (g) { PEND.x = g.x; PEND.y = g.y; } else clearPend(); } } catch (e) { console.warn('play15', e); } }; }
   setInterval(() => { if (!ok()) { ['u-adv', 'u-pur', 'u-place'].forEach(i => { const e = $('#' + i); if (e) e.style.display = 'none'; }); if (PEND) clearPend(); } }, 500);
   window.P15 = { clearPend, get pend() { return PEND; } };
 })();

@@ -520,6 +520,12 @@ html body #stage#stage #toast{top:calc(156px + var(--st,0px))!important;bottom:a
 }
 </style>
 </head><body>
+<script>/* C-MOON studio intro: js/intro_cmoon.js covers the screen first and the title card (#mintro) waits for it.
+   If that file fails to load, throws or hangs, the game starts anyway after 15 s (the intro extends this while it plays). */
+(function(){var d=0,k=0,r0;window.CMOON_WAIT=new Promise(function(r){r0=r});
+window.__cmoonDone=function(){if(d)return;d=1;clearTimeout(k);window.CMOON_DONE=true;var e=document.getElementById('cmoonI');if(e)e.remove();r0()};
+window.__cmoonHold=function(ms){if(d)return;clearTimeout(k);k=setTimeout(window.__cmoonDone,ms)};window.__cmoonHold(15000)})();
+</script><script src="js/intro_cmoon.js" onerror="window.__cmoonDone()"></script>
 <div id="stage">
 <canvas id="c" width="480" height="320"></canvas>
 <div id="joy" class="ui"><div id="jhint">drag<br>to move</div><div id="jb" hidden></div><div id="jk" hidden></div></div>
@@ -1106,7 +1112,7 @@ function dockAfford(){if(LAY==='pc'&&!document.querySelector('.card .kh'))keyHin
 const TUT=[
 {t:'Drag on the left side of the screen to walk. On a keyboard, use WASD or the arrow keys.',ring:()=>LAY==='pc'?null:'#jhint',go:()=>{S.mvx=S.p.x;S.mvy=S.p.y},done:()=>Math.hypot(S.p.x-S.mvx,S.p.y-S.mvy)>45},
 {t:'Walk over the grey ore pile to pick it up. You build everything with ore 🪨.',go:()=>{S.m0=S.mats;addRock({x:clamp(S.p.x+60,20,WW-20),y:clamp(S.p.y-10,60,WH-40)})},done:()=>S.mats>S.m0},
-{t:'Pick Solar, then tap 🏗 Build (or tap the ground) to place the outline. Tap ✓ Build again to build it. A solar panel turns sunlight into power ⚡.',ring:()=>tutRing('solar'),go:()=>{S.nb0=S.b.filter(b=>b.t==='solar').length;S.mats=Math.max(S.mats,costOf('solar'));sel='solar';dockUp()},done:()=>S.b.filter(b=>b.t==='solar').length>S.nb0},
+{t:'Pick Solar, then tap 🏗 Build to place the outline. Tap ✓ Build again to build it. A solar panel turns sunlight into power ⚡.',ring:()=>tutRing('solar'),go:()=>{S.nb0=S.b.filter(b=>b.t==='solar').length;S.mats=Math.max(S.mats,costOf('solar'));sel='solar';dockUp()},done:()=>S.b.filter(b=>b.t==='solar').length>S.nb0},
 {t:'The bars at the top are your outpost’s vital signs. Let’s look at each one.',go:()=>{S.tourD=0;setTimeout(()=>{if(S&&S.tu===3&&S.run)tour(STOUR,()=>{if(S)S.tourD=1});else if(S)S.tourD=1},600)},done:()=>S.tourD},
 {t:'Now build an O2 Gen. It uses power ⚡ to make air 💨 for your crew to breathe.',ring:()=>tutRing('o2'),go:()=>{S.nb0=S.b.filter(b=>b.t==='o2').length;S.mats=Math.max(S.mats,costOf('o2'));sel='o2';dockUp()},done:()=>S.b.filter(b=>b.t==='o2').length>S.nb0},
 {t:'Look at the top: air 💨 goes up, and the O2 Gen uses some power ⚡. Every building trades one thing for another!',ring:()=>'#r-o2',go:()=>{S.tt=performance.now()},done:()=>performance.now()-S.tt>6500},
@@ -3703,13 +3709,16 @@ html body.lay-ph #vseg button{min-height:44px;min-width:44px}
 @keyframes miPres{0%{opacity:0}35%{opacity:1}75%{opacity:1}100%{opacity:0}}
 @keyframes miLogo{to{opacity:1;transform:none}}
 @keyframes miOut{to{opacity:0;visibility:hidden}}@keyframes miStar{to{opacity:.35}}
+#mintro.cmwait,#mintro.cmwait *,#mintro.cmwait::before{animation-play-state:paused!important}
 @media (prefers-reduced-motion:reduce){#mintro *{animation-duration:.01s!important}}
 </style>
 <script>(function(){var m=document.getElementById('mintro');if(!m)return;var gone=0,end=function(){if(gone)return;gone=1;m.style.transition='opacity .4s';m.style.opacity=0;setTimeout(function(){m.remove()},420)};
 if(navigator.webdriver&&!/intro=1/.test(location.search)){m.remove();return}
 try{if(sessionStorage.getItem('rdo_intro')){m.remove();return}sessionStorage.setItem('rdo_intro','1')}catch(e){}
-m.addEventListener('click',end);setTimeout(end,7800);
+m.addEventListener('click',end);var go=function(){m.classList.remove('cmwait');setTimeout(end,7800);
 try{var A=window.AudioContext||window.webkitAudioContext,a=new A(),t=a.currentTime,g=a.createGain();g.gain.value=.12;g.connect(a.destination);
  var w=function(f,s,d,ty,v){var o=a.createOscillator(),e=a.createGain();o.type=ty||'sine';o.frequency.setValueAtTime(f,t+s);e.gain.setValueAtTime(0,t+s);e.gain.linearRampToValueAtTime(v||1,t+s+.02);e.gain.exponentialRampToValueAtTime(.001,t+s+d);o.connect(e);e.connect(g);o.start(t+s);o.stop(t+s+d+.05)};
- w(880,1.2,1.2,'sine',.6);w(1320,1.35,1.1,'sine',.4);[523,659,784,1047].forEach(function(f,i){w(f,1.75+i*.13,.9,'triangle',.5)});w(196,5.0,2.2,'sawtooth',.25);w(262,5.0,2.2,'triangle',.4);w(392,5.05,2,'triangle',.35)}catch(e){}})();</script>
+ w(880,1.2,1.2,'sine',.6);w(1320,1.35,1.1,'sine',.4);[523,659,784,1047].forEach(function(f,i){w(f,1.75+i*.13,.9,'triangle',.5)});w(196,5.0,2.2,'sawtooth',.25);w(262,5.0,2.2,'triangle',.4);w(392,5.05,2,'triangle',.35)}catch(e){}};
+/* the C-MOON studio intro (js/intro_cmoon.js) plays first: this title card waits, paused, until it ends */
+if(window.CMOON_WAIT&&!window.CMOON_DONE){m.classList.add('cmwait');window.CMOON_WAIT.then(go)}else go()})();</script>
 </body></html>
